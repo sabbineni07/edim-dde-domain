@@ -4,8 +4,10 @@ version: 1
 entry:
   method: invoke
   sync: true
+
+content_dir: ./content
+
 graph:
-  entry: prepare_evidence
   nodes:
     - id: prepare_evidence
       type: domain.rca.prepare_evidence
@@ -159,12 +161,20 @@ graph:
       type: domain.rca.assemble_evidence
     - id: rule_classify
       type: domain.rca.classify_failure
+    - id: prepare_llm_payload
+      type: domain.rca.prepare_llm_payload
     - id: synthesize
-      type: domain.rca.synthesize
+      type: llm_chain
+      chain: rca
+      output_key: llm_raw
+      attach_skills: true
+    - id: parse_llm_json
+      type: domain.rca.parse_llm_json
     - id: validate_output
       type: domain.rca.validate_output
 
   edges:
+    - [START, prepare_evidence]
     - [prepare_evidence, collect_failure_anchors]
     - [collect_failure_anchors, collect_sql_plans]
     - [collect_sql_plans, collect_error_logs]
@@ -172,6 +182,8 @@ graph:
     - [collect_timeline, collect_stage_pressure]
     - [collect_stage_pressure, assemble_evidence]
     - [assemble_evidence, rule_classify]
-    - [rule_classify, synthesize]
-    - [synthesize, validate_output]
+    - [rule_classify, prepare_llm_payload]
+    - [prepare_llm_payload, synthesize]
+    - [synthesize, parse_llm_json]
+    - [parse_llm_json, validate_output]
     - [validate_output, END]

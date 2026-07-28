@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from edim_dde_domain.llm.json_util import dumps, parse_json_object
 from edim_dde_domain.tools.cluster_metrics import estimate_monthly_costs
 
 
@@ -23,27 +24,55 @@ def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_sizing(state: dict[str, Any]) -> dict[str, Any]:
-    """Heuristic right-size from utilization (stub for an LLM sizing chain)."""
-    m = state.get("metrics") or {}
-    peak_cpu = float(m.get("peak_worker_cpu_utilization_pct") or 0)
-    peak_mem = float(m.get("peak_worker_memory_utilization_pct") or 0)
-    current_max = int(m.get("max_worker_nodes_provisioned") or 16)
-    current_type = str(m.get("azure_worker_vm_size") or "Standard_E8s_v3")
-
+def prepare_sizing_payload(state: dict[str, Any]) -> dict[str, Any]:
+    """Flatten metrics into string fields for the sizing human prompt."""
+    metrics = state.get("metrics") or {}
+    current_config = {
+        "azure_worker_vm_size": metrics.get("azure_worker_vm_size"),
+        "max_worker_nodes_provisioned": metrics.get("max_worker_nodes_provisioned"),
+        "azure_driver_vm_size": metrics.get("azure_driver_vm_size"),
+        "driver_node_count": metrics.get("driver_node_count"),
+    }
+    peak_cpu = float(metrics.get("peak_worker_cpu_utilization_pct") or 0)
+    peak_mem = float(metrics.get("peak_worker_memory_utilization_pct") or 0)
     util = max(peak_cpu, peak_mem)
+    current_max = int(metrics.get("max_worker_nodes_provisioned") or 16)
     if util < 40:
-        rec_max = max(2, current_max // 2)
-        node_type = "Standard_E4s_v3"
-        pattern = "Low utilization — recommend smaller SKU and fewer max workers"
+        hint_max = max(2, current_max // 2)
     elif util > 80:
-        rec_max = min(current_max + 4, 32)
-        node_type = current_type
-        pattern = "High utilization — keep SKU, raise max workers"
+        hint_max = min(current_max + 4, 32)
     else:
+        hint_max = current_max
+    sizing_hints = {
+        "recommended_max_workers": hint_max,
+        "utilization_pct": util,
+        "note": "Deterministic pre-check; ingest wins on conflict.",
+    }
+    return {
+        "current_config": dumps(current_config),
+        "job_run_ingest": dumps(metrics),
+        "sizing_hints": dumps(sizing_hints),
+        "guardrail_feedback": "None",
+        "historical_context": "None",
+    }
+
+
+def parse_sizing(state: dict[str, Any]) -> dict[str, Any]:
+    """Parse sizing LLM JSON into pattern_analysis + sizing dict."""
+    raw = parse_json_object(state.get("sizing_raw"))
+    metrics = state.get("metrics") or {}
+    current_type = str(metrics.get("azure_worker_vm_size") or "Standard_E8s_v3")
+    current_max = int(metrics.get("max_worker_nodes_provisioned") or 16)
+    peak_cpu = float(metrics.get("peak_worker_cpu_utilization_pct") or 0)
+    peak_mem = float(metrics.get("peak_worker_memory_utilization_pct") or 0)
+    util = max(peak_cpu, peak_mem)
+
+    node_type = str(raw.get("recommended_node_type") or current_type)
+    try:
+        rec_max = int(raw.get("recommended_max_workers") or current_max)
+    except (TypeError, ValueError):
         rec_max = current_max
-        node_type = current_type
-        pattern = "Utilization in band — keep current sizing"
+    pattern = str(raw.get("pattern_analysis") or raw.get("rationale") or "Sizing from LLM")
 
     return {
         "pattern_analysis": pattern,
@@ -53,6 +82,7 @@ def run_sizing(state: dict[str, Any]) -> dict[str, Any]:
             "current_max_workers": current_max,
             "recommended_max_workers": rec_max,
             "utilization_pct": util,
+            "rationale": str(raw.get("rationale") or ""),
         },
     }
 
@@ -92,12 +122,11 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
     return {"recommendation": recommendation}
 
 
-def generate_explanation(state: dict[str, Any]) -> dict[str, Any]:
-    rec = state.get("recommendation") or {}
-    pattern = state.get("pattern_analysis") or ""
-    explanation = (
-        f"{pattern}. Recommend {rec.get('recommended_node_type')} with "
-        f"max_workers={rec.get('recommended_max_workers')} "
-        f"(est. savings ${rec.get('savings_usd')}/mo, risk={rec.get('risk_level')})."
-    )
-    return {"explanation": explanation}
+def prepare_explanation_payload(state: dict[str, Any]) -> dict[str, Any]:
+    """Stringify fields for the explanation human prompt (non-colliding keys)."""
+    return {
+        "recommendation_text": dumps(state.get("recommendation") or {}),
+        "job_run_ingest": dumps(state.get("metrics") or {}),
+        "pattern_analysis": str(state.get("pattern_analysis") or ""),
+        "risk_assessment_text": dumps(state.get("risk_assessment") or {}),
+    }

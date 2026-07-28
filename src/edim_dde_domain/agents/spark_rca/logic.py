@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from edim_dde_domain.config import get_settings
+from edim_dde_domain.llm.json_util import dumps, parse_json_object
 from edim_dde_domain.sources import try_get_resolved_source
 from edim_dde_domain.tools.evidence_pack import build_evidence_pack
 
@@ -86,24 +87,64 @@ def classify_failure(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def synthesize_rca(state: dict[str, Any]) -> dict[str, Any]:
-    """Stub LLM step: draft RCA from classification + evidence."""
+def _section_text(section: Any, empty_message: str) -> str:
+    if not section:
+        return empty_message
+    if isinstance(section, dict) and not any(section.values()):
+        return empty_message
+    return dumps(section)
+
+
+def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
+    """Flatten evidence + classification into RCA human-prompt string fields."""
+    pack = state.get("evidence_pack") or {}
+    if not isinstance(pack, dict):
+        pack = {}
+    sections = pack.get("sections") or {}
+    hint = state.get("classification_hint") or {}
+
+    def _s(value: Any) -> str:
+        return "(not provided)" if value is None or value == "" else str(value)
+
+    return {
+        "workspace_id": _s(state.get("workspace_id") or pack.get("workspace_id")),
+        "job_id": _s(state.get("job_id") or pack.get("job_id")),
+        "job_run_id": _s(state.get("job_run_id") or pack.get("job_run_id")),
+        "job_run_date": _s(state.get("job_run_date") or pack.get("job_run_date")),
+        "task_key": _s(state.get("task_key") or pack.get("task_key")),
+        "classification_hint": dumps(hint) if hint else "(none)",
+        "cluster_logs_section": _section_text(
+            sections.get("logs"),
+            "(no ERROR/WARN/exception excerpts in this evidence_pack)",
+        ),
+        "spark_metrics_section": _section_text(
+            sections.get("stage_metrics"),
+            "(no stage/task metric excerpts in this evidence_pack)",
+        ),
+        "query_plans_section": _section_text(
+            sections.get("sql_plans"),
+            "(no sql_text/physical_plan/sql_error attrs in this evidence_pack)",
+        ),
+        "evidence_pack": dumps(pack),
+    }
+
+
+def parse_llm_json(state: dict[str, Any]) -> dict[str, Any]:
+    """Parse synthesize llm_chain text into llm_raw dict for validate_output."""
+    parsed = parse_json_object(state.get("llm_raw"))
+    if parsed:
+        return {"llm_raw": parsed}
+    # Soft fallback from classification when LLM returns non-JSON
     hint = state.get("classification_hint") or {}
     pack = state.get("evidence_pack") or {}
-    category = hint.get("category") or "unknown"
     reason = (pack.get("raw_anchors") or {}).get("failure_reason") or "failure"
-
+    category = hint.get("category") or "unknown"
     return {
         "llm_raw": {
             "category": category,
             "summary": f"Likely {category}: {reason}",
             "confidence": float(hint.get("confidence") or 0.5),
-            "recommended_actions": [
-                "Inspect executor memory and spill metrics"
-                if category == "resource"
-                else "Verify table names and schema",
-                "Re-run with additional logging",
-            ],
+            "recommended_actions": ["Re-run with additional logging"],
             "evidence_refs": [
                 str(e.get("ref")) for e in (pack.get("evidence") or []) if e.get("ref")
             ],
@@ -114,6 +155,8 @@ def synthesize_rca(state: dict[str, Any]) -> dict[str, Any]:
 def validate_output(state: dict[str, Any]) -> dict[str, Any]:
     """Clamp draft into a stable API response shape."""
     raw = state.get("llm_raw") or {}
+    if not isinstance(raw, dict):
+        raw = parse_json_object(raw)
     hint = state.get("classification_hint") or {}
     category = str(raw.get("category") or hint.get("category") or "unknown")
     confidence = float(raw.get("confidence") or hint.get("confidence") or 0.4)

@@ -4,8 +4,10 @@ version: 1
 entry:
   method: invoke
   sync: true
+
+content_dir: ./content
+
 graph:
-  entry: collect_metrics
   nodes:
     - id: collect_metrics
       type: domain.sql.query
@@ -38,24 +40,40 @@ graph:
         LIMIT 1
     - id: normalize_metrics
       type: domain.tuning.normalize_metrics
+    - id: prepare_sizing_payload
+      type: domain.tuning.prepare_sizing_payload
     - id: run_sizing
-      type: domain.tuning.run_sizing
+      type: llm_chain
+      chain: sizing
+      output_key: sizing_raw
+      attach_skills: true
+    - id: parse_sizing
+      type: domain.tuning.parse_sizing
     - id: assess_risks
       type: domain.tuning.assess_risks
     - id: generate_recommendation
       type: domain.tuning.generate_recommendation
+    - id: prepare_explanation_payload
+      type: domain.tuning.prepare_explanation_payload
     - id: generate_explanation
-      type: domain.tuning.generate_explanation
+      type: llm_chain
+      chain: explanation
+      output_key: explanation
+      attach_skills: false
   edges:
+    - [START, collect_metrics]
     - [collect_metrics, normalize_metrics]
-    - [normalize_metrics, run_sizing]
-    - [run_sizing, assess_risks]
+    - [normalize_metrics, prepare_sizing_payload]
+    - [prepare_sizing_payload, run_sizing]
+    - [run_sizing, parse_sizing]
+    - [parse_sizing, assess_risks]
     - [assess_risks, generate_recommendation]
+    - [prepare_explanation_payload, generate_explanation]
     - [generate_explanation, END]
   routes:
     - after: generate_recommendation
       when:
         field: include_explanation
         op: truthy
-      then: generate_explanation
+      then: prepare_explanation_payload
       else: END

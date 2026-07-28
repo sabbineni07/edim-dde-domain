@@ -33,10 +33,18 @@ def classify_failure_factory(_config: dict[str, Any]):
     return _node
 
 
-@register_node("domain.rca.synthesize")
-def synthesize_factory(_config: dict[str, Any]):
+@register_node("domain.rca.prepare_llm_payload")
+def prepare_llm_payload_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:
-        return logic.synthesize_rca(state)
+        return logic.prepare_llm_payload(state)
+
+    return _node
+
+
+@register_node("domain.rca.parse_llm_json")
+def parse_llm_json_factory(_config: dict[str, Any]):
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.parse_llm_json(state)
 
     return _node
 

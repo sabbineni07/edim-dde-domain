@@ -17,10 +17,18 @@ def normalize_metrics_factory(_config: dict[str, Any]):
     return _node
 
 
-@register_node("domain.tuning.run_sizing")
-def run_sizing_factory(_config: dict[str, Any]):
+@register_node("domain.tuning.prepare_sizing_payload")
+def prepare_sizing_payload_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:
-        return logic.run_sizing(state)
+        return logic.prepare_sizing_payload(state)
+
+    return _node
+
+
+@register_node("domain.tuning.parse_sizing")
+def parse_sizing_factory(_config: dict[str, Any]):
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.parse_sizing(state)
 
     return _node
 
@@ -41,9 +49,9 @@ def generate_recommendation_factory(_config: dict[str, Any]):
     return _node
 
 
-@register_node("domain.tuning.generate_explanation")
-def generate_explanation_factory(_config: dict[str, Any]):
+@register_node("domain.tuning.prepare_explanation_payload")
+def prepare_explanation_payload_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:
-        return logic.generate_explanation(state)
+        return logic.prepare_explanation_payload(state)
 
     return _node

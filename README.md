@@ -24,8 +24,21 @@ src/edim_dde_domain/
   nodes/sql_query.py                # domain.sql.query
   tools/sql.py                      # prepare_query + execute_sql
   tools/evidence_pack.py            # RCA assemble (pure)
+  llm/                              # DomainStubLLM (offline when no provider set)
   agents/spark_rca|cluster_tuning/  # YAML graphs + analysis nodes
+    content/prompts|skills/         # LLM prompts & skills (content_dir)
 ```
+
+### LLM steps
+
+| Agent | Chain | Graph path |
+|-------|-------|------------|
+| `cluster_tuning` | `sizing` | prepare → `llm_chain` → parse → assess → recommend |
+| `cluster_tuning` | `explanation` | (optional) prepare → `llm_chain` |
+| `spark_rca` | `rca` | prepare → `llm_chain` (+ skills) → parse → validate |
+
+Set a real provider before bootstrap (or after) with `set_llm_provider(...)`.  
+If none is set and `EDIM_DOMAIN_ALLOW_STUB=true`, bootstrap installs `DomainStubLLM`.
 
 ## Configure
 
