@@ -1,0 +1,61 @@
+agent_id: cluster_tuning
+display_name: DBX Cluster Tuning
+version: 1
+entry:
+  method: invoke
+  sync: true
+graph:
+  entry: collect_metrics
+  nodes:
+    - id: collect_metrics
+      type: domain.sql.query
+      source: edim_sql_wh
+      result_mode: first_row
+      output_key: metrics
+      on_empty: error
+      params_from_state: [job_id, cluster_id, job_run_id]
+      query: |
+        SELECT
+          CAST(job_run_date AS STRING) AS job_run_date,
+          CAST(workspace_id AS STRING) AS workspace_id,
+          CAST(job_id AS STRING) AS job_id,
+          CAST(job_run_id AS STRING) AS job_run_id,
+          CAST(cluster_id AS STRING) AS cluster_id,
+          azure_driver_vm_size,
+          COALESCE(CAST(driver_node_count AS BIGINT), 1) AS driver_node_count,
+          COALESCE(azure_worker_vm_size, 'Standard_E8s_v3') AS azure_worker_vm_size,
+          COALESCE(CAST(max_worker_nodes_provisioned AS BIGINT), 1) AS max_worker_nodes_provisioned,
+          COALESCE(CAST(avg_worker_nodes_consumed AS DOUBLE), 0.0) AS avg_worker_nodes_consumed,
+          COALESCE(CAST(peak_worker_cpu_utilization_pct AS DOUBLE), 0.0) AS peak_worker_cpu_utilization_pct,
+          COALESCE(CAST(peak_worker_memory_utilization_pct AS DOUBLE), 0.0) AS peak_worker_memory_utilization_pct,
+          COALESCE(CAST(avg_driver_cpu_utilization_pct AS DOUBLE), 0.0) AS avg_driver_cpu_utilization_pct,
+          COALESCE(CAST(avg_driver_memory_utilization_pct AS DOUBLE), 0.0) AS avg_driver_memory_utilization_pct
+        FROM ${DATABRICKS_JOB_CLUSTER_METRICS_TABLE}
+        WHERE CAST(job_id AS STRING) = :job_id
+          AND (:cluster_id IS NULL OR CAST(cluster_id AS STRING) = :cluster_id)
+          AND (:job_run_id IS NULL OR CAST(job_run_id AS STRING) = :job_run_id)
+        ORDER BY job_run_date DESC
+        LIMIT 1
+    - id: normalize_metrics
+      type: domain.tuning.normalize_metrics
+    - id: run_sizing
+      type: domain.tuning.run_sizing
+    - id: assess_risks
+      type: domain.tuning.assess_risks
+    - id: generate_recommendation
+      type: domain.tuning.generate_recommendation
+    - id: generate_explanation
+      type: domain.tuning.generate_explanation
+  edges:
+    - [collect_metrics, normalize_metrics]
+    - [normalize_metrics, run_sizing]
+    - [run_sizing, assess_risks]
+    - [assess_risks, generate_recommendation]
+    - [generate_explanation, END]
+  routes:
+    - after: generate_recommendation
+      when:
+        field: include_explanation
+        op: truthy
+      then: generate_explanation
+      else: END

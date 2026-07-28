@@ -1,0 +1,12 @@
+sources:
+  edim_sql_wh:
+    type: databricks_sql
+    server_hostname: ${DATABRICKS_HOST}
+    http_path: ${DATABRICKS_HTTP_PATH}
+    # auth is optional. Default mode is "auto":
+    #   1) DATABRICKS_TOKEN (or token_env) if set
+    #   2) else DefaultAzureCredential / az login / Managed Identity
+    # Explicit options:
+    #   auth: { mode: env_token, token_env: DATABRICKS_TOKEN }
+    #   auth: { mode: azure_credential }
+    #   auth: { mode: auto }

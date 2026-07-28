@@ -1,0 +1,177 @@
+agent_id: spark_rca
+display_name: Spark Job RCA
+version: 1
+entry:
+  method: invoke
+  sync: true
+graph:
+  entry: prepare_evidence
+  nodes:
+    - id: prepare_evidence
+      type: domain.rca.prepare_evidence
+
+    - id: collect_failure_anchors
+      type: domain.sql.query
+      source: edim_sql_wh
+      skip_if_key: evidence_pack
+      output_key: failure_anchors
+      result_mode: rows
+      params_from_state: [job_run_id, job_run_date, task_key]
+      query: |
+        SELECT
+          CAST(event_id AS STRING) AS event_id,
+          CAST(event_ts AS STRING) AS event_ts,
+          event_type,
+          CAST(job_id AS STRING) AS job_id,
+          CAST(job_run_id AS STRING) AS job_run_id,
+          CAST(job_run_date AS STRING) AS job_run_date,
+          CAST(task_key AS STRING) AS task_key,
+          CAST(spark_app_id AS STRING) AS spark_app_id,
+          status,
+          successful,
+          failure_reason,
+          CAST(attributes AS STRING) AS attributes
+        FROM ${DATABRICKS_SPARK_METRICS_TABLE}
+        WHERE CAST(job_run_id AS STRING) = :job_run_id
+          AND event_type = 'pipeline_end'
+          AND (successful = false OR lower(CAST(status AS STRING)) IN ('failure', 'failed', 'error'))
+          AND (:job_run_date IS NULL OR job_run_date = CAST(:job_run_date AS DATE))
+          AND (:task_key IS NULL OR CAST(task_key AS STRING) = :task_key)
+        ORDER BY event_ts DESC
+        LIMIT 20
+
+    - id: collect_sql_plans
+      type: domain.sql.query
+      source: edim_sql_wh
+      skip_if_key: evidence_pack
+      output_key: sql_plans
+      result_mode: rows
+      params_from_state: [job_run_id, job_run_date, task_key]
+      query: |
+        SELECT
+          CAST(event_id AS STRING) AS event_id,
+          CAST(event_ts AS STRING) AS event_ts,
+          event_type,
+          CAST(job_id AS STRING) AS job_id,
+          CAST(job_run_id AS STRING) AS job_run_id,
+          CAST(job_run_date AS STRING) AS job_run_date,
+          CAST(task_key AS STRING) AS task_key,
+          CAST(spark_app_id AS STRING) AS spark_app_id,
+          status,
+          successful,
+          failure_reason,
+          CAST(attributes AS STRING) AS attributes
+        FROM ${DATABRICKS_SPARK_METRICS_TABLE}
+        WHERE CAST(job_run_id AS STRING) = :job_run_id
+          AND event_type IN ('spark_sql_query_error', 'spark_sql_query_observed')
+          AND (:job_run_date IS NULL OR job_run_date = CAST(:job_run_date AS DATE))
+          AND (:task_key IS NULL OR CAST(task_key AS STRING) = :task_key)
+        ORDER BY
+          CASE WHEN event_type = 'spark_sql_query_error' THEN 0 ELSE 1 END,
+          event_ts DESC
+        LIMIT 40
+
+    - id: collect_error_logs
+      type: domain.sql.query
+      source: edim_sql_wh
+      skip_if_key: evidence_pack
+      output_key: error_logs
+      result_mode: rows
+      params_from_state: [job_run_id, job_run_date, task_key]
+      query: |
+        SELECT
+          CAST(log_timestamp AS STRING) AS log_timestamp,
+          log_level,
+          logger_name,
+          message,
+          exception,
+          CAST(job_id AS STRING) AS job_id,
+          CAST(job_run_id AS STRING) AS job_run_id,
+          CAST(job_run_date AS STRING) AS job_run_date,
+          CAST(task_key AS STRING) AS task_key,
+          CAST(spark_app_id AS STRING) AS spark_app_id
+        FROM ${DATABRICKS_SPARK_LOGS_TABLE}
+        WHERE CAST(job_run_id AS STRING) = :job_run_id
+          AND (upper(log_level) IN ('ERROR', 'WARNING') OR exception IS NOT NULL)
+          AND (:job_run_date IS NULL OR job_run_date = CAST(:job_run_date AS DATE))
+          AND (:task_key IS NULL OR CAST(task_key AS STRING) = :task_key)
+        ORDER BY log_timestamp DESC
+        LIMIT 100
+
+    - id: collect_timeline
+      type: domain.sql.query
+      source: edim_sql_wh
+      skip_if_key: evidence_pack
+      output_key: timeline_events
+      result_mode: rows
+      params_from_state: [job_run_id, job_run_date, task_key]
+      query: |
+        SELECT
+          CAST(event_id AS STRING) AS event_id,
+          CAST(event_ts AS STRING) AS event_ts,
+          event_type,
+          CAST(task_key AS STRING) AS task_key,
+          status,
+          successful,
+          failure_reason,
+          CAST(attributes AS STRING) AS attributes
+        FROM ${DATABRICKS_SPARK_METRICS_TABLE}
+        WHERE CAST(job_run_id AS STRING) = :job_run_id
+          AND event_type IN (
+            'pipeline_start', 'pipeline_end',
+            'spark_sql_query_observed', 'spark_sql_query_error',
+            'spark_job_start', 'spark_job_completed',
+            'spark_stage_start', 'spark_stage_completed'
+          )
+          AND (:job_run_date IS NULL OR job_run_date = CAST(:job_run_date AS DATE))
+          AND (:task_key IS NULL OR CAST(task_key AS STRING) = :task_key)
+        ORDER BY event_ts ASC
+        LIMIT 80
+
+    - id: collect_stage_pressure
+      type: domain.sql.query
+      source: edim_sql_wh
+      skip_if_key: evidence_pack
+      output_key: stage_pressure
+      result_mode: rows
+      params_from_state: [job_run_id, job_run_date, task_key]
+      query: |
+        SELECT
+          CAST(event_id AS STRING) AS event_id,
+          CAST(event_ts AS STRING) AS event_ts,
+          event_type,
+          CAST(task_key AS STRING) AS task_key,
+          status,
+          successful,
+          failure_reason,
+          CAST(attributes AS STRING) AS attributes
+        FROM ${DATABRICKS_SPARK_METRICS_TABLE}
+        WHERE CAST(job_run_id AS STRING) = :job_run_id
+          AND event_type IN (
+            'spark_job_completed', 'spark_stage_completed', 'spark_stage_task_summary'
+          )
+          AND (:job_run_date IS NULL OR job_run_date = CAST(:job_run_date AS DATE))
+          AND (:task_key IS NULL OR CAST(task_key AS STRING) = :task_key)
+        ORDER BY event_ts DESC
+        LIMIT 100
+
+    - id: assemble_evidence
+      type: domain.rca.assemble_evidence
+    - id: rule_classify
+      type: domain.rca.classify_failure
+    - id: synthesize
+      type: domain.rca.synthesize
+    - id: validate_output
+      type: domain.rca.validate_output
+
+  edges:
+    - [prepare_evidence, collect_failure_anchors]
+    - [collect_failure_anchors, collect_sql_plans]
+    - [collect_sql_plans, collect_error_logs]
+    - [collect_error_logs, collect_timeline]
+    - [collect_timeline, collect_stage_pressure]
+    - [collect_stage_pressure, assemble_evidence]
+    - [assemble_evidence, rule_classify]
+    - [rule_classify, synthesize]
+    - [synthesize, validate_output]
+    - [validate_output, END]

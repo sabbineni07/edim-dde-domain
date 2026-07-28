@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "edim-dde-domain"
+version = "0.1.0"
+description = "EDIM domain agents + tools (YAML graphs on edim-dde-ai)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.0",
+  "pydantic-settings>=2.0",
+  "PyYAML>=6",
+]
+
+[project.optional-dependencies]
+databricks = ["databricks-sql-connector>=3.0"]
+azure = ["azure-identity>=1.15"]
+dev = [
+  "pytest>=8",
+  "databricks-sql-connector>=3.0",
+  "azure-identity>=1.15",
+]
+[tool.hatch.build.targets.wheel]
+packages = ["src/edim_dde_domain"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

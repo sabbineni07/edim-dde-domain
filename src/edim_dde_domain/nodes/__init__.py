@@ -1,0 +1,1 @@
+"""Domain node type registrations."""

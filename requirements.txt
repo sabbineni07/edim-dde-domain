@@ -1,0 +1,7 @@
+# Domain package. Install framework + optional Databricks SQL connector:
+-e ../edim-dde-ai
+pydantic>=2.0
+pydantic-settings>=2.0
+PyYAML>=6
+databricks-sql-connector>=3.0.1
+azure-identity>=1.15

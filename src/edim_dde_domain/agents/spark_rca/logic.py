@@ -1,0 +1,135 @@
+"""Spark RCA analysis + evidence assembly (SQL collect is domain.sql.query)."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from edim_dde_domain.config import get_settings
+from edim_dde_domain.sources import try_get_resolved_source
+from edim_dde_domain.tools.evidence_pack import build_evidence_pack
+
+
+def prepare_evidence(state: dict[str, Any]) -> dict[str, Any]:
+    """Honor override / offline stub so SQL nodes can be skipped."""
+    existing = state.get("evidence_pack")
+    if isinstance(existing, dict) and existing:
+        return {}
+
+    # Stub only when Databricks source is unavailable
+    if try_get_resolved_source("edim_sql_wh") is None and get_settings().allow_stub:
+        reason = str(state.get("error_text") or "Unknown failure")
+        job_run_id = str(state.get("job_run_id") or "unknown-run")
+        pack = {
+            "job_run_id": job_run_id,
+            "job_id": state.get("job_id"),
+            "evidence": [
+                {
+                    "ref": "e1",
+                    "source": "spark_logs",
+                    "excerpt": reason[:400],
+                }
+            ],
+            "raw_anchors": {"failure_reason": reason},
+            "sections": {},
+            "timeline": [],
+        }
+        return {"evidence_pack": pack}
+    return {}
+
+
+def assemble_evidence(state: dict[str, Any]) -> dict[str, Any]:
+    """Build evidence_pack from SQL section outputs (or keep override/stub)."""
+    existing = state.get("evidence_pack")
+    if isinstance(existing, dict) and existing:
+        return {}
+
+    pack = build_evidence_pack(
+        job_run_id=str(state.get("job_run_id") or "unknown-run"),
+        job_id=state.get("job_id"),
+        job_run_date=state.get("job_run_date"),
+        task_key=state.get("task_key"),
+        workspace_id=state.get("workspace_id"),
+        failure_anchors=list(state.get("failure_anchors") or []),
+        stage_pressure=list(state.get("stage_pressure") or []),
+        error_logs=list(state.get("error_logs") or []),
+        timeline=list(state.get("timeline_events") or []),
+        sql_plans=list(state.get("sql_plans") or []),
+    )
+    return {"evidence_pack": pack}
+
+
+def classify_failure(state: dict[str, Any]) -> dict[str, Any]:
+    """Rule-based category from evidence text."""
+    pack = state.get("evidence_pack") or {}
+    text = " ".join(
+        [
+            str((pack.get("raw_anchors") or {}).get("failure_reason") or ""),
+            " ".join(str(e.get("excerpt") or "") for e in (pack.get("evidence") or [])),
+        ]
+    ).lower()
+
+    if any(k in text for k in ("oom", "out of memory", "heap space")):
+        category, confidence = "resource", 0.85
+    elif any(k in text for k in ("table not found", "analysisexception", "sql")):
+        category, confidence = "sql_error", 0.8
+    elif any(k in text for k in ("timeout", "cancelled")):
+        category, confidence = "timeout_or_cancel", 0.7
+    else:
+        category, confidence = "unknown", 0.4
+
+    return {
+        "classification_hint": {
+            "category": category,
+            "confidence": confidence,
+            "rationale": f"Matched keywords in evidence → {category}",
+        }
+    }
+
+
+def synthesize_rca(state: dict[str, Any]) -> dict[str, Any]:
+    """Stub LLM step: draft RCA from classification + evidence."""
+    hint = state.get("classification_hint") or {}
+    pack = state.get("evidence_pack") or {}
+    category = hint.get("category") or "unknown"
+    reason = (pack.get("raw_anchors") or {}).get("failure_reason") or "failure"
+
+    return {
+        "llm_raw": {
+            "category": category,
+            "summary": f"Likely {category}: {reason}",
+            "confidence": float(hint.get("confidence") or 0.5),
+            "recommended_actions": [
+                "Inspect executor memory and spill metrics"
+                if category == "resource"
+                else "Verify table names and schema",
+                "Re-run with additional logging",
+            ],
+            "evidence_refs": [
+                str(e.get("ref")) for e in (pack.get("evidence") or []) if e.get("ref")
+            ],
+        }
+    }
+
+
+def validate_output(state: dict[str, Any]) -> dict[str, Any]:
+    """Clamp draft into a stable API response shape."""
+    raw = state.get("llm_raw") or {}
+    hint = state.get("classification_hint") or {}
+    category = str(raw.get("category") or hint.get("category") or "unknown")
+    confidence = float(raw.get("confidence") or hint.get("confidence") or 0.4)
+    confidence = max(0.0, min(1.0, confidence))
+
+    result = {
+        "job_id": state.get("job_id"),
+        "job_run_id": state.get("job_run_id"),
+        "status": "completed",
+        "root_cause": {
+            "category": category,
+            "summary": str(raw.get("summary") or "Unable to determine root cause"),
+            "confidence": confidence,
+        },
+        "recommended_actions": list(raw.get("recommended_actions") or [])[:5],
+        "classification_hint": hint,
+        "evidence_pack": state.get("evidence_pack"),
+    }
+    return {"result": result}

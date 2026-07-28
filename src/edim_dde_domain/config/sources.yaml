@@ -1,0 +1,6 @@
+sources:
+  edim_sql_wh:
+    type: databricks_sql
+    server_hostname: ${DATABRICKS_HOST}
+    http_path: ${DATABRICKS_HTTP_PATH}
+    # auth optional — default mode "auto" (env token, else DefaultAzureCredential)
