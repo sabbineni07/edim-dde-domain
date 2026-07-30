@@ -1,4 +1,4 @@
-"""Resolve SourceSpec → ResolvedSource (${ENV} + token)."""
+"""Resolve SourceSpec → ResolvedSource (${ENV} + runtime token)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,22 @@ _ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 def interpolate_env(text: str, environ: Optional[Mapping[str, str]] = None) -> str:
-    """Replace ``${VAR}`` with environment values (empty string if unset)."""
+    """Replace ``${VAR}`` with environment values (empty string if unset).
+
+    Matches ``${NAME}`` where ``NAME`` starts with a letter or ``_``, then
+    letters, digits, or ``_``.
+
+    Examples::
+
+        interpolate_env("host=${DATABRICKS_HOST}", {"DATABRICKS_HOST": "adb.example"})
+        # → "host=adb.example"
+
+        interpolate_env("${_FOO}", {"_FOO": "x"})           # → "x"
+        interpolate_env("${MISSING}", {})                   # → ""
+        interpolate_env("$DATABRICKS_HOST", {...})          # unchanged (no braces)
+        interpolate_env("${123}", {...})                    # unchanged (invalid name)
+        interpolate_env("${FOO-BAR}", {...})                # unchanged (``-`` not allowed)
+    """
     env = environ if environ is not None else os.environ
 
     def repl(match: re.Match[str]) -> str:
@@ -54,12 +69,7 @@ def resolve_source(
             f"(hostname={hostname!r}, http_path={http_path!r})."
         )
 
-    token = resolve_access_token(
-        auth_mode=spec.auth_mode,
-        token_env=spec.token_env,
-        environ=env,
-        source_name=spec.name,
-    )
+    token = resolve_access_token(source_name=spec.name)
 
     return ResolvedSource(
         name=spec.name,

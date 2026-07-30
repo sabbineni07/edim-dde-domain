@@ -3,15 +3,34 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from edim_dde_domain.errors import DomainToolError
+from edim_dde_domain.sources.auth import (
+    extract_forwarded_databricks_token,
+    get_request_databricks_token,
+    reset_request_databricks_token,
+    set_request_databricks_token,
+)
 from edim_dde_domain.sources.loader import default_sources_path, load_sources_file
 from edim_dde_domain.sources.models import ResolvedSource, SourceSpec
 from edim_dde_domain.sources.resolve import try_resolve_source
 
 _SPECS: dict[str, SourceSpec] = {}
 _LOADED_PATH: Path | None = None
+
+__all__ = [
+    "clear_sources",
+    "ensure_sources_loaded",
+    "extract_forwarded_databricks_token",
+    "get_request_databricks_token",
+    "get_resolved_source",
+    "get_source_spec",
+    "list_sources",
+    "load_sources",
+    "reset_request_databricks_token",
+    "set_request_databricks_token",
+    "try_get_resolved_source",
+]
 
 
 def clear_sources() -> None:

@@ -1,10 +1,18 @@
-"""Resolve Databricks SQL access tokens for named sources."""
+"""Databricks SQL access tokens — two paths only.
+
+1. **Databricks Apps (deployed):** API middleware reads user OAuth from
+   ``X-Forwarded-Access-Token`` and calls ``set_request_databricks_token``.
+2. **Local dev:** ``DefaultAzureCredential`` after ``az login``.
+
+Extend later if CI / service-principal hosting is needed.
+"""
 
 from __future__ import annotations
 
 import logging
-import os
-from typing import Mapping, Optional
+import re
+from contextvars import ContextVar, Token
+from typing import Any, Mapping, Optional
 
 from edim_dde_domain.errors import DatabricksNotConfiguredError
 
@@ -13,38 +21,70 @@ logger = logging.getLogger(__name__)
 # Azure Databricks first-party app scope (same as `az account get-access-token --resource …`)
 DATABRICKS_AAD_SCOPE = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d/.default"
 
-SUPPORTED_AUTH_MODES = frozenset({"auto", "env_token", "azure_credential"})
+_FORWARDED_TOKEN_HEADERS = (
+    "x-forwarded-access-token",
+    "X-Forwarded-Access-Token",
+)
+
+_STUB_AUTH_RE = re.compile(r"^Bearer\s+stub-token-", re.IGNORECASE)
+
+_request_databricks_token: ContextVar[Optional[str]] = ContextVar(
+    "request_databricks_token", default=None
+)
 
 
-def _env_token(token_env: str, environ: Mapping[str, str]) -> str:
-    return (environ.get(token_env) or "").strip()
+def is_stub_authorization(value: Optional[str]) -> bool:
+    """True for local stub login tokens (not valid on Databricks)."""
+    return bool(value and _STUB_AUTH_RE.match(value.strip()))
+
+
+def _header_value(headers: Mapping[str, Any], name: str) -> Optional[str]:
+    key = name.lower()
+    for header_name, value in headers.items():
+        if str(header_name).lower() == key:
+            if isinstance(value, (list, tuple)):
+                return str(value[0]).strip() if value else None
+            return str(value).strip() if value is not None else None
+    return None
+
+
+def extract_forwarded_databricks_token(headers: Mapping[str, Any]) -> Optional[str]:
+    """Read user OAuth from Databricks Apps gateway / proxy headers.
+
+    Used by API middleware before ``set_request_databricks_token``.
+    """
+    for name in _FORWARDED_TOKEN_HEADERS:
+        token = _header_value(headers, name)
+        if token:
+            return token
+
+    authorization = _header_value(headers, "authorization")
+    if authorization and not is_stub_authorization(authorization):
+        if authorization.lower().startswith("bearer "):
+            token = authorization[7:].strip()
+            return token or None
+    return None
+
+
+def set_request_databricks_token(token: Optional[str]) -> Token:
+    """Bind a request-scoped user token (Apps middleware)."""
+    return _request_databricks_token.set((token or "").strip() or None)
+
+
+def reset_request_databricks_token(ctx: Token) -> None:
+    _request_databricks_token.reset(ctx)
+
+
+def get_request_databricks_token() -> Optional[str]:
+    return _request_databricks_token.get()
 
 
 def get_azure_databricks_token() -> str:
-    """Token via DefaultAzureCredential (az login, Managed Identity, App SP, etc.).
-
-    If ``AZURE_TENANT_ID`` + ``AZURE_CLIENT_ID`` + ``AZURE_CLIENT_SECRET`` are set,
-    uses ``ClientSecretCredential`` first (same pattern as the product app).
-    """
-    tenant_id = (os.environ.get("AZURE_TENANT_ID") or "").strip()
-    client_id = (os.environ.get("AZURE_CLIENT_ID") or "").strip()
-    client_secret = (os.environ.get("AZURE_CLIENT_SECRET") or "").strip()
-
+    """Token via DefaultAzureCredential (``az login``, Managed Identity, etc.)."""
     try:
-        if tenant_id and client_id and client_secret:
-            from azure.identity import ClientSecretCredential
+        from azure.identity import DefaultAzureCredential
 
-            cred = ClientSecretCredential(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                client_secret=client_secret,
-            )
-        else:
-            from azure.identity import DefaultAzureCredential
-
-            cred = DefaultAzureCredential()
-
-        token = cred.get_token(DATABRICKS_AAD_SCOPE)
+        token = DefaultAzureCredential().get_token(DATABRICKS_AAD_SCOPE)
         access = (token.token or "").strip()
         if not access:
             raise DatabricksNotConfiguredError(
@@ -53,7 +93,7 @@ def get_azure_databricks_token() -> str:
         return access
     except ImportError as exc:
         raise DatabricksNotConfiguredError(
-            "azure-identity is required for Azure credential auth. "
+            "azure-identity is required for local Databricks auth. "
             "Install with: pip install 'edim-dde-domain[azure]' "
             "or pip install azure-identity"
         ) from exc
@@ -61,52 +101,25 @@ def get_azure_databricks_token() -> str:
         raise
     except Exception as exc:
         raise DatabricksNotConfiguredError(
-            "Failed to obtain Databricks token via Azure credential "
+            "Failed to obtain Databricks token via DefaultAzureCredential "
             f"({type(exc).__name__}: {exc}). "
-            "Run `az login` or set AZURE_CLIENT_ID/SECRET/TENANT_ID, "
-            "or set DATABRICKS_TOKEN."
+            "For local dev run `az login`. "
+            "On Databricks Apps, ensure middleware sets the user OAuth token."
         ) from exc
 
 
-def resolve_access_token(
-    *,
-    auth_mode: str = "auto",
-    token_env: str = "DATABRICKS_TOKEN",
-    environ: Optional[Mapping[str, str]] = None,
-    source_name: str = "",
-) -> str:
+def resolve_access_token(*, source_name: str = "") -> str:
     """Resolve a SQL warehouse access token.
 
-    Modes:
-    - ``auto`` (default): env token if set, else DefaultAzureCredential
-    - ``env_token``: require ``token_env`` only
-    - ``azure_credential``: Azure identity only
+    1. Request-scoped user OAuth (Databricks Apps → API middleware)
+    2. Else DefaultAzureCredential (local ``az login``)
     """
-    env = environ if environ is not None else os.environ
-    mode = (auth_mode or "auto").strip().lower()
-    if mode not in SUPPORTED_AUTH_MODES:
-        raise DatabricksNotConfiguredError(
-            f"Unsupported auth.mode {auth_mode!r} for source {source_name!r}. "
-            f"Use one of: {sorted(SUPPORTED_AUTH_MODES)}"
-        )
-
     label = source_name or "source"
 
-    if mode in ("auto", "env_token"):
-        token = _env_token(token_env, env)
-        if token:
-            logger.debug(
-                "databricks_token_from_env",
-                extra={"source": label, "env": token_env},
-            )
-            return token
-        if mode == "env_token":
-            raise DatabricksNotConfiguredError(
-                f"Source {label!r} auth.mode=env_token requires {token_env} to be set"
-            )
+    scoped = get_request_databricks_token()
+    if scoped:
+        logger.debug("databricks_token_from_request_scope", extra={"source": label})
+        return scoped
 
-    logger.debug(
-        "databricks_token_via_azure_credential",
-        extra={"source": label, "mode": mode},
-    )
+    logger.debug("databricks_token_via_azure_credential", extra={"source": label})
     return get_azure_databricks_token()

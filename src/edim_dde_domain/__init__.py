@@ -6,6 +6,7 @@ from edim_dde_domain.errors import (
     DomainToolError,
     NoJobMetricsError,
 )
+from edim_dde_domain.llm import FoundryLLMNotConfiguredError
 
 __version__ = "0.1.0"
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "reset_bootstrap",
     "DatabricksNotConfiguredError",
     "DomainToolError",
+    "FoundryLLMNotConfiguredError",
     "NoJobMetricsError",
 ]

@@ -74,24 +74,21 @@ edim-dde-domain/
 sources:
   edim_sql_wh:
     type: databricks_sql
-    server_hostname: ${DATABRICKS_HOST}          # or DATABRICKS_SERVER_HOSTNAME
+    server_hostname: ${DATABRICKS_HOST}          # or concrete hostname
     http_path: ${DATABRICKS_HTTP_PATH}           # or bare warehouse id / SQL_WAREHOUSE_ID
-    # auth optional — default mode "auto":
-    #   1) DATABRICKS_TOKEN if set
-    #   2) else DefaultAzureCredential (az login / MI / AZURE_CLIENT_*)
-    # auth:
-    #   mode: auto | env_token | azure_credential
-    #   token_env: DATABRICKS_TOKEN
+    # Auth is not in YAML. Runtime only:
+    #   1) Databricks Apps — user OAuth via API middleware (set_request_databricks_token)
+    #   2) Local dev — az login (DefaultAzureCredential)
 ```
 
 ### 4.3 Rules
 
-- **Secrets** only via env / secret store (never committed literals).
+- **Secrets** only via runtime credentials (never committed literals; no env PAT).
 - `${VAR}` interpolation for host/path (and optionally other non-secret fields).
 - `type` selects connector (`databricks_sql` first; later `postgres`, `local_stub`, …).
 - Unknown source name → fail at bootstrap or first use with a clear error.
 - Multi-workspace later: overlay table/query YAML per workspace; **reuse** the same source name or map `workspace_id → source`.
-
+- On Databricks Apps, API middleware calls `extract_forwarded_databricks_token` + `set_request_databricks_token` so SQL runs as the user.
 ### 4.4 Resolved source (runtime)
 
 ```text
@@ -151,13 +148,13 @@ ResolvedSource(
 
 Engineers **may** hardcode `FROM catalog.schema.table_name` in the query text.
 
-### 5.4 Optional stub / override (compat)
+### 5.4 Override (tests / callers)
 
-Keep existing product patterns:
+1. If `state[output_key]` already set → skip SQL (e.g. inject `metrics` in tests).  
+2. Else if `skip_if_key` is set and present → skip (e.g. RCA `evidence_pack`).  
+3. Else resolve source + execute; misconfigured source → `DatabricksNotConfiguredError`.
 
-1. If `state[output_key]` or a dedicated override key is already set → skip SQL (tests).  
-2. Else if source not configured and `EDIM_DOMAIN_ALLOW_STUB=true` → stub provider (dev only).  
-3. Else run SQL.
+There is **no** production SQL stub flag (`EDIM_DOMAIN_ALLOW_STUB` removed).
 
 ---
 
@@ -293,7 +290,7 @@ Optional later: parallel collect fan-out if the framework adds it; v1 can stay s
 |------------------------|------|
 | `SparkSqlCollector` (hardcoded queries) | `tools/sql.py` executor |
 | `ClusterMetricsSqlCollector` | `evidence_pack.py` assemble |
-| Env-only table settings as *required* for SQL text | `DomainSettings` for token/host fallback & `ALLOW_STUB` |
+| Env-only table settings as *required* for SQL text | `DomainSettings` for host/path fallback |
 | Per-use-case collect logic that only wraps SQL | Analyze nodes (classify, sizing, validate) |
 
 `build_evidence_pack_for_run` / `get_job_cluster_metrics` facades can become thin wrappers for overrides/tests, or disappear once agents call `domain.sql.query` directly.
@@ -316,7 +313,9 @@ Minimal:
 ```text
 sources.yaml     → connection shape + ${ENV} refs
 *.agent.yaml     → graph + full SQL (FQNs OK) + params_from_state
-environment      → DATABRICKS_TOKEN (and host/path if not only in YAML refs)
+environment      → DATABRICKS_HOST / HTTP_PATH
+                  tokens: Apps user OAuth (middleware) or local `az login`
+
 ```
 
 ---
@@ -328,7 +327,7 @@ environment      → DATABRICKS_TOKEN (and host/path if not only in YAML refs)
 | **A** | `sources.yaml` + resolver; wire `execute_sql` to `ResolvedSource` |
 | **B** | Register `domain.sql.query`; migrate cluster_tuning to one SQL node; delete `ClusterMetricsSqlCollector` |
 | **C** | Migrate spark_rca to N SQL nodes + `assemble_evidence`; delete `SparkSqlCollector` |
-| **D** | Docs + tests (override, bind params, empty→error, stub); set `ALLOW_STUB=false` in prod runbooks |
+| **D** | Docs + tests (override, bind params, empty→error); no production SQL stubs |
 
 ---
 

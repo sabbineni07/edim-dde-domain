@@ -38,19 +38,11 @@ def parse_sources_mapping(data: dict[str, Any]) -> dict[str, SourceSpec]:
         stype = item.get("type")
         if not isinstance(stype, str) or not stype.strip():
             raise DomainToolError(f"sources.{name}.type is required")
-        auth = item.get("auth") or {}
-        if auth is None:
-            auth = {}
-        if not isinstance(auth, dict):
-            raise DomainToolError(f"sources.{name}.auth must be a mapping if present")
         out[name] = SourceSpec(
             name=name,
             type=stype.strip(),
             server_hostname=str(item.get("server_hostname") or ""),
             http_path=str(item.get("http_path") or ""),
-            # auto: DATABRICKS_TOKEN if set, else DefaultAzureCredential
-            auth_mode=str(auth.get("mode") or "auto"),
-            token_env=str(auth.get("token_env") or "DATABRICKS_TOKEN"),
             raw=dict(item),
         )
     return out

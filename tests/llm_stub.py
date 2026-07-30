@@ -1,4 +1,4 @@
-"""Offline / test LLM that returns deterministic text from prompt content."""
+"""Deterministic LLM stand-in for offline tests (not used in production)."""
 
 from __future__ import annotations
 
@@ -7,15 +7,11 @@ import re
 from typing import Any
 
 
-def _messages_text(messages: list[tuple[str, str]]) -> str:
-    return "\n".join(content for _, content in messages)
-
-
 def _human_text(messages: list[tuple[str, str]]) -> str:
     for role, content in reversed(messages):
         if role == "human":
             return content
-    return _messages_text(messages)
+    return "\n".join(content for _, content in messages)
 
 
 def _sizing_from_text(text: str) -> str:
@@ -58,7 +54,10 @@ def _rca_from_text(text: str) -> str:
     if any(k in lower for k in ("oom", "out of memory", "heap space")):
         category, confidence = "resource", 0.85
         summary = "Likely executor/driver OOM based on evidence."
-        actions = ["Inspect executor memory and spill metrics", "Re-run with additional logging"]
+        actions = [
+            "Inspect executor memory and spill metrics",
+            "Re-run with additional logging",
+        ]
     elif (
         "table not found" in lower
         or "analysisexception" in lower
@@ -70,7 +69,10 @@ def _rca_from_text(text: str) -> str:
     elif any(k in lower for k in ("timeout", "cancelled")):
         category, confidence = "timeout_or_cancel", 0.7
         summary = "Likely timeout or cancel based on evidence."
-        actions = ["Check job timeouts and cancel signals", "Re-run with additional logging"]
+        actions = [
+            "Check job timeouts and cancel signals",
+            "Re-run with additional logging",
+        ]
     else:
         category, confidence = "unknown", 0.4
         summary = "Insufficient evidence for a precise root cause."
@@ -82,7 +84,9 @@ def _rca_from_text(text: str) -> str:
             "job_status": "FAILED",
             "category": category,
             "confidence": confidence,
-            "confidence_label": "High" if confidence >= 0.75 else "Medium" if confidence >= 0.45 else "Low",
+            "confidence_label": (
+                "High" if confidence >= 0.75 else "Medium" if confidence >= 0.45 else "Low"
+            ),
             "summary": summary,
             "failure_signature": category,
             "evidence_analysis": {
@@ -121,7 +125,7 @@ def _explanation_from_text(text: str) -> str:
 
 
 class DomainStubLLM:
-    """Deterministic LLM for offline/tests when no real provider is set."""
+    """Fake LLMProvider for pytest only."""
 
     def invoke(
         self,
@@ -130,7 +134,6 @@ class DomainStubLLM:
         config: dict[str, Any] | None = None,
     ) -> str:
         chain = str((config or {}).get("chain") or "")
-        # Prefer human message so system prompts/skills do not bias classification.
         text = _human_text(messages)
         if chain == "sizing":
             return _sizing_from_text(text)

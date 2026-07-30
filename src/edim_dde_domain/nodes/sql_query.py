@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from edim_dde_ai import register_node
 
-from edim_dde_domain.config import get_settings
 from edim_dde_domain.errors import (
     DatabricksNotConfiguredError,
     DomainToolError,
@@ -15,19 +13,6 @@ from edim_dde_domain.errors import (
 )
 from edim_dde_domain.sources import try_get_resolved_source
 from edim_dde_domain.tools.sql import execute_sql, prepare_query
-
-logger = logging.getLogger(__name__)
-
-# Offline defaults when source is not configured and stubs are allowed.
-_STUB_BY_OUTPUT_KEY: dict[str, Any] = {
-    "metrics": {
-        "azure_worker_vm_size": "Standard_E8s_v3",
-        "max_worker_nodes_provisioned": 16,
-        "avg_worker_nodes_consumed": 4.0,
-        "peak_worker_cpu_utilization_pct": 28.0,
-        "peak_worker_memory_utilization_pct": 35.0,
-    },
-}
 
 
 @register_node("domain.sql.query")
@@ -60,7 +45,7 @@ def sql_query_factory(config: dict[str, Any]):
     skip_if_key = str(skip_if_key) if skip_if_key else None
 
     def _node(state: dict[str, Any]) -> dict[str, Any]:
-        # Override / short-circuit: output already present
+        # Override / short-circuit: output already present (tests may inject metrics)
         existing = state.get(output_key)
         if existing not in (None, "", [], {}):
             return {}
@@ -71,24 +56,10 @@ def sql_query_factory(config: dict[str, Any]):
 
         source = try_get_resolved_source(source_name)
         if source is None:
-            cfg = get_settings()
-            if cfg.allow_stub:
-                stub = _STUB_BY_OUTPUT_KEY.get(output_key)
-                if stub is not None:
-                    logger.info(
-                        "sql_query_stub",
-                        extra={"source": source_name, "output_key": output_key},
-                    )
-                    return {output_key: dict(stub) if isinstance(stub, dict) else stub}
-                # Empty collect for optional multi-query graphs (RCA sections)
-                logger.info(
-                    "sql_query_stub_empty",
-                    extra={"source": source_name, "output_key": output_key},
-                )
-                return {output_key: {} if result_mode == "first_row" else []}
             raise DatabricksNotConfiguredError(
-                f"Source {source_name!r} is not configured and "
-                "EDIM_DOMAIN_ALLOW_STUB is false"
+                f"Source {source_name!r} is not configured "
+                "(set DATABRICKS_HOST / DATABRICKS_HTTP_PATH and auth via "
+                "Apps user OAuth or `az login`)"
             )
 
         bound_sql, values = prepare_query(

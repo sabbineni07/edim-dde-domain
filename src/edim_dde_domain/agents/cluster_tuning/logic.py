@@ -9,7 +9,7 @@ from edim_dde_domain.tools.cluster_metrics import estimate_monthly_costs
 
 
 def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:
-    """Ensure job_run_id and ids are set after sql.query / override / stub."""
+    """Ensure job_run_id and ids are set after sql.query / metrics override."""
     metrics = dict(state.get("metrics") or {})
     job_run_id = (
         state.get("job_run_id")

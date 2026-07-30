@@ -1,16 +1,16 @@
 # EDIM DDE Domain
 
 **Domain package** for EDIM agents: named **sources**, generic **SQL collect**
-nodes, and YAML agents on [`edim-dde-ai`](../edim-dde-ai).
+nodes, YAML agents, and Azure AI Foundry LLM on [`edim-dde-ai`](../edim-dde-ai).
 
 ```text
-API → bootstrap_agents() → create_agent().invoke(state)
+API → bootstrap_agents() + set_llm_provider(Foundry)
          │
-    sources.yaml  → connection (host/path via ${ENV}, token from env)
+    sources.yaml  → host/path (${ENV} or concrete)
          │
     domain.sql.query  → bind :params → execute → state[output_key]
          │
-    assemble / analyze nodes
+    assemble / analyze / llm_chain nodes
 ```
 
 See [docs/DESIGN_SOURCES_AND_SQL_NODES.md](docs/DESIGN_SOURCES_AND_SQL_NODES.md).
@@ -18,55 +18,42 @@ See [docs/DESIGN_SOURCES_AND_SQL_NODES.md](docs/DESIGN_SOURCES_AND_SQL_NODES.md)
 ## Layout
 
 ```text
-config/sources.yaml                 # also shipped under src/edim_dde_domain/config/
+config/sources.yaml
 src/edim_dde_domain/
-  sources/                          # load + resolve named sources
-  nodes/sql_query.py                # domain.sql.query
-  tools/sql.py                      # prepare_query + execute_sql
-  tools/evidence_pack.py            # RCA assemble (pure)
-  llm/                              # DomainStubLLM (offline when no provider set)
-  agents/spark_rca|cluster_tuning/  # YAML graphs + analysis nodes
-    content/prompts|skills/         # LLM prompts & skills (content_dir)
+  sources/           # load + resolve + auth (Apps OAuth | az login)
+  nodes/sql_query.py # domain.sql.query
+  tools/sql.py
+  llm/               # Foundry provider + JSON helpers
+  agents/...         # YAML + logic + content/prompts|skills
+  bootstrap.py
 ```
-
-### LLM steps
-
-| Agent | Chain | Graph path |
-|-------|-------|------------|
-| `cluster_tuning` | `sizing` | prepare → `llm_chain` → parse → assess → recommend |
-| `cluster_tuning` | `explanation` | (optional) prepare → `llm_chain` |
-| `spark_rca` | `rca` | prepare → `llm_chain` (+ skills) → parse → validate |
-
-Set a real provider before bootstrap (or after) with `set_llm_provider(...)`.  
-If none is set and `EDIM_DOMAIN_ALLOW_STUB=true`, bootstrap installs `DomainStubLLM`.
 
 ## Configure
 
 ```bash
 DATABRICKS_HOST=adb-….azuredatabricks.net
 DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/<id>
-# Optional PAT — if unset, auth mode "auto" uses DefaultAzureCredential (az login / MI)
-# DATABRICKS_TOKEN=dapi…
-DATABRICKS_SPARK_LOGS_TABLE=catalog.schema.spark_logs
-DATABRICKS_SPARK_METRICS_TABLE=catalog.schema.spark_metrics
 DATABRICKS_JOB_CLUSTER_METRICS_TABLE=catalog.schema.job_cluster_metrics
-EDIM_DOMAIN_ALLOW_STUB=true
+DATABRICKS_SPARK_METRICS_TABLE=catalog.schema.spark_metrics
+DATABRICKS_SPARK_LOGS_TABLE=catalog.schema.spark_logs
+
+AZURE_OPENAI_ENDPOINT=https://….openai.azure.com
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+# Local Foundry auth: az login
+# Prod SP (inject from Key Vault into env):
+# AZURE_TENANT_ID=…
+# AZURE_CLIENT_ID=…
+# AZURE_CLIENT_SECRET=…
 ```
 
-### Source auth (`sources.yaml`)
+### Auth
 
-`auth` is **optional**. Default mode is **`auto`**:
+| Target | Local | Databricks Apps / prod |
+|--------|-------|------------------------|
+| **SQL warehouse** | `az login` | `X-Forwarded-Access-Token` → API middleware |
+| **Foundry LLM** | `az login` | `AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET` (from Key Vault → env) |
 
-1. Use `DATABRICKS_TOKEN` (or `token_env`) if set  
-2. Else `DefaultAzureCredential` / `az login` / Managed Identity (or `AZURE_CLIENT_*` SP)
-
-```yaml
-# omit auth entirely → auto
-# or:
-auth: { mode: auto }
-auth: { mode: env_token, token_env: DATABRICKS_TOKEN }
-auth: { mode: azure_credential }
-```
+No offline SQL stubs in production code — tests inject `metrics` / `evidence_pack` overrides and a fake LLM (`tests/llm_stub.py`).
 
 ## Setup / test
 

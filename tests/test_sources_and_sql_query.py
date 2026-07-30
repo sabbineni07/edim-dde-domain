@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from edim_dde_ai import create_agent
-from edim_dde_domain import bootstrap_agents
 from edim_dde_domain.errors import DomainToolError, NoJobMetricsError
 from edim_dde_domain.sources import clear_sources, get_source_spec, load_sources
 from edim_dde_domain.sources.models import ResolvedSource
@@ -33,83 +32,78 @@ def test_interpolate_env():
     assert interpolate_env("host=${MYHOST}", {"MYHOST": "adb.example"}) == "host=adb.example"
 
 
-def test_resolve_source_from_env():
+def test_resolve_source_uses_azure_when_no_request_token():
     spec = get_source_spec("edim_sql_wh")
-    resolved = resolve_source(
-        spec,
-        environ={
-            "DATABRICKS_HOST": "adb-test.azuredatabricks.net",
-            "DATABRICKS_HTTP_PATH": "/sql/1.0/warehouses/abc",
-            "DATABRICKS_TOKEN": "dapi-x",
-        },
-    )
-    assert resolved.server_hostname == "adb-test.azuredatabricks.net"
-    assert resolved.http_path.startswith("/sql/")
-    assert resolved.access_token == "dapi-x"
-
-
-def test_default_auth_mode_is_auto():
-    assert get_source_spec("edim_sql_wh").auth_mode == "auto"
-
-
-@patch("edim_dde_domain.sources.auth.get_azure_databricks_token", return_value="aad-token")
-def test_auto_falls_back_to_azure_credential(mock_aad: MagicMock):
-    spec = get_source_spec("edim_sql_wh")
-    resolved = resolve_source(
-        spec,
-        environ={
-            "DATABRICKS_HOST": "adb-test.azuredatabricks.net",
-            "DATABRICKS_HTTP_PATH": "/sql/1.0/warehouses/abc",
-            # no DATABRICKS_TOKEN
-        },
-    )
-    assert resolved.access_token == "aad-token"
-    mock_aad.assert_called_once()
-
-
-def test_env_token_mode_requires_token():
-    from edim_dde_domain.errors import DatabricksNotConfiguredError
-    from edim_dde_domain.sources.models import SourceSpec
-
-    spec = SourceSpec(
-        name="strict",
-        type="databricks_sql",
-        server_hostname="adb-test.azuredatabricks.net",
-        http_path="/sql/1.0/warehouses/abc",
-        auth_mode="env_token",
-        token_env="DATABRICKS_TOKEN",
-    )
-    with pytest.raises(DatabricksNotConfiguredError, match="env_token"):
-        resolve_source(
+    with patch(
+        "edim_dde_domain.sources.auth.get_azure_databricks_token",
+        return_value="aad-token",
+    ):
+        resolved = resolve_source(
             spec,
             environ={
                 "DATABRICKS_HOST": "adb-test.azuredatabricks.net",
                 "DATABRICKS_HTTP_PATH": "/sql/1.0/warehouses/abc",
             },
         )
+    assert resolved.server_hostname == "adb-test.azuredatabricks.net"
+    assert resolved.http_path.startswith("/sql/")
+    assert resolved.access_token == "aad-token"
 
 
-@patch("edim_dde_domain.sources.auth.get_azure_databricks_token", return_value="aad-only")
-def test_azure_credential_mode_ignores_env_token(mock_aad: MagicMock):
-    from edim_dde_domain.sources.models import SourceSpec
-
-    spec = SourceSpec(
-        name="aad",
-        type="databricks_sql",
-        server_hostname="adb-test.azuredatabricks.net",
-        http_path="/sql/1.0/warehouses/abc",
-        auth_mode="azure_credential",
-    )
+@patch("edim_dde_domain.sources.auth.get_azure_databricks_token", return_value="aad-token")
+def test_local_dev_falls_back_to_az_login(mock_aad: MagicMock):
+    spec = get_source_spec("edim_sql_wh")
     resolved = resolve_source(
         spec,
         environ={
-            "DATABRICKS_TOKEN": "dapi-ignored",
             "DATABRICKS_HOST": "adb-test.azuredatabricks.net",
             "DATABRICKS_HTTP_PATH": "/sql/1.0/warehouses/abc",
         },
     )
-    assert resolved.access_token == "aad-only"
+    assert resolved.access_token == "aad-token"
     mock_aad.assert_called_once()
+
+
+def test_apps_user_token_via_contextvar_preferred():
+    from edim_dde_domain.sources.auth import (
+        reset_request_databricks_token,
+        set_request_databricks_token,
+    )
+
+    spec = get_source_spec("edim_sql_wh")
+    ctx = set_request_databricks_token("user-oauth-token")
+    try:
+        with patch(
+            "edim_dde_domain.sources.auth.get_azure_databricks_token"
+        ) as mock_aad:
+            resolved = resolve_source(
+                spec,
+                environ={
+                    "DATABRICKS_HOST": "adb-test.azuredatabricks.net",
+                    "DATABRICKS_HTTP_PATH": "/sql/1.0/warehouses/abc",
+                },
+            )
+            assert resolved.access_token == "user-oauth-token"
+            mock_aad.assert_not_called()
+    finally:
+        reset_request_databricks_token(ctx)
+
+
+def test_extract_forwarded_databricks_token():
+    from edim_dde_domain.sources.auth import extract_forwarded_databricks_token
+
+    assert (
+        extract_forwarded_databricks_token({"X-Forwarded-Access-Token": "fwd"})
+        == "fwd"
+    )
+    assert (
+        extract_forwarded_databricks_token({"Authorization": "Bearer real-token"})
+        == "real-token"
+    )
+    assert (
+        extract_forwarded_databricks_token({"Authorization": "Bearer stub-token-x"})
+        is None
+    )
 
 
 def test_bind_named_query_order():
@@ -142,8 +136,7 @@ def test_prepare_query_env_and_blank_to_none():
     assert values == ["j1", None]
 
 
-def test_cluster_tuning_metrics_override():
-    bootstrap_agents()
+def test_cluster_tuning_metrics_override(bootstrapped_agents):
     agent = create_agent("cluster_tuning")
     out = agent.invoke(
         {
@@ -164,7 +157,9 @@ def test_cluster_tuning_metrics_override():
 
 @patch("edim_dde_domain.nodes.sql_query.execute_sql")
 @patch("edim_dde_domain.nodes.sql_query.try_get_resolved_source")
-def test_sql_query_first_row_empty_errors(mock_src: MagicMock, mock_exec: MagicMock):
+def test_sql_query_first_row_empty_errors(
+    mock_src: MagicMock, mock_exec: MagicMock, bootstrapped_agents
+):
     mock_src.return_value = ResolvedSource(
         name="edim_sql_wh",
         type="databricks_sql",
@@ -173,7 +168,6 @@ def test_sql_query_first_row_empty_errors(mock_src: MagicMock, mock_exec: MagicM
         access_token="t",
     )
     mock_exec.return_value = []
-    bootstrap_agents()
     agent = create_agent("cluster_tuning")
     with pytest.raises(NoJobMetricsError):
         agent.invoke(

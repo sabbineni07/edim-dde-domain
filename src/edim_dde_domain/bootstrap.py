@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from edim_dde_ai import get_llm_provider, register_from_yaml, set_llm_provider
+from edim_dde_ai import register_from_yaml
 
-from edim_dde_domain.config import get_settings
-from edim_dde_domain.llm import DomainStubLLM
 from edim_dde_domain.sources import load_sources
 
 # Importing nodes registers @register_node factories.
@@ -20,12 +18,13 @@ _READY = False
 
 
 def bootstrap_agents() -> None:
-    """Idempotent: load sources + spark_rca + cluster_tuning into edim-dde-ai."""
+    """Idempotent: load sources + register domain agent graphs into edim-dde-ai.
+
+    Call once at API/app startup (before ``create_agent``). Does **not** set an
+    LLM provider — hosts must call ``set_llm_provider(...)`` for llm_chain nodes.
+    """
     global _READY
     load_sources()
-    if get_llm_provider() is None and get_settings().allow_stub:
-        # Offline/tests: deterministic stub so llm_chain nodes run without a real LLM.
-        set_llm_provider(DomainStubLLM())
     if _READY:
         return
     register_from_yaml(_AGENTS_DIR / "spark_rca" / "spark_rca.agent.yaml", overwrite=True)
@@ -36,7 +35,7 @@ def bootstrap_agents() -> None:
 
 
 def reset_bootstrap() -> None:
-    """Test helper: allow re-bootstrap after clearing sources."""
+    """Allow re-bootstrap after clearing sources (tests)."""
     global _READY
     from edim_dde_domain.sources import clear_sources
 

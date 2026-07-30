@@ -4,37 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from edim_dde_domain.config import get_settings
 from edim_dde_domain.llm.json_util import dumps, parse_json_object
-from edim_dde_domain.sources import try_get_resolved_source
 from edim_dde_domain.tools.evidence_pack import build_evidence_pack
 
 
 def prepare_evidence(state: dict[str, Any]) -> dict[str, Any]:
-    """Honor override / offline stub so SQL nodes can be skipped."""
+    """Honor evidence_pack override so SQL collect nodes can be skipped."""
     existing = state.get("evidence_pack")
     if isinstance(existing, dict) and existing:
         return {}
-
-    # Stub only when Databricks source is unavailable
-    if try_get_resolved_source("edim_sql_wh") is None and get_settings().allow_stub:
-        reason = str(state.get("error_text") or "Unknown failure")
-        job_run_id = str(state.get("job_run_id") or "unknown-run")
-        pack = {
-            "job_run_id": job_run_id,
-            "job_id": state.get("job_id"),
-            "evidence": [
-                {
-                    "ref": "e1",
-                    "source": "spark_logs",
-                    "excerpt": reason[:400],
-                }
-            ],
-            "raw_anchors": {"failure_reason": reason},
-            "sections": {},
-            "timeline": [],
-        }
-        return {"evidence_pack": pack}
     return {}
 
 

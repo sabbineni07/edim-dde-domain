@@ -17,10 +17,12 @@ dependencies = [
 [project.optional-dependencies]
 databricks = ["databricks-sql-connector>=3.0"]
 azure = ["azure-identity>=1.15"]
+llm = ["openai>=1.40", "azure-identity>=1.15"]
 dev = [
   "pytest>=8",
   "databricks-sql-connector>=3.0",
   "azure-identity>=1.15",
+  "openai>=1.40",
 ]
 [tool.hatch.build.targets.wheel]
 packages = ["src/edim_dde_domain"]

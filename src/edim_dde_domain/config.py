@@ -7,7 +7,6 @@ import re
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _WAREHOUSE_ID_RE = re.compile(r"^[0-9a-f]{16,}$", re.IGNORECASE)
@@ -53,18 +52,17 @@ class DomainSettings(BaseSettings):
     databricks_host: str = ""
     databricks_server_hostname: str = ""
     databricks_http_path: str = ""
-    databricks_token: str = ""
 
     databricks_spark_logs_table: str = ""
     databricks_spark_metrics_table: str = ""
     databricks_job_cluster_metrics_table: str = ""
 
-    # When True and SQL is not configured, tools return demo stubs (offline/tests).
-    edim_domain_allow_stub: bool = Field(default=True, alias="EDIM_DOMAIN_ALLOW_STUB")
-
-    @property
-    def allow_stub(self) -> bool:
-        return bool(self.edim_domain_allow_stub)
+    # Azure AI Foundry (OpenAI v1). Client id/secret may be injected from Key Vault in prod.
+    azure_openai_endpoint: str = ""
+    azure_openai_deployment_name: str = "gpt-4o"
+    azure_tenant_id: str = ""
+    azure_client_id: str = ""
+    azure_client_secret: str = ""
 
     @property
     def sql_hostname(self) -> str:
@@ -75,7 +73,10 @@ class DomainSettings(BaseSettings):
         return normalize_http_path(self.databricks_http_path)
 
     def sql_configured(self) -> bool:
-        return bool(self.sql_hostname and self.sql_http_path and self.databricks_token.strip())
+        return bool(self.sql_hostname and self.sql_http_path)
+
+    def foundry_configured(self) -> bool:
+        return bool(self.azure_openai_endpoint.strip())
 
     def spark_tables_configured(self) -> bool:
         return bool(
@@ -90,3 +91,8 @@ class DomainSettings(BaseSettings):
 @lru_cache
 def get_settings() -> DomainSettings:
     return DomainSettings()
+
+
+def clear_settings_cache() -> None:
+    """Test helper: drop cached settings."""
+    get_settings.cache_clear()

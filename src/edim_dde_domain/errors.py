@@ -8,7 +8,7 @@ class DomainToolError(RuntimeError):
 
 
 class DatabricksNotConfiguredError(DomainToolError):
-    """SQL warehouse / token / table env vars missing and stubs disabled."""
+    """SQL warehouse / host / path / auth not configured."""
 
 
 class NoJobMetricsError(DomainToolError):

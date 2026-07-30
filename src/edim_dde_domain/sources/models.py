@@ -1,4 +1,4 @@
-"""Named data sources (connections). Secrets stay in env."""
+"""Named data sources (connections). Secrets are resolved at runtime."""
 
 from __future__ import annotations
 
@@ -14,14 +14,12 @@ class SourceSpec:
     type: str
     server_hostname: str
     http_path: str
-    auth_mode: str = "auto"
-    token_env: str = "DATABRICKS_TOKEN"
     raw: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
 class ResolvedSource:
-    """Connection-ready source (token resolved)."""
+    """Connection-ready source (token resolved at runtime)."""
 
     name: str
     type: str
