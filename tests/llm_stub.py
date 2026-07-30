@@ -19,32 +19,59 @@ def _sizing_from_text(text: str) -> str:
     mem_m = re.search(r"peak_worker_memory_utilization_pct[\"']?\s*[:=]\s*([0-9.]+)", text)
     max_m = re.search(r"max_worker_nodes_provisioned[\"']?\s*[:=]\s*([0-9]+)", text)
     type_m = re.search(r"azure_worker_vm_size[\"']?\s*[:=]\s*[\"']?([A-Za-z0-9_]+)", text)
+    hints_max = re.search(r"recommended_max_workers[\"']?\s*[:=]\s*([0-9]+)", text)
 
     peak_cpu = float(cpu_m.group(1)) if cpu_m else 50.0
     peak_mem = float(mem_m.group(1)) if mem_m else 50.0
     current_max = int(max_m.group(1)) if max_m else 16
     current_type = type_m.group(1) if type_m else "Standard_E8s_v3"
     util = max(peak_cpu, peak_mem)
+    floor_max = int(hints_max.group(1)) if hints_max else max(2, current_max // 2)
 
     if util < 40:
-        rec_max = max(2, current_max // 2)
-        node_type = "Standard_E4s_v3"
-        pattern = "Low utilization — recommend smaller SKU and fewer max workers"
+        rec_max = max(floor_max, max(2, current_max // 2))
+        family, vcpus = "E", 4
+        pattern = (
+            "### 1. Workload type\nLow utilization batch job.\n\n"
+            "### 2. Resource utilization\n"
+            f"Peak util {util:.0f}%.\n\n"
+            "### 3. Performance characteristics\nHeadroom available.\n\n"
+            "### 4. Optimization opportunities\nDownsize SKU and max workers."
+        )
     elif util > 80:
-        rec_max = min(current_max + 4, 32)
-        node_type = current_type
-        pattern = "High utilization — keep SKU, raise max workers"
+        rec_max = max(floor_max, min(current_max + 4, 32))
+        family = "E" if "E" in current_type else "D"
+        vcpus = 8 if "8" in current_type or "16" in current_type else 4
+        pattern = (
+            "### 1. Workload type\nHigh utilization job.\n\n"
+            "### 2. Resource utilization\n"
+            f"Peak util {util:.0f}%.\n\n"
+            "### 3. Performance characteristics\nNear capacity.\n\n"
+            "### 4. Optimization opportunities\nRaise max workers; keep family."
+        )
     else:
-        rec_max = current_max
-        node_type = current_type
-        pattern = "Utilization in band — keep current sizing"
+        rec_max = max(floor_max, current_max)
+        family = "E" if "E" in current_type else "D"
+        vcpus = 8 if "8" in current_type else 4
+        pattern = (
+            "### 1. Workload type\nSteady utilization.\n\n"
+            "### 2. Resource utilization\n"
+            f"Peak util {util:.0f}%.\n\n"
+            "### 3. Performance characteristics\nIn band.\n\n"
+            "### 4. Optimization opportunities\nKeep current sizing."
+        )
 
     return json.dumps(
         {
             "pattern_analysis": pattern,
-            "recommended_node_type": node_type,
-            "recommended_max_workers": rec_max,
-            "rationale": f"Peak util {util:.0f}%; current max={current_max}, type={current_type}.",
+            "node_family": family,
+            "vcpus": vcpus,
+            "min_workers": 0,
+            "max_workers": rec_max,
+            "auto_termination_minutes": 0,
+            "rationale": (
+                f"Peak util {util:.0f}%; current max={current_max}, type={current_type}."
+            ),
         }
     )
 

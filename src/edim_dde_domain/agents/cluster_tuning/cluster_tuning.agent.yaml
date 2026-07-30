@@ -15,27 +15,53 @@ graph:
       result_mode: first_row
       output_key: metrics
       on_empty: error
-      params_from_state: [job_id, cluster_id, job_run_id]
+      params_from_state: [job_id, cluster_id, job_run_id, start_date, end_date]
       query: |
         SELECT
           CAST(job_run_date AS STRING) AS job_run_date,
           CAST(workspace_id AS STRING) AS workspace_id,
+          workspace_name,
           CAST(job_id AS STRING) AS job_id,
           CAST(job_run_id AS STRING) AS job_run_id,
           CAST(cluster_id AS STRING) AS cluster_id,
+          job_type,
+          job_name,
+          dbr_version,
+          CAST(job_run_start_time_utc AS STRING) AS job_run_start_time_utc,
+          CAST(job_run_end_time_utc AS STRING) AS job_run_end_time_utc,
+          COALESCE(CAST(job_run_duration_seconds AS DOUBLE), 0.0) AS job_run_duration_seconds,
           azure_driver_vm_size,
           COALESCE(CAST(driver_node_count AS BIGINT), 1) AS driver_node_count,
+          CAST(driver_vcpus_consumed AS DOUBLE) AS driver_vcpus_consumed,
+          CAST(driver_memory_gb_consumed AS DOUBLE) AS driver_memory_gb_consumed,
+          COALESCE(CAST(avg_driver_cpu_utilization_pct AS DOUBLE), 0.0) AS avg_driver_cpu_utilization_pct,
+          COALESCE(CAST(avg_driver_memory_utilization_pct AS DOUBLE), 0.0) AS avg_driver_memory_utilization_pct,
+          COALESCE(CAST(peak_driver_cpu_utilization_pct AS DOUBLE), 0.0) AS peak_driver_cpu_utilization_pct,
           COALESCE(azure_worker_vm_size, 'Standard_E8s_v3') AS azure_worker_vm_size,
           COALESCE(CAST(max_worker_nodes_provisioned AS BIGINT), 1) AS max_worker_nodes_provisioned,
+          CAST(total_worker_vcpus_provisioned AS DOUBLE) AS total_worker_vcpus_provisioned,
+          CAST(total_worker_memory_gb_provisioned AS DOUBLE) AS total_worker_memory_gb_provisioned,
           COALESCE(CAST(avg_worker_nodes_consumed AS DOUBLE), 0.0) AS avg_worker_nodes_consumed,
+          COALESCE(CAST(p99_worker_nodes_consumed AS DOUBLE), 0.0) AS p99_worker_nodes_consumed,
+          CAST(avg_worker_vcpus_consumed AS DOUBLE) AS avg_worker_vcpus_consumed,
+          CAST(avg_worker_memory_gb_consumed AS DOUBLE) AS avg_worker_memory_gb_consumed,
+          CAST(avg_worker_vcpus_utilized AS DOUBLE) AS avg_worker_vcpus_utilized,
+          CAST(avg_worker_memory_gb_utilized AS DOUBLE) AS avg_worker_memory_gb_utilized,
+          COALESCE(CAST(avg_worker_cpu_utilization_pct AS DOUBLE), 0.0) AS avg_worker_cpu_utilization_pct,
+          COALESCE(CAST(avg_worker_memory_utilization_pct AS DOUBLE), 0.0) AS avg_worker_memory_utilization_pct,
           COALESCE(CAST(peak_worker_cpu_utilization_pct AS DOUBLE), 0.0) AS peak_worker_cpu_utilization_pct,
           COALESCE(CAST(peak_worker_memory_utilization_pct AS DOUBLE), 0.0) AS peak_worker_memory_utilization_pct,
-          COALESCE(CAST(avg_driver_cpu_utilization_pct AS DOUBLE), 0.0) AS avg_driver_cpu_utilization_pct,
-          COALESCE(CAST(avg_driver_memory_utilization_pct AS DOUBLE), 0.0) AS avg_driver_memory_utilization_pct
+          CAST(worker_node_provisioning_efficiency_pct AS DOUBLE) AS worker_node_provisioning_efficiency_pct,
+          CAST(worker_cpu_utilization_efficiency_pct AS DOUBLE) AS worker_cpu_utilization_efficiency_pct,
+          CAST(worker_memory_utilization_efficiency_pct AS DOUBLE) AS worker_memory_utilization_efficiency_pct,
+          CAST(processed_bytes AS BIGINT) AS processed_bytes,
+          CAST(processed_row_count AS BIGINT) AS processed_row_count
         FROM ${DATABRICKS_JOB_CLUSTER_METRICS_TABLE}
         WHERE CAST(job_id AS STRING) = :job_id
           AND (:cluster_id IS NULL OR CAST(cluster_id AS STRING) = :cluster_id)
           AND (:job_run_id IS NULL OR CAST(job_run_id AS STRING) = :job_run_id)
+          AND (:start_date IS NULL OR job_run_date >= CAST(:start_date AS DATE))
+          AND (:end_date IS NULL OR job_run_date <= CAST(:end_date AS DATE))
         ORDER BY job_run_date DESC
         LIMIT 1
     - id: normalize_metrics

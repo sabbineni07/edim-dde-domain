@@ -1,5 +1,3 @@
-# VM family rules
-
 ## VM family selection (Databricks on Azure)
 
 | Family | Use when |
