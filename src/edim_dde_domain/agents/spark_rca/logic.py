@@ -8,14 +8,6 @@ from edim_dde_domain.llm.json_util import dumps, parse_json_object
 from edim_dde_domain.tools.evidence_pack import build_evidence_pack
 
 
-def prepare_evidence(state: dict[str, Any]) -> dict[str, Any]:
-    """Honor evidence_pack override so SQL collect nodes can be skipped."""
-    existing = state.get("evidence_pack")
-    if isinstance(existing, dict) and existing:
-        return {}
-    return {}
-
-
 def assemble_evidence(state: dict[str, Any]) -> dict[str, Any]:
     """Build evidence_pack from SQL section outputs (or keep override/stub)."""
     existing = state.get("evidence_pack")

@@ -9,9 +9,6 @@ content_dir: ./content
 
 graph:
   nodes:
-    - id: prepare_evidence
-      type: domain.rca.prepare_evidence
-
     - id: collect_failure_anchors
       type: domain.sql.query
       source: edim_sql_wh
@@ -174,8 +171,7 @@ graph:
       type: domain.rca.validate_output
 
   edges:
-    - [START, prepare_evidence]
-    - [prepare_evidence, collect_failure_anchors]
+    - [START, collect_failure_anchors]
     - [collect_failure_anchors, collect_sql_plans]
     - [collect_sql_plans, collect_error_logs]
     - [collect_error_logs, collect_timeline]

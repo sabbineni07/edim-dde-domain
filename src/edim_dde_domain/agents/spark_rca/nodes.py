@@ -9,14 +9,6 @@ from edim_dde_ai import register_node
 from edim_dde_domain.agents.spark_rca import logic
 
 
-@register_node("domain.rca.prepare_evidence")
-def prepare_evidence_factory(_config: dict[str, Any]):
-    def _node(state: dict[str, Any]) -> dict[str, Any]:
-        return logic.prepare_evidence(state)
-
-    return _node
-
-
 @register_node("domain.rca.assemble_evidence")
 def assemble_evidence_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:

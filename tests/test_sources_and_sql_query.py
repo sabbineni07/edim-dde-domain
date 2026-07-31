@@ -96,14 +96,12 @@ def test_extract_forwarded_databricks_token():
         extract_forwarded_databricks_token({"X-Forwarded-Access-Token": "fwd"})
         == "fwd"
     )
+    # Authorization is reserved for API auth — never treated as Databricks token
     assert (
         extract_forwarded_databricks_token({"Authorization": "Bearer real-token"})
-        == "real-token"
-    )
-    assert (
-        extract_forwarded_databricks_token({"Authorization": "Bearer stub-token-x"})
         is None
     )
+    assert extract_forwarded_databricks_token({}) is None
 
 
 def test_bind_named_query_order():
@@ -136,6 +134,23 @@ def test_prepare_query_env_and_blank_to_none():
     assert values == ["j1", None]
 
 
+def test_prepare_query_rejects_unsafe_table_env():
+    with pytest.raises(DomainToolError, match="must be a catalog.schema"):
+        prepare_query(
+            "SELECT * FROM ${T}",
+            state={},
+            params_from_state=[],
+            environ={"T": "cat.sch; DROP TABLE x"},
+        )
+    with pytest.raises(DomainToolError, match="unset or empty"):
+        prepare_query(
+            "SELECT * FROM ${T}",
+            state={},
+            params_from_state=[],
+            environ={},
+        )
+
+
 def test_cluster_tuning_metrics_override(bootstrapped_agents):
     agent = create_agent("cluster_tuning")
     out = agent.invoke(
@@ -163,8 +178,11 @@ def test_cluster_tuning_metrics_override(bootstrapped_agents):
 @patch("edim_dde_domain.nodes.sql_query.execute_sql")
 @patch("edim_dde_domain.nodes.sql_query.try_get_resolved_source")
 def test_sql_query_first_row_empty_errors(
-    mock_src: MagicMock, mock_exec: MagicMock, bootstrapped_agents
+    mock_src: MagicMock, mock_exec: MagicMock, bootstrapped_agents, monkeypatch
 ):
+    monkeypatch.setenv(
+        "DATABRICKS_JOB_CLUSTER_METRICS_TABLE", "cat.sch.job_cluster_metrics"
+    )
     mock_src.return_value = ResolvedSource(
         name="edim_sql_wh",
         type="databricks_sql",

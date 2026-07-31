@@ -4,13 +4,15 @@
    ``X-Forwarded-Access-Token`` and calls ``set_request_databricks_token``.
 2. **Local dev:** ``DefaultAzureCredential`` after ``az login``.
 
+``Authorization: Bearer`` is intentionally ignored so API-level auth (if
+added later) is never forwarded to Databricks SQL as the user token.
+
 Extend later if CI / service-principal hosting is needed.
 """
 
 from __future__ import annotations
 
 import logging
-import re
 from contextvars import ContextVar, Token
 from typing import Any, Mapping, Optional
 
@@ -26,16 +28,9 @@ _FORWARDED_TOKEN_HEADERS = (
     "X-Forwarded-Access-Token",
 )
 
-_STUB_AUTH_RE = re.compile(r"^Bearer\s+stub-token-", re.IGNORECASE)
-
 _request_databricks_token: ContextVar[Optional[str]] = ContextVar(
     "request_databricks_token", default=None
 )
-
-
-def is_stub_authorization(value: Optional[str]) -> bool:
-    """True for local stub login tokens (not valid on Databricks)."""
-    return bool(value and _STUB_AUTH_RE.match(value.strip()))
 
 
 def _header_value(headers: Mapping[str, Any], name: str) -> Optional[str]:
@@ -49,20 +44,15 @@ def _header_value(headers: Mapping[str, Any], name: str) -> Optional[str]:
 
 
 def extract_forwarded_databricks_token(headers: Mapping[str, Any]) -> Optional[str]:
-    """Read user OAuth from Databricks Apps gateway / proxy headers.
+    """Read user OAuth from Databricks Apps gateway forwarded header only.
 
+    Does not read ``Authorization`` — that header is reserved for API auth.
     Used by API middleware before ``set_request_databricks_token``.
     """
     for name in _FORWARDED_TOKEN_HEADERS:
         token = _header_value(headers, name)
         if token:
             return token
-
-    authorization = _header_value(headers, "authorization")
-    if authorization and not is_stub_authorization(authorization):
-        if authorization.lower().startswith("bearer "):
-            token = authorization[7:].strip()
-            return token or None
     return None
 
 

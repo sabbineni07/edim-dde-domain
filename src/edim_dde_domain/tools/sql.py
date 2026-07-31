@@ -3,18 +3,26 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import date, datetime
 from typing import Any, Mapping, Optional
 
 from edim_dde_domain.errors import DomainToolError
 from edim_dde_domain.sources.models import ResolvedSource
-from edim_dde_domain.sources.resolve import interpolate_env
 
 logger = logging.getLogger(__name__)
 
 # :name binds (not PostgreSQL :: cast — we use CAST(... AS ...))
 _NAMED_PARAM_RE = re.compile(r"(?<!:):([A-Za-z_][A-Za-z0-9_]*)")
+
+# Same ${VAR} shape as sources.resolve.interpolate_env
+_ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+# Unity Catalog / schema.table FQNs only (no spaces, quotes, or SQL punctuation)
+_SQL_FQN_RE = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){1,2}$"
+)
 
 
 def _normalize_sql_value(value: Any) -> Any:
@@ -67,6 +75,36 @@ def bind_named_query(
     return bound_sql, values
 
 
+def interpolate_sql_env(
+    text: str,
+    environ: Optional[Mapping[str, str]] = None,
+) -> str:
+    """Replace ``${VAR}`` in SQL with env values validated as table/view FQNs.
+
+    Each substituted value must match ``catalog.schema.table`` or
+    ``schema.table`` (letters, digits, underscore only). Unset/empty or
+    unsafe values raise ``DomainToolError`` (fail closed).
+    """
+    env = environ if environ is not None else os.environ
+
+    def repl(match: re.Match[str]) -> str:
+        name = match.group(1)
+        value = str(env.get(name, "") or "").strip()
+        if not value:
+            raise DomainToolError(
+                f"SQL env ${{{name}}} is unset or empty; "
+                "set a catalog.schema[.table] FQN"
+            )
+        if not _SQL_FQN_RE.fullmatch(value):
+            raise DomainToolError(
+                f"SQL env ${{{name}}} must be a catalog.schema[.table] "
+                f"identifier (got {value!r})"
+            )
+        return value
+
+    return _ENV_RE.sub(repl, text)
+
+
 def prepare_query(
     query: str,
     *,
@@ -75,8 +113,8 @@ def prepare_query(
     static_params: Optional[Mapping[str, Any]] = None,
     environ: Optional[Mapping[str, str]] = None,
 ) -> tuple[str, list[Any]]:
-    """Interpolate ``${ENV}`` in SQL text, then bind ``:name`` params from state."""
-    text = interpolate_env(query, environ)
+    """Interpolate validated ``${ENV}`` FQNs in SQL, then bind ``:name`` params."""
+    text = interpolate_sql_env(query, environ)
     return bind_named_query(
         text,
         state=state,
