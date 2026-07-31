@@ -3,6 +3,8 @@
 **Domain package** for EDIM agents: named **sources**, generic **SQL collect**
 nodes, YAML agents, and Azure AI Foundry LLM on [`edim-dde-ai`](../edim-dde-ai).
 
+> **Temporary stack docs home:** Until a parent `edim` repo exists, the engineer guide for the whole stack (ai + domain + api) lives here: **[docs/README.md](docs/README.md)**. Sibling packages: [`edim-dde-ai`](../edim-dde-ai/), [`edim-dde-api`](../edim-dde-api/). Handoff: [`BACKLOG.md`](../BACKLOG.md).
+
 ```text
 API → bootstrap_agents() + set_llm_provider(Foundry)
          │
@@ -13,7 +15,7 @@ API → bootstrap_agents() + set_llm_provider(Foundry)
     assemble / analyze / llm_chain nodes
 ```
 
-See [docs/DESIGN_SOURCES_AND_SQL_NODES.md](docs/DESIGN_SOURCES_AND_SQL_NODES.md).
+**Docs:** [Engineer guide](docs/README.md) · [Sources and SQL](docs/domain/sources-and-sql.md) · [Bundled agents](docs/domain/bundled-agents.md) · [Deep dive](docs/DESIGN_SOURCES_AND_SQL_NODES.md)
 
 ## Layout
 
