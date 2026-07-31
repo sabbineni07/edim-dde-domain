@@ -21,6 +21,15 @@ Useful config keys:
 - `source`, `query`, `params_from_state`, `params`
 - `result_mode`: `rows` | `first_row`
 - `on_empty`: `error` | `empty` (first_row)
-- `skip_if_key`: skip SQL when another key already holds data (e.g. `evidence_pack`)
+- `skip_if_key`: see overrides below
+
+## Overrides (skip warehouse, not LLM)
+
+Before connecting, `domain.sql.query` short-circuits in either case:
+
+1. **`output_key` already set** — e.g. tuning request passes `metrics`; collect node has `output_key: metrics`, so SQL is skipped.
+2. **`skip_if_key` present and non-empty** — e.g. RCA SQL nodes set `skip_if_key: evidence_pack`. If the request already includes an assembled `evidence_pack`, every collect node no-ops. Downstream `assemble_evidence` keeps that override; classify + **`llm_chain` still run**.
+
+`evidence_pack` itself is the structured RCA input (excerpts, anchors, refs) that the synthesize prompt consumes — normally built from SQL sections; injectable for tests/demos without Databricks.
 
 Deep dive: [DESIGN_SOURCES_AND_SQL_NODES.md](../DESIGN_SOURCES_AND_SQL_NODES.md)

@@ -1,11 +1,18 @@
 # Quickstart
 
-Goal: run the API locally and invoke a bundled agent with **offline overrides** (no live Databricks/Foundry required for this path).
+Two paths:
+
+| Path | Skips Databricks? | Skips Foundry? | Use when |
+|------|-------------------|----------------|----------|
+| **A. Pytest + `DomainStubLLM`** | Yes (with overrides) | Yes (stub) | Local sanity / CI |
+| **B. Live HTTP (`uvicorn` + curl)** | Yes (with overrides) | **No** — needs Foundry | Demo / E2E against real LLM |
+
+`metrics` / `evidence_pack` in the request body only bypass **SQL warehouse** reads. Both bundled agents still run **`llm_chain`** (sizing for tuning; synthesize for RCA). `include_explanation: false` skips the *explanation* LLM only — not sizing.
 
 ## Prerequisites
 
 - Python 3.10+
-- Parent workspace: `edim/` containing `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api`
+- Sibling packages under `edim/`: `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api`
 
 ## 1. Install (editable siblings)
 
@@ -14,24 +21,45 @@ cd /Users/sabbineni/projects/edim/edim-dde-api
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e ".[dev]"
-# Ensures editable edim-dde-ai + edim-dde-domain from sibling paths
 ```
 
-Install domain/ai the same way if you develop them in isolation:
+Optional isolation installs:
 
 ```bash
 cd ../edim-dde-domain && pip install -e ".[dev]"
 cd ../edim-dde-ai && pip install -e ".[dev]"
 ```
 
-## 2. Run tests (sanity)
+---
+
+## Path A — Offline (tests)
+
+Tests install `edim_dde_domain.testing.DomainStubLLM` and pass SQL overrides. **This is the supported no-Foundry path.**
 
 ```bash
 cd /Users/sabbineni/projects/edim/edim-dde-domain && pytest -q
 cd /Users/sabbineni/projects/edim/edim-dde-api && pytest -q
 ```
 
-## 3. Start the API
+Plain `uvicorn` does **not** use the stub; its lifespan installs Foundry (see Path B).
+
+---
+
+## Path B — Live HTTP
+
+### Foundry (required for curl)
+
+```bash
+az login   # or set AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+export AZURE_OPENAI_ENDPOINT=https://….openai.azure.com
+export AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+```
+
+Full list: [configuration](../api/configuration.md) · [env vars](../reference/env-vars.md).
+
+Databricks warehouse env is **optional** if you pass `metrics` / `evidence_pack` overrides below.
+
+### Start API
 
 ```bash
 cd /Users/sabbineni/projects/edim/edim-dde-api
@@ -39,16 +67,16 @@ source .venv/bin/activate
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```
 
-Lifespan calls `bootstrap_agents()` (bundled YAML + nodes) and installs a lazy Foundry LLM provider.
+Lifespan: `bootstrap_agents()` + lazy Foundry provider (constructs the real client on **first** `llm_chain` call so `/health` works before LLM env is set).
 
 ```bash
 curl -s localhost:8080/health
 # {"status":"ok","agents":["cluster_tuning","spark_rca",...]}
 ```
 
-## 4. Call cluster tuning (metrics override)
+Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.
 
-Without Databricks, pass `metrics` in the body so `domain.sql.query` is skipped:
+### Cluster tuning (`metrics` override — skip SQL)
 
 ```bash
 curl -s localhost:8080/api/v1/recommendations \
@@ -71,9 +99,9 @@ curl -s localhost:8080/api/v1/recommendations \
   }'
 ```
 
-> **Note:** Live LLM calls need Foundry env + `az login` (or SP). API tests use `edim_dde_domain.testing.DomainStubLLM`. For a live HTTP demo with LLM, set env from [configuration](../api/configuration.md) or run unit/e2e tests with the stub.
+Still invokes the **sizing** `llm_chain`. Set `"include_explanation": true` only if you also want the second (explanation) LLM call.
 
-## 5. Call Spark RCA (evidence_pack override)
+### Spark RCA (`evidence_pack` override — skip SQL)
 
 ```bash
 curl -s localhost:8080/api/v1/rca/analyze \
@@ -89,8 +117,13 @@ curl -s localhost:8080/api/v1/rca/analyze \
   }'
 ```
 
+Still invokes the **rca** `llm_chain` after rule classify.
+
+---
+
 ## Next
 
-- [Concepts](concepts.md)
-- [Live E2E](../api/configuration.md) (warehouse + Foundry)
+- [Concepts](concepts.md) — agents, state, overrides
+- [Sources and SQL](../domain/sources-and-sql.md) — `skip_if_key`, overrides
+- [Live warehouse + Foundry](../api/configuration.md)
 - [Build a new agent](../build-agents/step-by-step.md)
