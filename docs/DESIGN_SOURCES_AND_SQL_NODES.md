@@ -64,8 +64,13 @@ edim-dde-domain/
     nodes/
       sql_query.py            # @register_node("domain.sql.query")
     tools/
-      sql.py                  # execute_sql(source, query, params)
-      evidence_pack.py        # pure assemble (keep)
+      sql.py                  # shared named-param SQL IO
+    agents/
+      cluster_tuning/
+        helpers/              # sizing, guardrails, SKU, optimization
+      spark_rca/
+        helpers/
+          evidence_pack.py    # pure assemble (no IO)
 ```
 
 ### 4.2 `sources.yaml` shape
@@ -289,11 +294,10 @@ Optional later: parallel collect fan-out if the framework adds it; v1 can stay s
 | Remove (or stop using) | Keep |
 |------------------------|------|
 | `SparkSqlCollector` (hardcoded queries) | `tools/sql.py` executor |
-| `ClusterMetricsSqlCollector` | `evidence_pack.py` assemble |
+| `ClusterMetricsSqlCollector` | `agents/spark_rca/helpers/evidence_pack.py` assemble |
+| `SparkTelemetryCollector` / `spark_telemetry.py` stub | YAML `domain.sql.query` nodes in `spark_rca.agent.yaml` |
 | Env-only table settings as *required* for SQL text | `DomainSettings` for host/path fallback |
 | Per-use-case collect logic that only wraps SQL | Analyze nodes (classify, sizing, validate) |
-
-`build_evidence_pack_for_run` / `get_job_cluster_metrics` facades can become thin wrappers for overrides/tests, or disappear once agents call `domain.sql.query` directly.
 
 ---
 

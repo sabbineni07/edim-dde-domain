@@ -4,16 +4,25 @@ from __future__ import annotations
 
 from edim_dde_ai import create_agent
 
-from edim_dde_domain.tools.spark_telemetry import build_evidence_pack_for_run
+from edim_dde_domain.agents.spark_rca.helpers.evidence_pack import build_evidence_pack
 
 
-def test_tool_build_evidence_pack():
-    pack = build_evidence_pack_for_run(
+def test_build_evidence_pack_from_failure_anchor():
+    pack = build_evidence_pack(
         job_run_id="jr-1",
         job_id="j-1",
-        error_text="OutOfMemoryError: Java heap space",
+        failure_anchors=[
+            {
+                "event_id": "1",
+                "event_type": "pipeline_end",
+                "failure_reason": "OutOfMemoryError: Java heap space",
+                "successful": False,
+                "status": "failed",
+            }
+        ],
     )
     assert pack["evidence"][0]["excerpt"].startswith("OutOfMemoryError")
+    assert pack["raw_anchors"]["failure_reason"].startswith("OutOfMemoryError")
 
 
 def test_spark_rca_with_evidence_override(bootstrapped_agents):

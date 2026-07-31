@@ -1,9 +1,9 @@
-"""Bounded evidence pack builder for Spark job failure RCA (pure, no IO)."""
+"""Bounded evidence pack builder for spark_rca (pure, no IO)."""
 
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional
 
 _PLAN_ATTR_KEYS = (
     "sql_text",
@@ -17,14 +17,6 @@ _PLAN_ATTR_KEYS = (
 )
 _SQL_EVENT_TYPES = frozenset({"spark_sql_query_error", "spark_sql_query_observed"})
 _LONG_PLAN_KEYS = frozenset({"physical_plan", "logical_plan", "sql_text"})
-
-
-class _TelemetryCollector(Protocol):
-    def get_failure_anchors(self, *, job_run_id: str, job_run_date=None, task_key=None): ...
-    def get_stage_pressure(self, *, job_run_id: str, job_run_date=None, task_key=None): ...
-    def get_error_logs(self, *, job_run_id: str, job_run_date=None, task_key=None): ...
-    def get_timeline(self, *, job_run_id: str, job_run_date=None, task_key=None): ...
-    def get_sql_plans(self, *, job_run_id: str, job_run_date=None, task_key=None): ...
 
 
 def _parse_attributes(raw: Any) -> Dict[str, Any]:
@@ -98,33 +90,6 @@ def _plan_excerpt(attrs: Dict[str, Any], failure_reason: Any = None) -> str:
         max_len = 2000 if key in _LONG_PLAN_KEYS else 400
         parts.append(f"{key}={_truncate(str(val), max_len)}")
     return _truncate(" | ".join(parts), 4000)
-
-
-def assemble_evidence_pack_for_run(
-    collector: _TelemetryCollector,
-    *,
-    job_run_id: str,
-    job_id: Optional[str] = None,
-    job_run_date: Optional[str] = None,
-    task_key: Optional[str] = None,
-    workspace_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    kw = {"job_run_id": job_run_id, "job_run_date": job_run_date, "task_key": task_key}
-    anchors = collector.get_failure_anchors(**kw)
-    plans = collector.get_sql_plans(**kw)
-    seed = (anchors or plans or [{}])[0]
-    return build_evidence_pack(
-        job_run_id=job_run_id,
-        job_id=job_id or seed.get("job_id"),
-        job_run_date=job_run_date or seed.get("job_run_date"),
-        task_key=task_key,
-        workspace_id=workspace_id,
-        failure_anchors=anchors,
-        stage_pressure=collector.get_stage_pressure(**kw),
-        error_logs=collector.get_error_logs(**kw),
-        timeline=collector.get_timeline(**kw),
-        sql_plans=plans,
-    )
 
 
 def build_evidence_pack(

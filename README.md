@@ -24,9 +24,11 @@ src/edim_dde_domain/
   nodes/sql_query.py # domain.sql.query
   tools/sql.py
   llm/               # Foundry provider + JSON helpers
-  agents/...         # YAML + logic + content/prompts|skills
+  agents/...         # YAML + nodes + logic + optional helpers/ + content/
   bootstrap.py
 ```
+
+Agent package shape: `*.agent.yaml`, `nodes.py`, `logic.py`, optional `helpers/` (rules/data), optional `content/`.
 
 ## Configure
 
@@ -54,6 +56,42 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 | **Foundry LLM** | `az login` | `AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET` (from Key Vault → env) |
 
 No offline SQL stubs in production code — tests inject `metrics` / `evidence_pack` overrides and a fake LLM (`edim_dde_domain.testing.DomainStubLLM`).
+
+## External agents (plugins)
+
+Bundled agents ship inside this wheel. Additional agents can live **outside** the package:
+
+```bash
+# Comma- or os.pathsep-separated roots (each may contain nested */*.agent.yaml + nodes.py)
+export EDIM_AGENT_DIRS=/opt/edim-agents/acme,/opt/edim-agents/partner
+```
+
+`bootstrap_agents()` loads those dirs automatically. Or call explicitly:
+
+```python
+from edim_dde_domain import bootstrap_agents, load_external_agents
+
+bootstrap_agents(load_external=False)  # platform + bundled only
+load_external_agents(["/opt/edim-agents/acme"])  # dirs and/or entry points
+```
+
+**Packaging entry points** (installable plugin wheels):
+
+```toml
+# in the plugin package's pyproject.toml
+[project.entry-points."edim_dde.agents"]
+acme = "acme_edim_agents:register"
+```
+
+```python
+# acme_edim_agents/__init__.py
+from pathlib import Path
+from edim_dde_ai import register_from_directory
+
+def register() -> None:
+    import acme_edim_agents.nodes  # noqa: F401  — @register_node
+    register_from_directory(Path(__file__).parent, recursive=True, overwrite=True)
+```
 
 ## Setup / test
 

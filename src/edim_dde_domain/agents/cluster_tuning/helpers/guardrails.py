@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
-from edim_dde_domain.agents.cluster_tuning.sizing_policy import recommended_min_max_workers
-from edim_dde_domain.agents.cluster_tuning.sku_allowlist import nearest_allowed_node_type
+from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import recommended_min_max_workers
+from edim_dde_domain.agents.cluster_tuning.helpers.sku_allowlist import nearest_allowed_node_type
 
 logger = logging.getLogger(__name__)
 

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from edim_dde_domain.agents.cluster_tuning.guardrails import (
+from edim_dde_domain.agents.cluster_tuning.helpers.guardrails import (
     validate_and_clamp_with_adjustments,
 )
-from edim_dde_domain.agents.cluster_tuning.sizing_policy import (
+from edim_dde_domain.agents.cluster_tuning.helpers.resource_optimization import (
+    estimate_resource_optimization,
+)
+from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import (
     compute_sizing_hints,
     infer_reason_codes,
     parse_family_from_node_type,
@@ -15,7 +18,6 @@ from edim_dde_domain.agents.cluster_tuning.sizing_policy import (
     sizing_hints_for_llm,
 )
 from edim_dde_domain.llm.json_util import dumps, parse_json_object
-from edim_dde_domain.tools.cluster_metrics import estimate_resource_optimization
 
 
 def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:

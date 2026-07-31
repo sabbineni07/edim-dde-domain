@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from edim_dde_domain.agents.spark_rca.helpers.evidence_pack import build_evidence_pack
 from edim_dde_domain.llm.json_util import dumps, parse_json_object
-from edim_dde_domain.tools.evidence_pack import build_evidence_pack
 
 
 def assemble_evidence(state: dict[str, Any]) -> dict[str, Any]:

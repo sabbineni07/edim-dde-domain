@@ -1,4 +1,4 @@
-"""Cluster resource-capacity helpers (no dollar pricing)."""
+"""Peak provisioned capacity comparison for cluster tuning (no dollar pricing)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def estimate_resource_optimization(
 
     ``resource_optimization_pct`` is the percent of capacity *released*
     relative to current: positive when recommended capacity is smaller,
-    negative when upsizing. No currency or SKU list prices.
+    negative when upsizing.
     """
     cur_cap = max(int(current_vcpus) * max(int(current_max_workers), 0), 1)
     rec_cap = max(int(recommended_vcpus) * max(int(recommended_max_workers), 0), 1)

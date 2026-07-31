@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from edim_dde_domain.agents.cluster_tuning.guardrails import (
+from edim_dde_domain.agents.cluster_tuning.helpers.guardrails import (
     validate_and_clamp_with_adjustments,
 )
-from edim_dde_domain.agents.cluster_tuning.sizing_policy import compute_sizing_hints
-from edim_dde_domain.tools.cluster_metrics import estimate_resource_optimization
+from edim_dde_domain.agents.cluster_tuning.helpers.resource_optimization import (
+    estimate_resource_optimization,
+)
+from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import compute_sizing_hints
 
 
 def test_compute_sizing_hints_low_util():

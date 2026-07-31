@@ -1,1 +1,1 @@
-"""Data-collection tools (IO). Agent nodes call these; they do not know about YAML."""
+"""Shared IO helpers (SQL). Agent-specific logic lives under ``agents/``."""

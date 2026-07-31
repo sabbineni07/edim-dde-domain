@@ -2,31 +2,172 @@
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
+import logging
+import os
+import sys
 import threading
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
-from edim_dde_ai import register_from_yaml
+from edim_dde_ai import register_from_directory
+from edim_dde_ai.errors import LoaderError
 
+from edim_dde_domain.errors import DomainToolError
 from edim_dde_domain.sources import load_sources
 
-# Importing nodes registers @register_node factories.
+# Shared node type (not under a single agent package).
 from edim_dde_domain.nodes import sql_query as _sql_query_nodes  # noqa: F401
-from edim_dde_domain.agents.cluster_tuning import nodes as _tuning_nodes  # noqa: F401
-from edim_dde_domain.agents.spark_rca import nodes as _rca_nodes  # noqa: F401
 
 _AGENTS_DIR = Path(__file__).resolve().parent / "agents"
+_ENTRY_POINT_GROUP = "edim_dde.agents"
 _READY = False
 _LOCK = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
-def bootstrap_agents() -> None:
-    """Idempotent: load sources + register domain agent graphs into edim-dde-ai.
+def _import_packaged_agent_nodes() -> None:
+    """Import bundled ``agents/<pkg>/nodes.py`` so ``@register_node`` factories load."""
+    for nodes_py in sorted(_AGENTS_DIR.glob("*/nodes.py")):
+        pkg = nodes_py.parent.name
+        if pkg.startswith("_") or not pkg.isidentifier():
+            continue
+        importlib.import_module(f"edim_dde_domain.agents.{pkg}.nodes")
+
+
+def _import_nodes_py_files(root: Path) -> list[str]:
+    """Load every ``nodes.py`` under ``root`` via file location (external trees)."""
+    loaded: list[str] = []
+    for nodes_py in sorted(root.rglob("nodes.py")):
+        if any(part.startswith(".") or part == "__pycache__" for part in nodes_py.parts):
+            continue
+        rel = nodes_py.relative_to(root).with_suffix("")
+        mod_name = "edim_dde_ext_" + "_".join(rel.parts)
+        if mod_name in sys.modules:
+            continue
+        spec = importlib.util.spec_from_file_location(mod_name, nodes_py)
+        if spec is None or spec.loader is None:
+            raise DomainToolError(f"Cannot import external nodes module: {nodes_py}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        spec.loader.exec_module(module)
+        loaded.append(str(nodes_py))
+    return loaded
+
+
+def _parse_agent_dirs(
+    dirs: Sequence[str | Path] | None,
+) -> list[Path]:
+    if dirs is not None:
+        raw = [str(d).strip() for d in dirs if str(d).strip()]
+    else:
+        env = os.environ.get("EDIM_AGENT_DIRS", "").strip()
+        if not env:
+            raw = []
+        elif os.pathsep in env:
+            raw = [p.strip() for p in env.split(os.pathsep) if p.strip()]
+        else:
+            # Comma-separated is convenient in .env files on all platforms
+            raw = [p.strip() for p in env.split(",") if p.strip()]
+    out: list[Path] = []
+    for item in raw:
+        path = Path(item).expanduser()
+        if not path.is_dir():
+            raise DomainToolError(f"External agent directory does not exist: {path}")
+        out.append(path.resolve())
+    return out
+
+
+def _load_entry_point_plugins(group: str = _ENTRY_POINT_GROUP) -> list[str]:
+    """Load ``edim_dde.agents`` entry points (callables register agents/nodes)."""
+    try:
+        from importlib.metadata import entry_points
+    except ImportError:  # pragma: no cover
+        return []
+
+    selected: Any
+    eps = entry_points()
+    if hasattr(eps, "select"):
+        selected = list(eps.select(group=group))
+    else:  # pragma: no cover — older importlib.metadata
+        selected = list(eps.get(group, []))
+
+    names: list[str] = []
+    for ep in selected:
+        plugin = ep.load()
+        if not callable(plugin):
+            raise DomainToolError(
+                f"Entry point {ep.name!r} in group {group!r} must be callable "
+                f"(got {type(plugin).__name__})"
+            )
+        plugin()
+        names.append(ep.name)
+        logger.info("loaded_agent_entry_point", extra={"name": ep.name, "group": group})
+    return names
+
+
+def load_external_agents(
+    dirs: Sequence[str | Path] | None = None,
+    *,
+    entry_points: bool = True,
+    entry_point_group: str = _ENTRY_POINT_GROUP,
+    overwrite: bool = True,
+) -> list[str]:
+    """Register agents from external directories and/or packaging entry points.
+
+    Directory layout matches bundled agents (recursive ``*.agent.yaml`` plus
+    optional ``nodes.py`` files). When ``dirs`` is omitted, reads
+    ``EDIM_AGENT_DIRS`` (``os.pathsep``- or comma-separated paths).
+
+    Entry points use group ``edim_dde.agents`` (override with
+    ``entry_point_group``). Each entry point must be a zero-arg callable that
+    registers nodes/YAML (typically ``register_from_directory`` + imports).
+
+    Returns registered agent ids from directory scans (entry-point plugins
+    register themselves and are listed only by entry-point name in logs).
+    """
+    agent_ids: list[str] = []
+    for root in _parse_agent_dirs(dirs):
+        _import_nodes_py_files(root)
+        try:
+            ids = register_from_directory(
+                root,
+                pattern="*.agent.yaml",
+                overwrite=overwrite,
+                recursive=True,
+            )
+        except LoaderError as exc:
+            raise DomainToolError(
+                f"No agent YAML found under external dir {root}: {exc}"
+            ) from exc
+        agent_ids.extend(ids)
+        logger.info(
+            "loaded_external_agent_dir",
+            extra={"dir": str(root), "agent_ids": ids},
+        )
+
+    if entry_points:
+        _load_entry_point_plugins(entry_point_group)
+
+    return agent_ids
+
+
+def bootstrap_agents(*, load_external: bool = True) -> None:
+    """Idempotent: load sources + register bundled (and optional external) agents.
+
+    Discovers agents recursively under package ``agents/``. Also imports each
+    ``agents/<pkg>/nodes.py`` so node factories are registered.
+
+    When ``load_external`` is true (default), also calls
+    :func:`load_external_agents` (``EDIM_AGENT_DIRS`` + ``edim_dde.agents``
+    entry points).
 
     Call once at API/app startup (before ``create_agent``). Does **not** set an
     LLM provider — hosts must call ``set_llm_provider(...)`` for llm_chain nodes.
 
-    Thread-safe: concurrent callers serialize on a lock. After the first
-    successful registration, later calls are no-ops (sources are not re-read).
+    Thread-safe. After the first successful registration, later calls are no-ops.
     Call ``reset_bootstrap()`` in tests to allow a fresh load.
     """
     global _READY
@@ -34,13 +175,25 @@ def bootstrap_agents() -> None:
         if _READY:
             return
         load_sources()
-        register_from_yaml(
-            _AGENTS_DIR / "spark_rca" / "spark_rca.agent.yaml", overwrite=True
+        _import_packaged_agent_nodes()
+        try:
+            ids = register_from_directory(
+                _AGENTS_DIR,
+                pattern="*.agent.yaml",
+                overwrite=True,
+                recursive=True,
+            )
+        except LoaderError as exc:
+            raise DomainToolError(
+                f"No agent YAML found under {_AGENTS_DIR}: {exc}"
+            ) from exc
+        logger.info(
+            "bootstrapped_agents",
+            extra={"agent_ids": ids, "agents_dir": str(_AGENTS_DIR)},
         )
-        register_from_yaml(
-            _AGENTS_DIR / "cluster_tuning" / "cluster_tuning.agent.yaml",
-            overwrite=True,
-        )
+        if load_external:
+            # dirs=None → EDIM_AGENT_DIRS + entry points
+            load_external_agents()
         _READY = True
 
 
