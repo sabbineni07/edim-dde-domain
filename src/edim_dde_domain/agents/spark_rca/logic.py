@@ -82,7 +82,8 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
         "job_run_id": _s(state.get("job_run_id") or pack.get("job_run_id")),
         "job_run_date": _s(state.get("job_run_date") or pack.get("job_run_date")),
         "task_key": _s(state.get("task_key") or pack.get("task_key")),
-        "classification_hint": dumps(hint) if hint else "(none)",
+        # Non-colliding keys so dict classification_hint / evidence_pack stay intact
+        "classification_hint_text": dumps(hint) if hint else "(none)",
         "cluster_logs_section": _section_text(
             sections.get("logs"),
             "(no ERROR/WARN/exception excerpts in this evidence_pack)",
@@ -95,7 +96,7 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
             sections.get("sql_plans"),
             "(no sql_text/physical_plan/sql_error attrs in this evidence_pack)",
         ),
-        "evidence_pack": dumps(pack),
+        "evidence_pack_text": dumps(pack),
     }
 
 

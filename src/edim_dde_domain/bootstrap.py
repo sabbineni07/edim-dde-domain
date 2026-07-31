@@ -25,14 +25,15 @@ def bootstrap_agents() -> None:
     Call once at API/app startup (before ``create_agent``). Does **not** set an
     LLM provider — hosts must call ``set_llm_provider(...)`` for llm_chain nodes.
 
-    Thread-safe: concurrent callers serialize on a lock; after the first
-    successful registration later callers only refresh sources.
+    Thread-safe: concurrent callers serialize on a lock. After the first
+    successful registration, later calls are no-ops (sources are not re-read).
+    Call ``reset_bootstrap()`` in tests to allow a fresh load.
     """
     global _READY
     with _LOCK:
-        load_sources()
         if _READY:
             return
+        load_sources()
         register_from_yaml(
             _AGENTS_DIR / "spark_rca" / "spark_rca.agent.yaml", overwrite=True
         )

@@ -1,4 +1,4 @@
-"""Unit tests for sizing policy, guardrails, and costs."""
+"""Unit tests for sizing policy, guardrails, and resource optimization."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from edim_dde_domain.agents.cluster_tuning.guardrails import (
     validate_and_clamp_with_adjustments,
 )
 from edim_dde_domain.agents.cluster_tuning.sizing_policy import compute_sizing_hints
-from edim_dde_domain.tools.cluster_metrics import estimate_monthly_costs
+from edim_dde_domain.tools.cluster_metrics import estimate_resource_optimization
 
 
 def test_compute_sizing_hints_low_util():
@@ -49,12 +49,24 @@ def test_guardrails_map_sku_and_clamp():
     assert any(a["field"] == "auto_termination_minutes" for a in adjustments)
 
 
-def test_estimate_monthly_costs_savings():
-    costs = estimate_monthly_costs(
-        current_node_type="Standard_E8s_v3",
-        recommended_node_type="Standard_E4s_v3",
-        current_avg_nodes=8,
-        recommended_avg_nodes=4,
+def test_estimate_resource_optimization_downsize():
+    # 8 vCPU × 16 workers → 4 vCPU × 8 workers = 75% capacity released
+    opt = estimate_resource_optimization(
+        current_vcpus=8,
+        current_max_workers=16,
+        recommended_vcpus=4,
+        recommended_max_workers=8,
     )
-    assert costs["savings_usd"] > 0
-    assert costs["monthly_cost_current_usd"] > costs["monthly_cost_recommended_usd"]
+    assert opt["current_capacity_vcpu"] == 128
+    assert opt["recommended_capacity_vcpu"] == 32
+    assert opt["resource_optimization_pct"] == 75.0
+
+
+def test_estimate_resource_optimization_upsize_is_negative():
+    opt = estimate_resource_optimization(
+        current_vcpus=4,
+        current_max_workers=4,
+        recommended_vcpus=8,
+        recommended_max_workers=4,
+    )
+    assert opt["resource_optimization_pct"] == -100.0

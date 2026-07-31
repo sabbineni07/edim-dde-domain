@@ -10,7 +10,7 @@ from edim_dde_ai.content.registry import clear_llm_provider
 from edim_dde_domain import bootstrap_agents, reset_bootstrap
 from edim_dde_domain.sources import clear_sources
 
-from llm_stub import DomainStubLLM
+from edim_dde_domain.testing import DomainStubLLM
 
 
 @pytest.fixture

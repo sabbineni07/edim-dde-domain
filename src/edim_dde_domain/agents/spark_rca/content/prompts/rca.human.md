@@ -8,7 +8,7 @@ Perform a Root Cause Analysis (RCA) and generate recommendations for the followi
 - Task key: {task_key}
 
 === RULE-BASED CLASSIFICATION HINT ===
-{classification_hint}
+{classification_hint_text}
 
 === TELEMETRY PAYLOAD (from Delta spark_logs / spark_metrics via evidence_pack) ===
 
@@ -24,7 +24,7 @@ Perform a Root Cause Analysis (RCA) and generate recommendations for the followi
 [Note: Includes sql_text / physical_plan / logical_plan / join attrs when collectors captured them.]
 
 --- 4. FULL EVIDENCE PACK (JSON, authoritative — cite evidence[].ref from here) ---
-{evidence_pack}
+{evidence_pack_text}
 
 === INSTRUCTIONS ===
 1. Apply STEPs 1–4 and domain skills from the system prompt to diagnose this job run.

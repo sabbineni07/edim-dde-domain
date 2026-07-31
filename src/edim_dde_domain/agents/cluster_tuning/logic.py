@@ -15,7 +15,7 @@ from edim_dde_domain.agents.cluster_tuning.sizing_policy import (
     sizing_hints_for_llm,
 )
 from edim_dde_domain.llm.json_util import dumps, parse_json_object
-from edim_dde_domain.tools.cluster_metrics import estimate_monthly_costs
+from edim_dde_domain.tools.cluster_metrics import estimate_resource_optimization
 
 
 def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:
@@ -155,26 +155,21 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
 
     current_type = str(sizing.get("current_node_type") or "")
     recommended_type = str(sizing.get("recommended_node_type") or "")
-    current_avg = float(
-        metrics.get("avg_worker_nodes_consumed")
-        or sizing.get("current_max_workers")
-        or 1
-    )
-    # Use recommended max as conservative avg when downsizing; else avg of current
-    rec_max = float(sizing.get("recommended_max_workers") or 1)
-    recommended_avg = min(current_avg, rec_max) if rec_max < current_avg else current_avg
+    cur_vcpus = parse_vcpus_from_node_type(current_type)
+    rec_vcpus = int(sizing.get("vcpus") or parse_vcpus_from_node_type(recommended_type))
+    cur_max = int(sizing.get("current_max_workers") or 1)
+    rec_max = int(sizing.get("recommended_max_workers") or 1)
 
-    costs = estimate_monthly_costs(
-        current_node_type=current_type,
-        recommended_node_type=recommended_type,
-        current_avg_nodes=current_avg,
-        recommended_avg_nodes=max(recommended_avg, float(sizing.get("min_workers") or 0) or 1),
+    optimization = estimate_resource_optimization(
+        current_vcpus=cur_vcpus,
+        current_max_workers=cur_max,
+        recommended_vcpus=rec_vcpus,
+        recommended_max_workers=rec_max,
     )
 
     change_required = (
         recommended_type != current_type
-        or int(sizing.get("recommended_max_workers") or 0)
-        != int(sizing.get("current_max_workers") or 0)
+        or rec_max != cur_max
         or int(sizing.get("min_workers") or 0) != 0
     )
     reason_codes = infer_reason_codes(
@@ -183,7 +178,7 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
 
     recommendation = {
         **sizing,
-        **costs,
+        **optimization,
         "risk_level": risk.get("risk_level", "low"),
         "reason_codes": reason_codes,
     }
@@ -192,6 +187,7 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
             "azure_node_type": current_type,
             "max_workers": sizing.get("current_max_workers"),
             "min_workers": sizing.get("current_min_workers", 0),
+            "capacity_vcpu": optimization["current_capacity_vcpu"],
         },
         "recommended": {
             "azure_node_type": recommended_type,
@@ -200,12 +196,12 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
             "max_workers": sizing.get("recommended_max_workers"),
             "min_workers": sizing.get("recommended_min_workers"),
             "auto_termination_minutes": sizing.get("auto_termination_minutes"),
+            "capacity_vcpu": optimization["recommended_capacity_vcpu"],
         },
-        "cost": {
-            "monthly_current_usd": costs.get("monthly_cost_current_usd"),
-            "monthly_recommended_usd": costs.get("monthly_cost_recommended_usd"),
-            "savings_usd": costs.get("savings_usd"),
-            "savings_pct": costs.get("savings_pct"),
+        "resource_optimization": {
+            "optimization_pct": optimization["resource_optimization_pct"],
+            "current_capacity_vcpu": optimization["current_capacity_vcpu"],
+            "recommended_capacity_vcpu": optimization["recommended_capacity_vcpu"],
         },
     }
     return {
