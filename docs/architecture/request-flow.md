@@ -5,20 +5,27 @@ Lifecycle of a typical `POST /api/v1/recommendations` call (similar idea to docu
 ```text
 1. HTTP request
    └─ Pydantic TuningRequest validates body
+   └─ Optional X-Request-Id (else generated)
 
-2. Middleware
+2. Middleware / lifespan
    └─ Optional X-Forwarded-Access-Token → request-scoped Databricks token
+   └─ Key Vault secrets already loaded at startup (if configured)
 
 3. Route (async)
-   └─ asyncio.to_thread(create_agent("cluster_tuning").invoke, state)
+   └─ build_run_config(agent_id, request_id) for LangSmith tags
+   └─ asyncio.to_thread(create_agent("cluster_tuning").invoke, …)
 
 4. Framework
    └─ Cached MetadataAgent → LangGraph nodes in YAML order
         • domain.sql.query (or skip if metrics override present)
         • domain.tuning.* logic nodes
         • llm_chain (sizing / explanation) when configured
+        • optional invoke_agent nested calls
 
-5. Response projection
+5. Observability (side channel)
+   └─ LangSmith run when LANGCHAIN_TRACING_V2=true (PII-redacted where applied)
+
+6. Response projection
    └─ tuning_response_from_agent_state(final) → TuningResponse
       (never return the full agent state bag)
 ```
@@ -33,3 +40,5 @@ RCA is the same pattern with `spark_rca` and `RcaResponse` (requires `result` in
 | Warehouse / auth not configured | 503 |
 | Foundry not configured / chain error | 503 |
 | RCA missing `result` | 500 |
+
+See also [config → observability](config-to-observability.md) and [LangSmith setup](../platform/langsmith-setup.md).

@@ -8,6 +8,7 @@
 | `set_value` | Set a field (literal or `{template}`) |
 | `echo_result` | Build `result` from listed fields |
 | `llm_chain` | Prompt + skills + LLMProvider / invoker |
+| `invoke_agent` | Call another registered agent (subgraph spike; depth-limited) |
 
 ## Domain shared
 

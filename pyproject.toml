@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "edim-dde-domain"
-version = "0.1.0"
+version = "1.0.0"
 description = "EDIM domain agents + tools (YAML graphs on edim-dde-ai)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,11 +17,13 @@ dependencies = [
 [project.optional-dependencies]
 databricks = ["databricks-sql-connector>=3.0"]
 azure = ["azure-identity>=1.15"]
+keyvault = ["azure-identity>=1.15", "azure-keyvault-secrets>=4.8"]
 llm = ["openai>=1.40", "azure-identity>=1.15"]
 dev = [
   "pytest>=8",
   "databricks-sql-connector>=3.0",
   "azure-identity>=1.15",
+  "azure-keyvault-secrets>=4.8",
   "openai>=1.40",
 ]
 [tool.hatch.build.targets.wheel]

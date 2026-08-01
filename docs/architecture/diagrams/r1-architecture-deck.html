@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EDIM DDE R1 — Architecture Deck</title>
+  <style>
+    :root {
+      --bg: #0b1f33;
+      --panel: #ffffff;
+      --azure: #0078d4;
+      --dbx: #ff3621;
+      --teal: #009688;
+      --ink: #1a2b3c;
+      --muted: #5a6b7d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #1a2332;
+      color: var(--ink);
+    }
+    .slide {
+      width: 1280px;
+      height: 720px;
+      margin: 24px auto;
+      background: #f4f7fa;
+      border-radius: 8px;
+      padding: 40px 48px;
+      position: relative;
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+      page-break-after: always;
+    }
+    h1 { margin: 0 0 8px; font-size: 32px; color: var(--bg); }
+    .subtitle { color: var(--muted); margin-bottom: 28px; font-size: 15px; }
+    .footer {
+      position: absolute; left: 48px; right: 48px; bottom: 24px;
+      font-size: 12px; color: var(--muted);
+      display: flex; justify-content: space-between;
+    }
+    .grid { display: grid; gap: 16px; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .card {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 16px 18px;
+      border: 1px solid #d8e0e8;
+      min-height: 140px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+    .icon { width: 28px; height: 28px; }
+    .banner {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border: 1px solid #d8e0e8;
+      border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+    }
+    .flow {
+      display: flex; align-items: stretch; gap: 10px; margin-top: 8px;
+    }
+    .flow .card { flex: 1; min-height: 220px; }
+    .arrow {
+      align-self: center; font-size: 28px; color: var(--muted); font-weight: 700;
+    }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+    th, td { border: 1px solid #d8e0e8; padding: 10px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--bg); color: #fff; }
+    .note { font-size: 13px; color: var(--muted); margin-top: 16px; }
+    .title-slide {
+      background: linear-gradient(135deg, #0b1f33 0%, #1a4a6e 55%, #0078d4 100%);
+      color: #fff;
+    }
+    .title-slide h1 { color: #fff; font-size: 44px; margin-top: 160px; }
+    .title-slide .subtitle { color: #c9d7e6; font-size: 18px; }
+    .title-slide .footer { color: #9eb3c7; }
+  </style>
+</head>
+<body>
+
+  <section class="slide title-slide">
+    <h1>EDIM DDE<br/>Release 1 Reference Architecture</h1>
+    <p class="subtitle">YAML → LangGraph agents on Databricks + Azure AI Foundry<br/>Phase 0 foundation · Observability via LangSmith</p>
+    <div class="banner" style="margin-top:40px">
+      <span class="pill"><img class="icon" alt="Databricks" src="https://cdn.simpleicons.org/databricks/FF3621"/> Databricks</span>
+      <span class="pill"><img class="icon" alt="Azure" src="https://cdn.simpleicons.org/microsoftazure/0078D4"/> Microsoft Azure</span>
+      <span class="pill"><img class="icon" alt="LangChain" src="https://cdn.simpleicons.org/langchain/1C3C3C"/> LangChain / LangGraph</span>
+      <span class="pill"><img class="icon" alt="LangSmith" src="https://cdn.simpleicons.org/langchain/1C3C3C"/> LangSmith</span>
+      <span class="pill"><img class="icon" alt="FastAPI" src="https://cdn.simpleicons.org/fastapi/009688"/> FastAPI</span>
+    </div>
+    <div class="footer"><span>EDIM · FinTech · Confidential</span><span>Slide 1 / 6</span></div>
+  </section>
+
+  <section class="slide">
+    <h1>System context</h1>
+    <p class="subtitle">Packages, platforms, and trust boundaries</p>
+    <div class="flow">
+      <div class="card">
+        <h3><img class="icon" alt="Clients" src="https://cdn.simpleicons.org/databricks/FF3621"/> Clients</h3>
+        <ul>
+          <li>curl / Postman</li>
+          <li>Databricks Apps UI (gateway)</li>
+          <li>Future Angular UI</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card">
+        <h3><img class="icon" alt="FastAPI" src="https://cdn.simpleicons.org/fastapi/009688"/> edim-dde-api</h3>
+        <ul>
+          <li>CORS + user token middleware</li>
+          <li>Azure Key Vault secret bootstrap</li>
+          <li>/api/v1 recommendations &amp; RCA</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="card">
+        <h3><img class="icon" alt="LangGraph" src="https://cdn.simpleicons.org/langchain/1C3C3C"/> edim-dde-ai</h3>
+        <ul>
+          <li>YAML → LangGraph runtime</li>
+          <li>Registries, llm_chain, invoke_agent</li>
+          <li>LangSmith run tags / tracing</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid grid-3" style="margin-top:16px">
+      <div class="card">
+        <h3><img class="icon" alt="Databricks" src="https://cdn.simpleicons.org/databricks/FF3621"/> Databricks</h3>
+        <ul>
+          <li>SQL Warehouse</li>
+          <li>Unity Catalog telemetry tables</li>
+          <li>User OAuth (Apps) or az login</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><img class="icon" alt="Azure" src="https://cdn.simpleicons.org/microsoftazure/0078D4"/> Azure AI Foundry</h3>
+        <ul>
+          <li>Azure OpenAI deployments</li>
+          <li>SP credentials from Key Vault</li>
+          <li>Used by llm_chain nodes</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><img class="icon" alt="LangSmith" src="https://cdn.simpleicons.org/langchain/1C3C3C"/> LangSmith</h3>
+        <ul>
+          <li>Projects per env (SDBX/DEV/PROD)</li>
+          <li>Traces, tokens, latency</li>
+          <li>Eval / golden sets (Phase 2+)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer"><span>Import companion SVGs from docs/architecture/diagrams/</span><span>Slide 2 / 6</span></div>
+  </section>
+
+  <section class="slide">
+    <h1>Logical request flow</h1>
+    <p class="subtitle">POST /api/v1/recommendations (cluster_tuning) — RCA follows the same pattern</p>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Step</th><th>Component</th><th>What happens</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>HTTP in</td><td>Client → FastAPI</td><td>JSON body validated (Pydantic)</td></tr>
+        <tr><td>2</td><td>Identity</td><td>Middleware</td><td>Bind X-Forwarded-Access-Token; assign request_id</td></tr>
+        <tr><td>3</td><td>Invoke</td><td>edim-dde-ai</td><td>create_agent(...).invoke with LangSmith tags</td></tr>
+        <tr><td>4</td><td>Collect</td><td>domain.sql.query</td><td>Databricks SQL → Unity Catalog telemetry</td></tr>
+        <tr><td>5</td><td>Decide</td><td>domain.tuning.*</td><td>Sizing, guardrails, SKU, capacity risk</td></tr>
+        <tr><td>6</td><td>Generate</td><td>llm_chain + Foundry</td><td>Prompt/skills from content hub</td></tr>
+        <tr><td>7</td><td>Observe</td><td>LangSmith</td><td>Redacted trace (tokens, latency, spans)</td></tr>
+        <tr><td>8</td><td>Respond</td><td>API DTO</td><td>Project TuningResponse (never full state bag)</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Security: YAML cannot import arbitrary Python. Node/router type ids must be pre-registered (allowlist).</p>
+    <div class="footer"><span>See also r1-request-sequence.svg</span><span>Slide 3 / 6</span></div>
+  </section>
+
+  <section class="slide">
+    <h1>Environments (Phase 0)</h1>
+    <p class="subtitle">Focus now: SDBX · DEV · PROD — deferred: UAT · INTG</p>
+    <div class="grid grid-3">
+      <div class="card" style="border-top: 4px solid #5B8DEF">
+        <h3>SDBX</h3>
+        <ul>
+          <li>Sandbox spikes &amp; learning</li>
+          <li>LangSmith: <code>edim-dde-sdbx</code></li>
+          <li>Key Vault: <code>edim-dde-sdbx-kv</code></li>
+          <li><code>EDIM_ENV=sdbx</code></li>
+        </ul>
+      </div>
+      <div class="card" style="border-top: 4px solid #009688">
+        <h3>DEV</h3>
+        <ul>
+          <li>Active development</li>
+          <li>LangSmith: <code>edim-dde-dev</code></li>
+          <li>Key Vault: <code>edim-dde-dev-kv</code></li>
+          <li><code>EDIM_ENV=dev</code></li>
+        </ul>
+      </div>
+      <div class="card" style="border-top: 4px solid #C62828">
+        <h3>PROD</h3>
+        <ul>
+          <li>Live Apps traffic</li>
+          <li>LangSmith: <code>edim-dde-prod</code></li>
+          <li>Key Vault: <code>edim-dde-prod-kv</code></li>
+          <li><code>EDIM_ENV=prod</code></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Never reuse PROD Key Vault secrets or LangSmith API keys in SDBX/DEV. One project and vault per environment.</p>
+    <div class="footer"><span>See platform/environments.md</span><span>Slide 4 / 6</span></div>
+  </section>
+
+  <section class="slide">
+    <h1>Identity, secrets &amp; PII (R1)</h1>
+    <p class="subtitle">Keep current auth model · Key Vault SDK · expandable PII patterns</p>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3><img class="icon" alt="Azure" src="https://cdn.simpleicons.org/microsoftazure/0078D4"/> Identity (unchanged model)</h3>
+        <ul>
+          <li><b>SQL (Apps):</b> user OAuth via forwarded token</li>
+          <li><b>SQL (local):</b> <code>az login</code> / DefaultAzureCredential</li>
+          <li><b>Foundry (local):</b> DefaultAzureCredential</li>
+          <li><b>Foundry (PROD):</b> SP from Key Vault → env</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Role matrix (docs only in Phase 0)</h3>
+        <ul>
+          <li><b>invoke</b> — call agent APIs</li>
+          <li><b>operate</b> — view LangSmith, support</li>
+          <li><b>administer</b> — register agents, rotate secrets</li>
+          <li><b>approve_tools</b> — future HITL / MCP gates</li>
+        </ul>
+        <p class="note" style="margin:8px 0 0">“Docs only” means we define roles now; API does not yet enforce role claims. Identity paths above still apply.</p>
+      </div>
+      <div class="card">
+        <h3>Key Vault</h3>
+        <ul>
+          <li>SDK loads secrets at API startup</li>
+          <li>Maps vault names → env vars</li>
+          <li>Does not overwrite already-set env</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>PII guardrails (FinTech baseline)</h3>
+        <ul>
+          <li>SSN, credit card (PAN), account #, member id</li>
+          <li>Redact before logs / LangSmith payloads</li>
+          <li>Pattern list is expandable later</li>
+          <li>Current agents use telemetry (no expected PII)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer"><span>platform/security-baseline.md · platform/pii-guardrails.md</span><span>Slide 5 / 6</span></div>
+  </section>
+
+  <section class="slide">
+    <h1>R1 scope &amp; non-goals</h1>
+    <p class="subtitle">What Release 1 delivers vs what waits for later phases</p>
+    <div class="grid grid-2">
+      <div class="card" style="border-top: 4px solid #009688">
+        <h3>In R1 / Phase 0</h3>
+        <ul>
+          <li>Three packages at <b>1.0.0</b></li>
+          <li>YAML schema contract + validation</li>
+          <li>cluster_tuning + spark_rca reference agents</li>
+          <li>invoke_agent subgraph spike</li>
+          <li>Key Vault bootstrap + PII redaction</li>
+          <li>LangSmith setup for SDBX/DEV/PROD</li>
+          <li>Environment matrix (3 envs)</li>
+        </ul>
+      </div>
+      <div class="card" style="border-top: 4px solid #C62828">
+        <h3>Explicit non-goals (later)</h3>
+        <ul>
+          <li>MCP connectors (ADO / SNOW / JIRA)</li>
+          <li>Enterprise RAG / Azure AI Search</li>
+          <li>HITL review UI</li>
+          <li>Governance dashboard</li>
+          <li>Role enforcement beyond current identity</li>
+          <li>UAT / INTG full matrix</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">First architecture sign-off: update the table in <code>architecture/reference-architecture.md</code>.</p>
+    <div class="footer"><span>Open this file in Chrome → Present → screenshot slides into PPT</span><span>Slide 6 / 6</span></div>
+  </section>
+
+</body>
+</html>

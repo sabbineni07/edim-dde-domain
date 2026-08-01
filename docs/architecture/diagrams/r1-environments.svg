@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .title { font: 700 26px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0B1F33; }
+      .sub { font: 400 13px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5A6B7D; }
+      .h { font: 700 16px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #FFFFFF; }
+      .b { font: 400 13px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #1A2B3C; }
+      .note { font: 600 12px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5A6B7D; }
+    </style>
+  </defs>
+  <rect width="1280" height="720" fill="#F4F7FA"/>
+  <text x="48" y="44" class="title">EDIM DDE R1  Environments (Phase 0 focus)</text>
+  <text x="48" y="68" class="sub">Full set: SDBX · DEV · UAT · INTG · PROD  Phase 0 implements SDBX, DEV, PROD</text>
+
+  <!-- SDBX -->
+  <rect x="48" y="110" width="360" height="420" rx="12" fill="#FFFFFF" stroke="#5B8DEF" stroke-width="2"/>
+  <rect x="48" y="110" width="360" height="44" rx="12" fill="#5B8DEF"/>
+  <rect x="48" y="138" width="360" height="16" fill="#5B8DEF"/>
+  <text x="68" y="138" class="h">SDBX  Sandbox</text>
+  <text x="68" y="190" class="b">Purpose: spikes, LangSmith learning</text>
+  <text x="68" y="214" class="b">Databricks: sandbox workspace</text>
+  <text x="68" y="238" class="b">Foundry: non-prod deployment</text>
+  <text x="68" y="262" class="b">Key Vault: edim-dde-sdbx-kv</text>
+  <text x="68" y="286" class="b">LangSmith: edim-dde-sdbx</text>
+  <text x="68" y="322" class="b">EDIM_ENV=sdbx</text>
+  <text x="68" y="346" class="b">Tracing: on (verbose OK)</text>
+  <text x="68" y="370" class="b">Data: synthetic / sample UC</text>
+  <text x="68" y="406" class="note">Promote: SDBX ’ DEV</text>
+  <text x="68" y="440" class="b">Agents: experimental YAML OK</text>
+  <text x="68" y="464" class="b">RBAC: developer identity</text>
+
+  <!-- DEV -->
+  <rect x="460" y="110" width="360" height="420" rx="12" fill="#FFFFFF" stroke="#009688" stroke-width="2"/>
+  <rect x="460" y="110" width="360" height="44" rx="12" fill="#009688"/>
+  <rect x="460" y="138" width="360" height="16" fill="#009688"/>
+  <text x="480" y="138" class="h">DEV  Development</text>
+  <text x="480" y="190" class="b">Purpose: active feature work</text>
+  <text x="480" y="214" class="b">Databricks: shared DEV WS</text>
+  <text x="480" y="238" class="b">Foundry: DEV deployment</text>
+  <text x="480" y="262" class="b">Key Vault: edim-dde-dev-kv</text>
+  <text x="480" y="286" class="b">LangSmith: edim-dde-dev</text>
+  <text x="480" y="322" class="b">EDIM_ENV=dev</text>
+  <text x="480" y="346" class="b">Tracing: on</text>
+  <text x="480" y="370" class="b">Data: DEV UC tables</text>
+  <text x="480" y="406" class="note">Promote: DEV ’ PROD (via UAT/INTG later)</text>
+  <text x="480" y="440" class="b">Agents: R1 reference agents</text>
+  <text x="480" y="464" class="b">CI validate YAML + unit tests</text>
+
+  <!-- PROD -->
+  <rect x="872" y="110" width="360" height="420" rx="12" fill="#FFFFFF" stroke="#C62828" stroke-width="2"/>
+  <rect x="872" y="110" width="360" height="44" rx="12" fill="#C62828"/>
+  <rect x="872" y="138" width="360" height="16" fill="#C62828"/>
+  <text x="892" y="138" class="h">PROD  Production</text>
+  <text x="892" y="190" class="b">Purpose: live Apps traffic</text>
+  <text x="892" y="214" class="b">Databricks: prod workspace</text>
+  <text x="892" y="238" class="b">Foundry: prod deployment</text>
+  <text x="892" y="262" class="b">Key Vault: edim-dde-prod-kv</text>
+  <text x="892" y="286" class="b">LangSmith: edim-dde-prod</text>
+  <text x="892" y="322" class="b">EDIM_ENV=prod</text>
+  <text x="892" y="346" class="b">Tracing: on (redacted)</text>
+  <text x="892" y="370" class="b">Data: production UC</text>
+  <text x="892" y="406" class="note">Change control + rollback playbooks</text>
+  <text x="892" y="440" class="b">Agents: approved versions only</text>
+  <text x="892" y="464" class="b">SP secrets from Key Vault only</text>
+
+  <text x="48" y="580" class="b">Deferred in Phase 0 (documented for later): UAT (user acceptance) · INTG (integration)</text>
+  <text x="48" y="620" class="sub">Convention: one LangSmith project per environment · one Key Vault per environment · never share PROD secrets with SDBX/DEV</text>
+  <text x="48" y="680" class="sub">EDIM DDE · Release 1 · Phase 0 · Import SVG into PowerPoint</text>
+</svg>

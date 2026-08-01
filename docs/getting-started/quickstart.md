@@ -67,12 +67,23 @@ source .venv/bin/activate
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```
 
-Lifespan: `bootstrap_agents()` + lazy Foundry provider (constructs the real client on **first** `llm_chain` call so `/health` works before LLM env is set).
+Lifespan: Key Vault bootstrap (optional) → `bootstrap_agents()` → lazy Foundry provider (constructs the real client on **first** `llm_chain` call so `/health` works before LLM env is set).
 
 ```bash
 curl -s localhost:8080/health
-# {"status":"ok","agents":["cluster_tuning","spark_rca",...]}
+# {"status":"ok","agents":["cluster_tuning","spark_rca",...],"version":"1.0.0"}
 ```
+
+### Optional: LangSmith tracing (SDBX / DEV / PROD)
+
+```bash
+export EDIM_ENV=dev
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=lsv2_pt_...
+export LANGCHAIN_PROJECT=edim-dde-dev
+```
+
+Pass `X-Request-Id` on curls to correlate API calls with LangSmith runs. Full guide: [LangSmith setup](../platform/langsmith-setup.md).
 
 Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.
 
@@ -124,6 +135,9 @@ Still invokes the **rca** `llm_chain` after rule classify.
 ## Next
 
 - [Concepts](concepts.md) — agents, state, overrides
+- [Reference architecture (PPT)](../architecture/reference-architecture.md)
+- [Environments](../platform/environments.md)
+- [LangSmith setup](../platform/langsmith-setup.md)
 - [Sources and SQL](../domain/sources-and-sql.md) — `skip_if_key`, overrides
 - [Live warehouse + Foundry](../api/configuration.md)
 - [Build a new agent](../build-agents/step-by-step.md)
