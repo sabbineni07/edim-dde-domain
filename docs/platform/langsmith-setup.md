@@ -19,7 +19,67 @@ EDIM uses **LangGraph** + **langchain-core**, so tracing turns on primarily via 
 
 ---
 
-## 2. Create projects (one per env)
+## 2. Can we run LangSmith locally in Docker?
+
+**Short answer:** not as a free/open-source local stack. Self-hosted LangSmith **does** ship Docker Compose for development/testing, but it is an **Enterprise add-on** and requires a **license key** from LangChain.
+
+| Option | Local laptop? | License | Recommendation for EDIM |
+|--------|---------------|---------|-------------------------|
+| **LangSmith Cloud (SaaS)** | Yes — app runs locally, traces go to cloud | Free/team/enterprise tiers | **Use this for local testing** |
+| **Self-hosted LangSmith (Docker Compose)** | Yes | **Enterprise license required** | Only if FinTech/data-residency mandates it and you have a key |
+| **Self-hosted on Kubernetes** | No (cluster) | Enterprise | PROD-style private deployment later |
+| **No LangSmith UI locally** | N/A | — | You can still run agents; you just won’t get the LangSmith UI |
+
+### Recommended path for local testing (no Enterprise license)
+
+1. Keep the EDIM API on your laptop (`uvicorn`).
+2. Point tracing at **LangSmith Cloud** with a personal/team API key.
+3. Use project `edim-dde-sdbx` (or `edim-dde-dev`) so local noise stays out of PROD.
+
+```bash
+export EDIM_ENV=sdbx
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=lsv2_pt_...          # from https://smith.langchain.com
+export LANGCHAIN_PROJECT=edim-dde-sdbx
+export LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+```
+
+Your agent code stays local; only **redacted telemetry** (traces) leaves the machine.
+
+### Self-hosted Docker (only with Enterprise license)
+
+Official docs: [Self-host LangSmith](https://docs.langchain.com/langsmith/self-hosted) (Docker Compose is documented for local/dev testing; production uses Kubernetes).
+
+Typical shape (illustrative — follow current LangChain docs + your license packet):
+
+```bash
+# Requires LANGSMITH_LICENSE_KEY from LangChain sales/support
+# Compose brings up LangSmith UI + Postgres + Redis + ClickHouse, etc.
+# Intended for local/dev testing of self-host — not production.
+docker compose up
+```
+
+Then point EDIM at your local endpoint instead of SaaS:
+
+```bash
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=<key-from-your-self-hosted-instance>
+export LANGCHAIN_ENDPOINT=http://localhost:<port>   # per compose docs
+export LANGCHAIN_PROJECT=edim-dde-sdbx
+```
+
+**Do not** attempt unlicensed Docker images — they fail with invalid/missing license errors.
+
+### FinTech note
+
+If your security team forbids sending traces to SaaS, escalate for an **Enterprise self-hosted** evaluation. Until then, either:
+
+- use SaaS with PII redaction + non-prod projects only, or  
+- run agents **without** tracing (`EDIM_LANGSMITH_ENABLED=false` / unset `LANGCHAIN_TRACING_V2`).
+
+---
+
+## 3. Create projects (one per env)
 
 1. Sign in at https://smith.langchain.com/
 2. Open **Settings → API Keys** → create a key (store in Key Vault for DEV/PROD)
@@ -35,7 +95,7 @@ Use a **different API key** for PROD if your org requires separation.
 
 ---
 
-## 3. Environment variables
+## 4. Environment variables
 
 ```bash
 # Turn on LangChain/LangGraph tracing to LangSmith
@@ -54,7 +114,7 @@ Optional: `EDIM_LANGSMITH_ENABLED=false` forces tracing off even if LangChain en
 
 ---
 
-## 4. Install
+## 5. Install
 
 Tracing works with `langchain-core` / `langgraph` already in `edim-dde-ai`. For the LangSmith client extras:
 
@@ -66,7 +126,7 @@ pip install langsmith
 
 ---
 
-## 5. Run an agent and find the trace
+## 6. Run an agent and find the trace
 
 ```bash
 # from repo with .env loaded for DEV
@@ -86,7 +146,7 @@ Then in LangSmith UI:
 
 ---
 
-## 6. What to look for (new-user checklist)
+## 7. What to look for (new-user checklist)
 
 | Question | Where in LangSmith |
 |----------|--------------------|
@@ -98,13 +158,13 @@ Then in LangSmith UI:
 
 ---
 
-## 7. PII and FinTech caution
+## 8. PII and FinTech caution
 
 Traces may include prompt text. EDIM applies **basic PII redaction** (SSN, PAN, account, member id) before attaching string metadata. Still avoid putting secrets in prompts. See [pii-guardrails.md](pii-guardrails.md).
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
@@ -113,10 +173,11 @@ Traces may include prompt text. EDIM applies **basic PII redaction** (SSN, PAN, 
 | 401 from LangSmith | Rotate API key; check Key Vault secret |
 | Local works, Apps doesn’t | Ensure Apps process has env / Key Vault mapping; outbound HTTPS allowed |
 | Too much noise in SDBX | Keep SDBX project separate; don’t point DEV app at `edim-dde-sdbx` |
+| Docker “license key is not valid” | Self-host requires Enterprise license — use SaaS for local testing instead |
 
 ---
 
-## 9. Next (not Phase 0)
+## 10. Next (not Phase 0)
 
 - Upload golden datasets for `cluster_tuning` / `spark_rca`
 - Add evaluators and CI gates (backlog BL-033–035)

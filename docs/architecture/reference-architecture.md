@@ -22,12 +22,17 @@ Update this table when you formally approve.
 
 | Asset | Path | Use |
 |-------|------|-----|
-| **HTML slide deck (brand icons)** | [diagrams/r1-architecture-deck.html](diagrams/r1-architecture-deck.html) | Open in Chrome → full screen → screenshot each slide into PPT |
-| System context SVG | [diagrams/r1-system-context.svg](diagrams/r1-system-context.svg) | Insert into PPT as vector |
+| **HTML slide deck (8 slides)** | [diagrams/r1-architecture-deck.html](diagrams/r1-architecture-deck.html) | Open in Chrome → **Present** → screenshot each 1280×720 slide into PPT |
+| System context SVG | [diagrams/r1-system-context.svg](diagrams/r1-system-context.svg) | Insert into PPT as vector (preferred over PNG) |
 | Request sequence SVG | [diagrams/r1-request-sequence.svg](diagrams/r1-request-sequence.svg) | Insert into PPT as vector |
 | Environment deploy SVG | [diagrams/r1-environments.svg](diagrams/r1-environments.svg) | Insert into PPT as vector |
 
-Icons in the HTML deck are loaded from [Simple Icons](https://simpleicons.org/) (Databricks, Azure, LangChain, FastAPI, etc.) for presentation clarity. For final corporate branding, replace with your official Azure / Databricks / LangChain / LangSmith brand packs if required by Marketing.
+**How to build the PPT quickly**
+
+1. Open the HTML deck in Chrome (allows Simple Icons CDN for brand marks).
+2. Click **Present** (fullscreen) and capture slides 01–08.
+3. For the three detailed diagrams, prefer **Insert → Picture → SVG** from the files above (crisper in Zoom/print).
+4. Icons in the HTML deck use [Simple Icons](https://simpleicons.org/) (Databricks, Azure, LangChain, FastAPI). For final Marketing brand packs, swap logos if required.
 
 ---
 

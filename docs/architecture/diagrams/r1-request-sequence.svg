@@ -1,103 +1,101 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="EDIM DDE R1 request sequence">
   <defs>
-    <style>
-      .title { font: 700 26px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0B1F33; }
-      .sub { font: 400 13px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5A6B7D; }
-      .step { font: 700 12px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #FFFFFF; }
-      .body { font: 400 12px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #1A2B3C; }
-      .lane { font: 700 13px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0B1F33; }
-    </style>
-    <marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#5A6B7D"/>
+    <linearGradient id="topbar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0078D4"/>
+      <stop offset="55%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#FF3621"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748B"/>
     </marker>
+    <style>
+      .bg { fill: #F7F9FC; }
+      .title { font: 700 26px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0A1628; }
+      .sub { font: 400 13px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5C6B7A; }
+      .lane { font: 700 12px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0A1628; }
+      .step { font: 700 11px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #FFFFFF; }
+      .foot { font: 400 11px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5C6B7A; }
+    </style>
   </defs>
-  <rect width="1280" height="720" fill="#F4F7FA"/>
-  <text x="40" y="40" class="title">EDIM DDE R1  Request sequence (recommendations)</text>
-  <text x="40" y="62" class="sub">Config ’ runtime ’ Databricks / Foundry ’ LangSmith ’ HTTP response</text>
+  <rect class="bg" width="1280" height="720"/>
+  <rect width="1280" height="6" fill="url(#topbar)"/>
+  <text x="40" y="42" class="title">EDIM DDE R1 — Request sequence (recommendations)</text>
+  <text x="40" y="64" class="sub">POST /api/v1/recommendations · same pattern for spark_rca · dashed = LangSmith side-channel</text>
 
-  <!-- swimlanes -->
-  <line x1="200" y1="90" x2="200" y2="660" stroke="#D0D7DE" stroke-width="1"/>
-  <line x1="400" y1="90" x2="400" y2="660" stroke="#D0D7DE" stroke-width="1"/>
-  <line x1="620" y1="90" x2="620" y2="660" stroke="#D0D7DE" stroke-width="1"/>
-  <line x1="840" y1="90" x2="840" y2="660" stroke="#D0D7DE" stroke-width="1"/>
-  <line x1="1040" y1="90" x2="1040" y2="660" stroke="#D0D7DE" stroke-width="1"/>
+  <!-- lane headers -->
+  <text x="70" y="100" class="lane">Client</text>
+  <text x="250" y="100" class="lane">API</text>
+  <text x="460" y="100" class="lane">edim-dde-ai</text>
+  <text x="690" y="100" class="lane">Domain / SQL</text>
+  <text x="910" y="100" class="lane">Foundry</text>
+  <text x="1100" y="100" class="lane">LangSmith</text>
 
-  <text x="70" y="110" class="lane">Client</text>
-  <text x="250" y="110" class="lane">API</text>
-  <text x="460" y="110" class="lane">edim-dde-ai</text>
-  <text x="680" y="110" class="lane">Domain / SQL</text>
-  <text x="900" y="110" class="lane">Foundry</text>
-  <text x="1100" y="110" class="lane">LangSmith</text>
+  <line x1="200" y1="110" x2="200" y2="620" stroke="#E2E8F0"/>
+  <line x1="400" y1="110" x2="400" y2="620" stroke="#E2E8F0"/>
+  <line x1="620" y1="110" x2="620" y2="620" stroke="#E2E8F0"/>
+  <line x1="840" y1="110" x2="840" y2="620" stroke="#E2E8F0"/>
+  <line x1="1040" y1="110" x2="1040" y2="620" stroke="#E2E8F0"/>
 
   <!-- steps -->
-  <rect x="40" y="140" width="140" height="48" rx="8" fill="#0078D4"/>
-  <text x="55" y="160" class="step">1. POST /api/v1/</text>
-  <text x="55" y="176" class="step">recommendations</text>
+  <rect x="40" y="130" width="140" height="50" rx="10" fill="#0078D4"/>
+  <text x="52" y="150" class="step">1. POST /api/v1/</text>
+  <text x="52" y="166" class="step">recommendations</text>
+  <line x1="180" y1="155" x2="240" y2="155" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <line x1="180" y1="164" x2="250" y2="164" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="220" y="130" width="160" height="50" rx="10" fill="#0D9488"/>
+  <text x="232" y="150" class="step">2. Middleware</text>
+  <text x="232" y="166" class="step">token + request_id</text>
+  <line x1="300" y1="180" x2="300" y2="220" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <rect x="220" y="140" width="160" height="48" rx="8" fill="#009688"/>
-  <text x="232" y="160" class="step">2. Middleware</text>
-  <text x="232" y="176" class="step">token + request_id</text>
-
-  <line x1="300" y1="188" x2="300" y2="220" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
-
-  <rect x="220" y="220" width="160" height="48" rx="8" fill="#009688"/>
+  <rect x="220" y="220" width="160" height="50" rx="10" fill="#0D9488"/>
   <text x="232" y="240" class="step">3. Validate body</text>
-  <text x="232" y="256" class="step">’ to_thread(invoke)</text>
+  <text x="232" y="256" class="step">? invoke (thread)</text>
+  <line x1="380" y1="245" x2="450" y2="245" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <line x1="380" y1="244" x2="450" y2="244" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
-
-  <rect x="430" y="220" width="170" height="48" rx="8" fill="#1C3C3C"/>
+  <rect x="430" y="220" width="170" height="50" rx="10" fill="#334155"/>
   <text x="442" y="240" class="step">4. MetadataAgent</text>
   <text x="442" y="256" class="step">LangGraph + tags</text>
+  <line x1="515" y1="270" x2="515" y2="310" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="600" y1="320" x2="680" y2="320" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="600" y1="245" x2="1100" y2="245" stroke="#64748B" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
 
-  <line x1="515" y1="268" x2="515" y2="310" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
-  <line x1="600" y1="320" x2="680" y2="320" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="650" y="295" width="170" height="50" rx="10" fill="#FF3621"/>
+  <text x="662" y="315" class="step">5. domain.sql.query</text>
+  <text x="662" y="331" class="step">UC telemetry tables</text>
+  <line x1="735" y1="345" x2="735" y2="385" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="650" y1="395" x2="515" y2="395" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <rect x="650" y="300" width="170" height="48" rx="8" fill="#FF3621"/>
-  <text x="662" y="320" class="step">5. domain.sql.query</text>
-  <text x="662" y="336" class="step">UC telemetry tables</text>
+  <rect x="430" y="375" width="170" height="50" rx="10" fill="#334155"/>
+  <text x="442" y="395" class="step">6. tuning nodes</text>
+  <text x="442" y="411" class="step">guardrails / risk</text>
+  <line x1="600" y1="400" x2="880" y2="400" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <line x1="735" y1="348" x2="735" y2="390" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
-  <line x1="650" y1="400" x2="515" y2="400" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="860" y="375" width="160" height="50" rx="10" fill="#0078D4"/>
+  <text x="872" y="395" class="step">7. llm_chain</text>
+  <text x="872" y="411" class="step">Azure OpenAI</text>
+  <line x1="940" y1="375" x2="1100" y2="300" stroke="#64748B" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
 
-  <rect x="430" y="380" width="170" height="48" rx="8" fill="#1C3C3C"/>
-  <text x="442" y="400" class="step">6. tuning nodes</text>
-  <text x="442" y="416" class="step">guardrails / risk</text>
-
-  <line x1="600" y1="404" x2="880" y2="404" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
-
-  <rect x="860" y="380" width="160" height="48" rx="8" fill="#0078D4"/>
-  <text x="872" y="400" class="step">7. llm_chain</text>
-  <text x="872" y="416" class="step">Azure OpenAI</text>
-
-  <line x1="940" y1="380" x2="1100" y2="280" stroke="#5A6B7D" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
-  <line x1="600" y1="244" x2="1100" y2="244" stroke="#5A6B7D" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
-
-  <rect x="1060" y="220" width="180" height="70" rx="8" fill="#1C3C3C"/>
+  <rect x="1060" y="220" width="180" height="70" rx="10" fill="#334155"/>
   <text x="1072" y="245" class="step">8. Trace run</text>
   <text x="1072" y="262" class="step">tokens · latency</text>
-  <text x="1072" y="278" class="step">PII-redacted inputs</text>
+  <text x="1072" y="278" class="step">tags + request_id</text>
 
-  <line x1="860" y1="430" x2="515" y2="500" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="860" y1="425" x2="515" y2="490" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <rect x="430" y="480" width="170" height="48" rx="8" fill="#1C3C3C"/>
-  <text x="442" y="500" class="step">9. Final state</text>
-  <text x="442" y="516" class="step">flat dict extract</text>
+  <rect x="430" y="470" width="170" height="50" rx="10" fill="#334155"/>
+  <text x="442" y="490" class="step">9. Final state</text>
+  <text x="442" y="506" class="step">flat dict extract</text>
+  <line x1="430" y1="495" x2="300" y2="545" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <line x1="430" y1="504" x2="300" y2="560" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="220" y="530" width="160" height="50" rx="10" fill="#0D9488"/>
+  <text x="232" y="550" class="step">10. Project DTO</text>
+  <text x="232" y="566" class="step">TuningResponse</text>
+  <line x1="220" y1="555" x2="120" y2="555" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <rect x="220" y="540" width="160" height="48" rx="8" fill="#009688"/>
-  <text x="232" y="560" class="step">10. Project DTO</text>
-  <text x="232" y="576" class="step">TuningResponse</text>
+  <rect x="40" y="530" width="140" height="50" rx="10" fill="#0078D4"/>
+  <text x="52" y="550" class="step">11. JSON 200</text>
+  <text x="52" y="566" class="step">to client</text>
 
-  <line x1="220" y1="564" x2="120" y2="564" stroke="#5A6B7D" stroke-width="2" marker-end="url(#a)"/>
-
-  <rect x="40" y="540" width="140" height="48" rx="8" fill="#0078D4"/>
-  <text x="55" y="560" class="step">11. JSON 200</text>
-  <text x="55" y="576" class="step">to client</text>
-
-  <text x="40" y="640" class="body">Solid arrows = control/data path · Dashed = observability side-channel</text>
-  <text x="40" y="680" class="sub">EDIM DDE · Release 1 · Phase 0 · Import SVG into PowerPoint</text>
+  <text x="40" y="640" class="foot">Never return the full agent state bag · SQL skipped when metrics/evidence_pack override is present</text>
+  <text x="40" y="690" class="foot">EDIM DDE · Release 1 · Phase 0 · Import SVG into PowerPoint</text>
 </svg>

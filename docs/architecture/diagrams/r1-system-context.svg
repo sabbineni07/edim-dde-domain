@@ -1,111 +1,134 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="EDIM DDE R1 system context">
   <defs>
-    <style>
-      .title { font: 700 28px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0B1F33; }
-      .sub { font: 400 14px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5A6B7D; }
-      .h { font: 700 15px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #FFFFFF; }
-      .b { font: 400 13px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #1A2B3C; }
-      .s { font: 400 11px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #445566; }
-      .lbl { font: 600 11px 'Segoe UI', Helvetica, Arial, sans-serif; fill: #334455; }
-    </style>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#5A6B7D"/>
+    <linearGradient id="topbar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0078D4"/>
+      <stop offset="55%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#FF3621"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748B"/>
     </marker>
+    <style>
+      .bg { fill: #F7F9FC; }
+      .title { font: 700 28px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0A1628; }
+      .sub { font: 400 13px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5C6B7A; }
+      .h { font: 700 14px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0A1628; }
+      .b { font: 400 12px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #334155; }
+      .t { font: 600 10px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0078D4; }
+      .lbl { font: 600 11px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #64748B; }
+      .foot { font: 400 11px 'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif; fill: #5C6B7A; }
+    </style>
   </defs>
-  <rect width="1280" height="720" fill="#F4F7FA"/>
-  <text x="48" y="48" class="title">EDIM DDE R1  System Context</text>
-  <text x="48" y="72" class="sub">Clients ’ FastAPI ’ YAML/LangGraph runtime ’ Databricks + Azure AI Foundry + LangSmith</text>
 
-  <!-- Clients -->
-  <rect x="48" y="120" width="200" height="160" rx="10" fill="#FFFFFF" stroke="#0078D4" stroke-width="2"/>
-  <rect x="48" y="120" width="200" height="36" rx="10" fill="#0078D4"/>
-  <rect x="48" y="140" width="200" height="16" fill="#0078D4"/>
-  <text x="64" y="144" class="h">Clients</text>
-  <text x="64" y="180" class="b">" curl / Postman</text>
-  <text x="64" y="202" class="b">" Databricks Apps</text>
-  <text x="64" y="224" class="b">" Future Angular UI</text>
-  <text x="64" y="256" class="s">HTTPS / JSON</text>
+  <rect class="bg" width="1280" height="720"/>
+  <rect width="1280" height="6" fill="url(#topbar)"/>
 
-  <!-- API -->
-  <rect x="320" y="110" width="260" height="200" rx="10" fill="#FFFFFF" stroke="#009688" stroke-width="2"/>
-  <rect x="320" y="110" width="260" height="36" rx="10" fill="#009688"/>
-  <rect x="320" y="130" width="260" height="16" fill="#009688"/>
-  <text x="336" y="134" class="h">edim-dde-api · FastAPI</text>
-  <text x="336" y="170" class="b">CORS · User token MW</text>
-  <text x="336" y="192" class="b">Key Vault bootstrap</text>
-  <text x="336" y="214" class="b">/health · /api/v1/*</text>
-  <text x="336" y="236" class="b">Request ID correlation</text>
-  <text x="336" y="268" class="s">v1.0.0</text>
+  <text x="48" y="48" class="title">EDIM DDE R1 — System context</text>
+  <text x="48" y="70" class="sub">Clients ? FastAPI ? YAML/LangGraph runtime ? Databricks · Azure AI Foundry · LangSmith · Key Vault</text>
 
-  <!-- AI -->
-  <rect x="650" y="110" width="280" height="200" rx="10" fill="#FFFFFF" stroke="#1C3C3C" stroke-width="2"/>
-  <rect x="650" y="110" width="280" height="36" rx="10" fill="#1C3C3C"/>
-  <rect x="650" y="130" width="280" height="16" fill="#1C3C3C"/>
-  <text x="666" y="134" class="h">edim-dde-ai · LangGraph</text>
-  <text x="666" y="170" class="b">YAML agents · registries</text>
-  <text x="666" y="192" class="b">llm_chain · invoke_agent</text>
-  <text x="666" y="214" class="b">Content hub (prompts)</text>
-  <text x="666" y="236" class="b">LangSmith tracing hooks</text>
-  <text x="666" y="268" class="s">LangChain / LangGraph</text>
+  <!-- nodes -->
+  <g filter="url(#shadow)">
+    <rect x="48" y="110" width="210" height="150" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="48" y="110" width="6" height="150" rx="3" fill="#0078D4"/>
+    <text x="70" y="138" class="h">Clients</text>
+    <text x="70" y="164" class="b">• curl / Postman</text>
+    <text x="70" y="184" class="b">• Databricks Apps</text>
+    <text x="70" y="204" class="b">• Future Angular UI</text>
+    <text x="70" y="236" class="t">HTTPS / JSON</text>
+  </g>
 
-  <!-- Domain -->
-  <rect x="320" y="360" width="280" height="180" rx="10" fill="#FFFFFF" stroke="#FF3621" stroke-width="2"/>
-  <rect x="320" y="360" width="280" height="36" rx="10" fill="#FF3621"/>
-  <rect x="320" y="380" width="280" height="16" fill="#FF3621"/>
-  <text x="336" y="384" class="h">edim-dde-domain</text>
-  <text x="336" y="420" class="b">sources.yaml · SQL auth</text>
-  <text x="336" y="442" class="b">cluster_tuning · spark_rca</text>
-  <text x="336" y="464" class="b">Foundry LLM adapter</text>
-  <text x="336" y="486" class="b">PII redaction patterns</text>
-  <text x="336" y="518" class="s">Platform + product agents</text>
+  <g filter="url(#shadow)">
+    <rect x="330" y="100" width="250" height="170" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="330" y="100" width="6" height="170" rx="3" fill="#0D9488"/>
+    <text x="352" y="128" class="h">edim-dde-api · FastAPI</text>
+    <text x="352" y="154" class="b">• CORS · user-token middleware</text>
+    <text x="352" y="174" class="b">• Key Vault bootstrap</text>
+    <text x="352" y="194" class="b">• /health · /api/v1/*</text>
+    <text x="352" y="214" class="b">• request_id correlation</text>
+    <text x="352" y="246" class="t">v1.0.0</text>
+  </g>
 
-  <!-- Databricks -->
-  <rect x="48" y="400" width="220" height="140" rx="10" fill="#FFFFFF" stroke="#FF3621" stroke-width="2"/>
-  <rect x="48" y="400" width="220" height="36" rx="10" fill="#FF3621"/>
-  <rect x="48" y="420" width="220" height="16" fill="#FF3621"/>
-  <text x="64" y="424" class="h">Databricks</text>
-  <text x="64" y="460" class="b">SQL Warehouse</text>
-  <text x="64" y="482" class="b">Unity Catalog tables</text>
-  <text x="64" y="514" class="s">Telemetry (no PII expected)</text>
+  <g filter="url(#shadow)">
+    <rect x="650" y="100" width="270" height="170" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="650" y="100" width="6" height="170" rx="3" fill="#334155"/>
+    <text x="672" y="128" class="h">edim-dde-ai · LangGraph</text>
+    <text x="672" y="154" class="b">• YAML agents · registries</text>
+    <text x="672" y="174" class="b">• llm_chain · invoke_agent</text>
+    <text x="672" y="194" class="b">• Content hub (prompts)</text>
+    <text x="672" y="214" class="b">• LangSmith run tags</text>
+    <text x="672" y="246" class="t">LangChain / LangGraph</text>
+  </g>
 
-  <!-- Foundry -->
-  <rect x="650" y="360" width="240" height="140" rx="10" fill="#FFFFFF" stroke="#0078D4" stroke-width="2"/>
-  <rect x="650" y="360" width="240" height="36" rx="10" fill="#0078D4"/>
-  <rect x="650" y="380" width="240" height="16" fill="#0078D4"/>
-  <text x="666" y="384" class="h">Azure AI Foundry</text>
-  <text x="666" y="420" class="b">Azure OpenAI deployments</text>
-  <text x="666" y="442" class="b">SP / DefaultAzureCredential</text>
-  <text x="666" y="474" class="s">Secrets via Key Vault</text>
+  <g filter="url(#shadow)">
+    <rect x="980" y="110" width="252" height="150" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="980" y="110" width="6" height="150" rx="3" fill="#B45309"/>
+    <text x="1002" y="138" class="h">Azure Key Vault</text>
+    <text x="1002" y="164" class="b">• Foundry SP secrets</text>
+    <text x="1002" y="184" class="b">• LangSmith API key</text>
+    <text x="1002" y="204" class="b">• No overwrite of set env</text>
+    <text x="1002" y="236" class="t">Secrets boundary</text>
+  </g>
 
-  <!-- LangSmith -->
-  <rect x="940" y="360" width="280" height="140" rx="10" fill="#FFFFFF" stroke="#1C3C3C" stroke-width="2"/>
-  <rect x="940" y="360" width="280" height="36" rx="10" fill="#1C3C3C"/>
-  <rect x="940" y="380" width="280" height="16" fill="#1C3C3C"/>
-  <text x="956" y="384" class="h">LangSmith</text>
-  <text x="956" y="420" class="b">Projects: SDBX · DEV · PROD</text>
-  <text x="956" y="442" class="b">Traces · tokens · debug</text>
-  <text x="956" y="474" class="s">Eval / golden sets (later)</text>
+  <g filter="url(#shadow)">
+    <rect x="330" y="340" width="250" height="170" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="330" y="340" width="6" height="170" rx="3" fill="#FF3621"/>
+    <text x="352" y="368" class="h">edim-dde-domain</text>
+    <text x="352" y="394" class="b">• sources.yaml · SQL auth</text>
+    <text x="352" y="414" class="b">• cluster_tuning · spark_rca</text>
+    <text x="352" y="434" class="b">• Foundry LLM adapter</text>
+    <text x="352" y="454" class="b">• Expandable PII patterns</text>
+    <text x="352" y="486" class="t">Platform + product agents</text>
+  </g>
 
-  <!-- Key Vault -->
-  <rect x="940" y="120" width="280" height="120" rx="10" fill="#FFFFFF" stroke="#0078D4" stroke-width="2"/>
-  <rect x="940" y="120" width="280" height="36" rx="10" fill="#0078D4"/>
-  <rect x="940" y="140" width="280" height="16" fill="#0078D4"/>
-  <text x="956" y="144" class="h">Azure Key Vault</text>
-  <text x="956" y="180" class="b">Foundry SP secrets</text>
-  <text x="956" y="202" class="b">LangSmith API key (optional)</text>
-  <text x="956" y="224" class="s">SDK bootstrap at API start</text>
+  <g filter="url(#shadow)">
+    <rect x="48" y="360" width="210" height="150" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="48" y="360" width="6" height="150" rx="3" fill="#FF3621"/>
+    <text x="70" y="388" class="h">Databricks</text>
+    <text x="70" y="414" class="b">• SQL Warehouse</text>
+    <text x="70" y="434" class="b">• Unity Catalog tables</text>
+    <text x="70" y="454" class="b">• Telemetry (no PII expected)</text>
+    <text x="70" y="486" class="t">AAD / Apps OAuth</text>
+  </g>
 
-  <!-- arrows -->
-  <line x1="248" y1="200" x2="320" y2="200" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="255" y="190" class="lbl">HTTPS</text>
-  <line x1="580" y1="200" x2="650" y2="200" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="585" y="190" class="lbl">invoke</text>
-  <line x="450" y1="310" x2="450" y2="360" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x="790" y1="310" x2="790" y2="360" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x="780" y1="210" x2="940" y2="180" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x="320" y1="450" x2="268" y2="450" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x="600" y1="430" x2="650" y2="430" stroke="#5A6B7D" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x="930" y1="210" x2="1080" y2="360" stroke="#5A6B7D" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="650" y="340" width="250" height="170" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="650" y="340" width="6" height="170" rx="3" fill="#0078D4"/>
+    <text x="672" y="368" class="h">Azure AI Foundry</text>
+    <text x="672" y="394" class="b">• Azure OpenAI deployments</text>
+    <text x="672" y="414" class="b">• SP / DefaultAzureCredential</text>
+    <text x="672" y="434" class="b">• Used by llm_chain nodes</text>
+    <text x="672" y="486" class="t">LLM boundary</text>
+  </g>
 
-  <text x="48" y="690" class="sub">EDIM DDE · Release 1 · Phase 0 reference architecture · For PPT import (SVG)</text>
+  <g filter="url(#shadow)">
+    <rect x="980" y="360" width="252" height="150" rx="12" fill="#fff" stroke="#D5DEE8"/>
+    <rect x="980" y="360" width="6" height="150" rx="3" fill="#334155"/>
+    <text x="1002" y="388" class="h">LangSmith</text>
+    <text x="1002" y="414" class="b">• Projects: SDBX · DEV · PROD</text>
+    <text x="1002" y="434" class="b">• Traces · tokens · debug</text>
+    <text x="1002" y="454" class="b">• Eval / golden sets later</text>
+    <text x="1002" y="486" class="t">Observability</text>
+  </g>
+
+  <!-- connectors -->
+  <line x1="258" y1="185" x2="330" y2="185" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="275" y="176" class="lbl">HTTPS</text>
+  <line x1="580" y1="185" x2="650" y2="185" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="595" y="176" class="lbl">invoke</text>
+  <line x1="455" y1="270" x2="455" y2="340" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="785" y1="270" x2="785" y2="340" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="920" y1="185" x2="980" y2="185" stroke="#64748B" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <line x1="330" y1="425" x2="258" y2="425" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="416" class="lbl">SQL</text>
+  <line x1="580" y1="425" x2="650" y2="425" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="595" y="416" class="lbl">LLM</text>
+  <path d="M900 200 C 940 240, 960 300, 980 380" fill="none" stroke="#64748B" stroke-width="1.75" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <line x1="48" y1="560" x2="1232" y2="560" stroke="#D5DEE8" stroke-width="1"/>
+  <text x="48" y="590" class="foot">Solid = control/data · Dashed = secrets/observability · Color bars: Azure · Teal API · Slate LangChain · Databricks/domain · Gold secrets</text>
+  <text x="48" y="680" class="foot">EDIM DDE · Release 1 · Phase 0 reference architecture · Import into PowerPoint as SVG</text>
+  <text x="1100" y="680" class="foot">Slide asset</text>
 </svg>
