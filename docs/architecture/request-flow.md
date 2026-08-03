@@ -9,7 +9,7 @@ Lifecycle of a typical `POST /api/v1/recommendations` call (similar idea to docu
 
 2. Middleware / lifespan
    └─ Optional X-Forwarded-Access-Token → request-scoped Databricks token
-   └─ Key Vault secrets already loaded at startup (if configured)
+   └─ At startup (once): Key Vault → observability → StateStore → bootstrap → catalog sync
 
 3. Route (async)
    └─ build_run_config(agent_id, request_id) for LangSmith tags
@@ -22,8 +22,9 @@ Lifecycle of a typical `POST /api/v1/recommendations` call (similar idea to docu
         • llm_chain (sizing / explanation) when configured
         • optional invoke_agent nested calls
 
-5. Observability (side channel)
-   └─ LangSmith run when LANGCHAIN_TRACING_V2=true (PII-redacted where applied)
+5. Side channels
+   └─ Observability: LangSmith / MLflow when configured
+   └─ Control plane: StateStore already holds catalog metadata (not on every request)
 
 6. Response projection
    └─ tuning_response_from_agent_state(final) → TuningResponse
@@ -41,4 +42,4 @@ RCA is the same pattern with `spark_rca` and `RcaResponse` (requires `result` in
 | Foundry not configured / chain error | 503 |
 | RCA missing `result` | 500 |
 
-See also [config → observability](config-to-observability.md) and [LangSmith setup](../platform/langsmith-setup.md).
+See also [config → observability](config-to-observability.md), [state store](../platform/state-store.md), and [LangSmith setup](../platform/langsmith-setup.md).

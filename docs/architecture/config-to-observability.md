@@ -12,12 +12,13 @@ End-to-end path from agent YAML on disk to HTTP response and the active observab
 ┌──────────────────┐
 │ Registries       │  agents · nodes · routers · chains · content
 └────────┬─────────┘
+         │ sync_registered_agents_to_store()  (catalog metadata)
          │ create_agent(agent_id)  → compile once, cache
          ▼
-┌──────────────────┐
-│ MetadataAgent    │  flat dict in/out
-│ ObservabilityProvider │  EDIM_OBSERVABILITY → langsmith | mlflow | none
-│ + correlation    │  agent_id, env, request_id
+┌──────────────────┐     durable     ┌────────────────────────────┐
+│ MetadataAgent    │────────────────►│ StateStore (control plane) │
+│ ObservabilityProvider │            │ postgres / cosmos / …      │
+│ + correlation    │                 └────────────────────────────┘
 └────────┬─────────┘
          │ LangGraph node execution
          ├─ domain.sql.query ──► Databricks SQL / UC
@@ -60,5 +61,6 @@ See [observability providers](../platform/observability.md).
 
 - [Request flow](request-flow.md)
 - [Reference architecture](reference-architecture.md)
+- [Control-plane state store](../platform/state-store.md)
 - [Observability providers](../platform/observability.md)
 - [YAML schema](../framework/yaml-schema.md)

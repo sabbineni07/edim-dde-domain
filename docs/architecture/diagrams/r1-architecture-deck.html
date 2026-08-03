@@ -272,6 +272,7 @@
           <div class="cell"><div class="k">Orchestration</div><div class="v">LangGraph + YAML</div></div>
           <div class="cell"><div class="k">Data / LLM</div><div class="v">Databricks UC · Foundry</div></div>
           <div class="cell"><div class="k">Observability</div><div class="v">LangSmith</div></div>
+          <div class="cell"><div class="k">Control plane</div><div class="v">Postgres · Cosmos</div></div>
         </div>
         <div class="badge-row" style="justify-content:flex-start;margin-top:36px">
           <span class="badge"><img alt="" src="https://cdn.simpleicons.org/databricks/FF3621"/>Databricks</span>
@@ -281,7 +282,7 @@
           <span class="badge"><img alt="" src="https://cdn.simpleicons.org/fastapi/009688"/>FastAPI</span>
         </div>
       </div>
-      <div class="footer"><span>EDIM · FinTech · Confidential</span><span>01 / 08</span></div>
+      <div class="footer"><span>EDIM · FinTech · Confidential</span><span>01 / 09</span></div>
     </section>
 
     <!-- SLIDE 2 -->
@@ -291,7 +292,7 @@
         <div>
           <div class="eyebrow">System context</div>
           <h1>Logical architecture</h1>
-          <p class="subtitle">Clients → API → agent runtime → Databricks / Foundry / LangSmith / Key Vault</p>
+          <p class="subtitle">Clients → API → agent runtime → Databricks / Foundry / LangSmith / StateStore / Key Vault</p>
         </div>
         <div class="badge-row">
           <span class="badge">C4-style context</span>
@@ -330,7 +331,7 @@
             <h3><img alt="" src="https://cdn.simpleicons.org/fastapi/009688"/>edim-dde-api</h3>
             <ul>
               <li>CORS + user-token middleware</li>
-              <li>Key Vault bootstrap</li>
+              <li>Key Vault · StateStore · observability</li>
               <li><span class="mono">/api/v1/*</span> · request_id</li>
             </ul>
             <span class="tag">FastAPI · v1.0.0</span>
@@ -341,7 +342,7 @@
             <ul>
               <li>YAML → LangGraph runtime</li>
               <li>Registries · llm_chain · invoke_agent</li>
-              <li>LangSmith run tags</li>
+              <li>Observability + StateStore APIs</li>
             </ul>
             <span class="tag">LangGraph · v1.0.0</span>
           </div>
@@ -402,7 +403,7 @@
           </div>
         </div>
       </div>
-      <div class="footer"><span>Also export: r1-system-context.svg</span><span>02 / 08</span></div>
+      <div class="footer"><span>Also export: r1-system-context.svg</span><span>02 / 09</span></div>
     </section>
 
     <!-- SLIDE 3 -->
@@ -461,7 +462,7 @@
           </div>
         </div>
       </div>
-      <div class="footer"><span>See architecture/packages.md</span><span>03 / 08</span></div>
+      <div class="footer"><span>See architecture/packages.md</span><span>03 / 09</span></div>
     </section>
 
     <!-- SLIDE 4 -->
@@ -490,7 +491,7 @@
           </div>
         </div>
       </div>
-      <div class="footer"><span>Also export: r1-request-sequence.svg</span><span>04 / 08</span></div>
+      <div class="footer"><span>Also export: r1-request-sequence.svg</span><span>04 / 09</span></div>
     </section>
 
     <!-- SLIDE 5 -->
@@ -555,7 +556,7 @@
           </div>
         </div>
       </div>
-      <div class="footer"><span>Never share PROD secrets/projects with SDBX/DEV</span><span>05 / 08</span></div>
+      <div class="footer"><span>Never share PROD secrets/projects with SDBX/DEV</span><span>05 / 09</span></div>
     </section>
 
     <!-- SLIDE 6 -->
@@ -607,7 +608,7 @@
           </div>
         </div>
       </div>
-      <div class="footer"><span>platform/security-baseline.md · platform/pii-guardrails.md</span><span>06 / 08</span></div>
+      <div class="footer"><span>platform/security-baseline.md · platform/pii-guardrails.md</span><span>06 / 09</span></div>
     </section>
 
     <!-- SLIDE 7 -->
@@ -652,10 +653,56 @@
           </ul>
         </div>
       </div>
-      <div class="footer"><span>platform/langsmith-setup.md</span><span>07 / 08</span></div>
+      <div class="footer"><span>platform/langsmith-setup.md</span><span>07 / 09</span></div>
     </section>
 
     <!-- SLIDE 8 -->
+    <section class="slide">
+      <div class="slide-bar"></div>
+      <div class="slide-header">
+        <div>
+          <div class="eyebrow">Control plane</div>
+          <h1>Pluggable StateStore</h1>
+          <p class="subtitle">Catalog · sessions · audit — Git stays SoT for *.agent.yaml</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="grid grid-2">
+          <div class="card" style="min-height:280px">
+            <h3><span class="pill pill-ok">Local / SDBX / DEV</span></h3>
+            <h3 style="margin-top:12px"><img alt="" src="https://cdn.simpleicons.org/postgresql/4169E1"/>Postgres</h3>
+            <ul>
+              <li><span class="mono">EDIM_STATE_STORE=postgres</span></li>
+              <li>Docker Compose: <span class="mono">docker-compose.state-store.yml</span></li>
+              <li>Tables: edim_agents · edim_sessions · edim_audit</li>
+              <li>Catalog synced at API lifespan</li>
+            </ul>
+          </div>
+          <div class="card" style="min-height:280px">
+            <h3><span class="pill pill-ok">Deployed / PROD</span></h3>
+            <h3 style="margin-top:12px"><img alt="" src="https://cdn.simpleicons.org/microsoftazure/0078D4"/>Azure Cosmos DB</h3>
+            <ul>
+              <li><span class="mono">EDIM_STATE_STORE=cosmos</span></li>
+              <li>Containers: agents · sessions · audit</li>
+              <li>Keys from Key Vault</li>
+              <li>Optional Redis for session cache</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px;min-height:auto">
+          <h3>Planes</h3>
+          <ul>
+            <li><strong>Source control</strong> — Azure DevOps graphs &amp; prompts</li>
+            <li><strong>Control plane</strong> — StateStore metadata (not the graph definition)</li>
+            <li><strong>Data plane</strong> — LangGraph + Databricks + Foundry</li>
+            <li><strong>Observability</strong> — LangSmith / MLflow</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>platform/state-store.md</span><span>08 / 09</span></div>
+    </section>
+
+    <!-- SLIDE 9 -->
     <section class="slide">
       <div class="slide-bar"></div>
       <div class="slide-header">
@@ -675,7 +722,8 @@
               <li>cluster_tuning + spark_rca reference agents</li>
               <li>invoke_agent subgraph spike</li>
               <li>Key Vault bootstrap + PII patterns</li>
-              <li>LangSmith setup for SDBX/DEV/PROD</li>
+              <li>LangSmith + pluggable observability</li>
+              <li>StateStore (Postgres local · Cosmos deploy)</li>
               <li>Environment matrix (3 envs)</li>
             </ul>
           </div>
@@ -693,7 +741,7 @@
           </div>
         </div>
       </div>
-      <div class="footer"><span>Sign-off table: architecture/reference-architecture.md</span><span>08 / 08</span></div>
+      <div class="footer"><span>Sign-off table: architecture/reference-architecture.md</span><span>09 / 09</span></div>
     </section>
 
   </div>

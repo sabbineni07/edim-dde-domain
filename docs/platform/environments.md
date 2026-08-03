@@ -18,6 +18,7 @@ Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 | Azure OpenAI deployment | Non-prod | DEV deployment | Prod deployment |
 | Key Vault (convention) | `edim-dde-sdbx-kv` | `edim-dde-dev-kv` | `edim-dde-prod-kv` |
 | LangSmith project | `edim-dde-sdbx` | `edim-dde-dev` | `edim-dde-prod` |
+| State store (typical) | `postgres` or `memory` | `postgres` | **`cosmos`** |
 | Tracing verbosity | High OK | On | On + PII redaction |
 | Agent YAML changes | Experimental OK | Feature branches | Approved versions only |
 | Foundry auth | `az login` or SP | SP or `az login` | **SP from Key Vault** |
@@ -61,4 +62,5 @@ Minimum for agent invoke:
 - Databricks: `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, table FQNs
 - Foundry: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT_NAME`
 - LangSmith (recommended): `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, `LANGCHAIN_PROJECT`
+- State store (recommended local): `EDIM_STATE_STORE=postgres` + `EDIM_DATABASE_URL` — see [state-store.md](state-store.md)
 - Platform: `EDIM_ENV`, optional `AZURE_KEY_VAULT_URL` + secret name mappings

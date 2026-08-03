@@ -27,6 +27,12 @@ export EDIM_CORS_ORIGINS=http://localhost:4200
 
 # External agent plugin roots
 export EDIM_AGENT_DIRS=/opt/edim-agents/acme
+
+# Control-plane state store (default memory)
+# Local: docker compose -f docker-compose.state-store.yml up -d
+export EDIM_STATE_STORE=postgres
+export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
+# Deployed: EDIM_STATE_STORE=cosmos + EDIM_COSMOS_* (see state-store.md)
 ```
 
 ## Run
@@ -34,4 +40,7 @@ export EDIM_AGENT_DIRS=/opt/edim-agents/acme
 ```bash
 cd edim-dde-api
 uvicorn edim_dde_api.main:app --reload --port 8080
+curl -s localhost:8080/health   # includes observability + state_store
 ```
+
+Full store guide: [Control-plane state store](../platform/state-store.md).

@@ -6,6 +6,16 @@
 | `EDIM_OBSERVABILITY` | API lifespan / AI | Backend: `langsmith` \| `mlflow` \| `none` \| `auto` (default auto) |
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
+| `EDIM_STATE_STORE` | API lifespan / AI | Control plane: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`) |
+| `EDIM_DATABASE_URL` | Postgres store | e.g. `postgresql://edim:edim@localhost:5432/edim` |
+| `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |
+| `EDIM_COSMOS_KEY` | Cosmos store | Account key (prefer Key Vault in PROD) |
+| `EDIM_COSMOS_DATABASE` | Cosmos store | Database id (default `edim`) |
+| `EDIM_COSMOS_AGENTS_CONTAINER` | Cosmos store | Container id (default `agents`) |
+| `EDIM_COSMOS_SESSIONS_CONTAINER` | Cosmos store | Container id (default `sessions`) |
+| `EDIM_COSMOS_AUDIT_CONTAINER` | Cosmos store | Container id (default `audit`) |
+| `EDIM_REDIS_URL` | Redis store | e.g. `redis://localhost:6379/0` |
+| `EDIM_GIT_SHA` | Catalog sync | Optional git SHA stamped on agent records |
 | `DATABRICKS_HOST` | domain sources | SQL warehouse hostname |
 | `DATABRICKS_HTTP_PATH` | domain sources | Warehouse HTTP path |
 | `DATABRICKS_JOB_CLUSTER_METRICS_TABLE` | cluster_tuning SQL | UC FQN (`catalog.schema.table`) |
@@ -26,4 +36,4 @@
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 
-See also: [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).
+See also: [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).

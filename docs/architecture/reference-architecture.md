@@ -22,7 +22,7 @@ Update this table when you formally approve.
 
 | Asset | Path | Use |
 |-------|------|-----|
-| **HTML slide deck (8 slides)** | [diagrams/r1-architecture-deck.html](diagrams/r1-architecture-deck.html) | Open in Chrome → **Present** → screenshot each 1280×720 slide into PPT |
+| **HTML slide deck (9 slides)** | [diagrams/r1-architecture-deck.html](diagrams/r1-architecture-deck.html) | Open in Chrome → **Present** → screenshot each 1280×720 slide into PPT |
 | System context SVG | [diagrams/r1-system-context.svg](diagrams/r1-system-context.svg) | Insert into PPT as vector (preferred over PNG) |
 | Request sequence SVG | [diagrams/r1-request-sequence.svg](diagrams/r1-request-sequence.svg) | Insert into PPT as vector |
 | Environment deploy SVG | [diagrams/r1-environments.svg](diagrams/r1-environments.svg) | Insert into PPT as vector |
@@ -30,7 +30,7 @@ Update this table when you formally approve.
 **How to build the PPT quickly**
 
 1. Open the HTML deck in Chrome (allows Simple Icons CDN for brand marks).
-2. Click **Present** (fullscreen) and capture slides 01–08.
+2. Click **Present** (fullscreen) and capture slides 01–09.
 3. For the three detailed diagrams, prefer **Insert → Picture → SVG** from the files above (crisper in Zoom/print).
 4. Icons in the HTML deck use [Simple Icons](https://simpleicons.org/) (Databricks, Azure, LangChain, FastAPI). For final Marketing brand packs, swap logos if required.
 
@@ -41,36 +41,31 @@ Update this table when you formally approve.
 ```text
 ┌────────────────────┐     HTTPS      ┌──────────────────────────────────────┐
 │  Clients           │───────────────►│  edim-dde-api (FastAPI)               │
-│  • curl / Postman  │                │  • CORS                              │
-│  • Databricks Apps │                │  • User token middleware             │
-│  • Future UI       │                │  • Request id                        │
-└────────────────────┘                │  • Key Vault secret bootstrap        │
-                                      └───────────────┬──────────────────────┘
-                                                      │ create_agent().invoke
-                                      ┌───────────────▼──────────────────────┐
-                                      │  edim-dde-ai (YAML → LangGraph)      │
-                                      │  • Agent / node / router registries  │
-                                      │  • Content hub (prompts / skills)    │
-                                      │  • LangSmith tracing (optional)      │
-                                      │  • invoke_agent (subgraph spike)     │
+│  • curl / Postman  │                │  • CORS · user token · request_id    │
+│  • Databricks Apps │                │  • Key Vault bootstrap               │
+│  • Future UI       │                │  • ObservabilityProvider             │
+└────────────────────┘                │  • StateStore (control plane)        │
                                       └───────────────┬──────────────────────┘
                          ┌────────────────────────────┼────────────────────────────┐
-                         │                            │                            │
-               ┌─────────▼─────────┐      ┌───────────▼──────────┐     ┌──────────▼──────────┐
-               │ edim-dde-domain   │      │ Azure AI Foundry     │     │ LangSmith           │
-               │ • sources.yaml    │      │ (Azure OpenAI)       │     │ SDBX / DEV / PROD   │
-               │ • domain.sql.query│      │ LLM completions      │     │ traces / evals      │
-               │ • PII redaction   │      └──────────────────────┘     └─────────────────────┘
-               │ • cluster_tuning  │
-               │ • spark_rca       │
-               └─────────┬─────────┘
-                         │ Databricks SQL connector + AAD
-               ┌─────────▼─────────┐
-               │ Databricks        │
-               │ • SQL Warehouse   │
-               │ • Unity Catalog   │
-               └───────────────────┘
+                         │ invoke                     │                            │
+                         ▼                            ▼                            ▼
+               ┌───────────────────┐     ┌────────────────────┐     ┌────────────────────┐
+               │ edim-dde-ai       │     │ StateStore         │     │ LangSmith / MLflow │
+               │ YAML → LangGraph  │     │ postgres (local)   │     │ Observability      │
+               │ invoke_agent      │     │ cosmos (deployed)  │     └────────────────────┘
+               └─────────┬─────────┘     │ redis | memory     │
+                         │               └────────────────────┘
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+   Databricks UC   Azure Foundry   Azure DevOps Git
+   (telemetry)     (LLM)           (*.agent.yaml SoT)
 ```
+
+**Planes:** source control (Git) · control plane (StateStore) · data plane (SQL/LLM/graphs) · observability (LangSmith).
+
+**Git vs store:** `*.agent.yaml` stays in Azure DevOps. StateStore holds catalog metadata synced at bootstrap — see [state-store.md](../platform/state-store.md).
+
+Domain package (`edim-dde-domain`) still owns sources, SQL nodes, PII, and bundled agents (`cluster_tuning`, `spark_rca`) on the data plane; Azure Foundry serves LLM completions; Databricks UC is the warehouse.
 
 **Trust boundaries**
 
@@ -80,6 +75,7 @@ Update this table when you formally approve.
 | API → SQL | Queries via `domain.sql.query` | Apps: `X-Forwarded-Access-Token`; local: `az login` |
 | API → Foundry | Chat completions | Local: `az login`; PROD: SP from Key Vault |
 | Runtime → LangSmith | Traces (redacted) | `LANGCHAIN_API_KEY` / project per env |
+| Runtime → StateStore | Catalog / sessions / audit | Postgres URL, Cosmos keys, or Redis URL |
 
 ---
 
@@ -87,9 +83,9 @@ Update this table when you formally approve.
 
 | Package | Version | Responsibility |
 |---------|---------|----------------|
-| **edim-dde-ai** | 1.0.0 | YAML schema, LangGraph builder, registries, `llm_chain`, `invoke_agent`, LangSmith hooks, PII helpers (shared) |
+| **edim-dde-ai** | 1.0.0 | YAML schema, LangGraph builder, registries, `llm_chain`, `invoke_agent`, ObservabilityProvider, **StateStore** (memory/postgres/cosmos/redis) |
 | **edim-dde-domain** | 1.0.0 | Named SQL sources, auth, Foundry adapter, Key Vault load, bundled agents, domain PII patterns |
-| **edim-dde-api** | 1.0.0 | HTTP surface, CORS, token middleware, lifespan bootstrap, `/api/v1/*` |
+| **edim-dde-api** | 1.0.0 | HTTP surface, CORS, token middleware, lifespan (KV + observability + state store + catalog sync), `/api/v1/*` |
 
 Dependency direction: `api` → `domain` → `ai`.
 
@@ -173,7 +169,23 @@ Details: [security-baseline.md](../platform/security-baseline.md), [pii-guardrai
 
 Phase 0 documents setup and wires optional tracing. Full eval/CI is Phase 2+.
 
-Guide: [langsmith-setup.md](../platform/langsmith-setup.md).
+Guide: [langsmith-setup.md](../platform/langsmith-setup.md) · [observability.md](../platform/observability.md).
+
+---
+
+## 8. Control-plane state store
+
+Pluggable `StateStore` for catalog metadata, sessions, and audit — **not** a replacement for Azure DevOps `*.agent.yaml`.
+
+| Env | Typical backend |
+|-----|-----------------|
+| Local / SDBX / DEV | `EDIM_STATE_STORE=postgres` (Docker Compose) |
+| Deployed Apps / PROD | `EDIM_STATE_STORE=cosmos` |
+| Tests / demos | `memory` (default) |
+
+On API start: `configure_state_store_from_env()` → `bootstrap_agents()` → `sync_registered_agents_to_store()`.
+
+Full guide: [state-store.md](../platform/state-store.md).
 
 ---
 
@@ -183,5 +195,6 @@ Guide: [langsmith-setup.md](../platform/langsmith-setup.md).
 - [Packages](packages.md)
 - [Auth and SQL](auth-and-sql.md)
 - [Config → observability flow](config-to-observability.md)
+- [Control-plane state store](../platform/state-store.md)
 - [YAML schema contract](../framework/yaml-schema.md)
 - [Orchestration topology](../framework/orchestration-topology.md)

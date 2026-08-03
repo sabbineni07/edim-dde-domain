@@ -10,7 +10,7 @@ Inspired by product docs such as [Databricks](https://docs.databricks.com/aws/en
 
 | Package | Role |
 |---------|------|
-| [`edim-dde-ai`](../../edim-dde-ai/) | Framework: YAML → LangGraph, registries, `llm_chain`, `invoke_agent`, LangSmith hooks |
+| [`edim-dde-ai`](../../edim-dde-ai/) | Framework: YAML → LangGraph, registries, `llm_chain`, `invoke_agent`, observability + state store |
 | [`edim-dde-domain`](../) | Platform + product agents: sources, SQL, auth, Foundry, Key Vault, PII, bundled RCA/tuning |
 | [`edim-dde-api`](../../edim-dde-api/) | HTTP: CORS, Apps token middleware, KV bootstrap, `/api/v1/*` |
 
@@ -35,6 +35,7 @@ Inspired by product docs such as [Databricks](https://docs.databricks.com/aws/en
 ## Platform (Phase 0)
 
 - [Environments (SDBX / DEV / PROD)](platform/environments.md)
+- [**Control-plane state store** (Postgres / Cosmos / Redis)](platform/state-store.md)
 - [Observability providers (LangSmith / MLflow)](platform/observability.md)
 - [Security baseline & role matrix](platform/security-baseline.md)
 - [PII guardrails](platform/pii-guardrails.md)

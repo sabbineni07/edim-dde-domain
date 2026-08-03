@@ -2,9 +2,9 @@
 
 | Package | Responsibility | Does *not* own |
 |---------|----------------|----------------|
-| **edim-dde-ai** | YAML parse, registries, graph build, builtins, content hub | Product SQL, Databricks auth, HTTP |
+| **edim-dde-ai** | YAML parse, registries, graph build, builtins, content hub, ObservabilityProvider, **StateStore** | Product SQL, Databricks auth, HTTP |
 | **edim-dde-domain** | Sources, SQL execute, Apps/`az` auth, Foundry adapter, bundled agents, plugin loader | HTTP routes, OpenAPI response projection |
-| **edim-dde-api** | FastAPI, middleware, v1 routes, response Pydantic models | Agent business logic |
+| **edim-dde-api** | FastAPI, middleware, v1 routes, lifespan (KV + observability + state store + catalog sync), response models | Agent business logic |
 
 Dependency direction:
 

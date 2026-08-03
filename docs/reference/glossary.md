@@ -14,5 +14,9 @@
 | **HITL** | Human-in-the-loop — human review/approval in the agent workflow |
 | **LangSmith** | LangChain tracing / eval product used for EDIM observability |
 | **Observability provider** | Pluggable backend in `edim-dde-ai` (`langsmith` \| `mlflow` \| `none`) |
+| **Control plane** | Catalog, sessions, audit — managed via `StateStore`, not SQL/LLM work |
+| **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |
+| **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
+| **Agent catalog** | Metadata rows (`AgentRecord`) synced from registered YAML agents at bootstrap |
 | **R1** | Release 1 framework baseline (packages at `1.0.0`) |
 | **SDBX / DEV / PROD** | Phase 0 environments (UAT / INTG documented for later) |
