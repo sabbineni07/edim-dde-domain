@@ -74,16 +74,18 @@ curl -s localhost:8080/health
 # {"status":"ok","agents":["cluster_tuning","spark_rca",...],"version":"1.0.0"}
 ```
 
-### Optional: LangSmith tracing (SDBX / DEV / PROD)
+### Optional: observability (LangSmith recommended)
 
 ```bash
+export EDIM_OBSERVABILITY=langsmith   # or mlflow | none | auto
 export EDIM_ENV=dev
 export LANGCHAIN_TRACING_V2=true
 export LANGCHAIN_API_KEY=lsv2_pt_...
 export LANGCHAIN_PROJECT=edim-dde-dev
 ```
 
-Pass `X-Request-Id` on curls to correlate API calls with LangSmith runs. Full guide: [LangSmith setup](../platform/langsmith-setup.md).
+Pass `X-Request-Id` on curls to correlate API calls with traces.  
+Providers guide: [Observability](../platform/observability.md) · LangSmith: [setup](../platform/langsmith-setup.md).
 
 Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.
 

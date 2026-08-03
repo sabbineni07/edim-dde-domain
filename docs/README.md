@@ -35,6 +35,7 @@ Inspired by product docs such as [Databricks](https://docs.databricks.com/aws/en
 ## Platform (Phase 0)
 
 - [Environments (SDBX / DEV / PROD)](platform/environments.md)
+- [Observability providers (LangSmith / MLflow)](platform/observability.md)
 - [Security baseline & role matrix](platform/security-baseline.md)
 - [PII guardrails](platform/pii-guardrails.md)
 - [LangSmith setup](platform/langsmith-setup.md)

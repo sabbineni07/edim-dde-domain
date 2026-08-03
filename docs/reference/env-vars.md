@@ -3,6 +3,9 @@
 | Variable | Used by | Purpose |
 |----------|---------|---------|
 | `EDIM_ENV` | API / tracing | Environment name: `sdbx` \| `dev` \| `uat` \| `intg` \| `prod` (Phase 0 focus: sdbx/dev/prod) |
+| `EDIM_OBSERVABILITY` | API lifespan / AI | Backend: `langsmith` \| `mlflow` \| `none` \| `auto` (default auto) |
+| `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
+| `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
 | `DATABRICKS_HOST` | domain sources | SQL warehouse hostname |
 | `DATABRICKS_HTTP_PATH` | domain sources | Warehouse HTTP path |
 | `DATABRICKS_JOB_CLUSTER_METRICS_TABLE` | cluster_tuning SQL | UC FQN (`catalog.schema.table`) |
@@ -23,4 +26,4 @@
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 
-See also: [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).
+See also: [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).

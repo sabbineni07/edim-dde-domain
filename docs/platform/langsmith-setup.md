@@ -17,6 +17,8 @@ You asked for help getting productive with LangSmith. This guide is written for 
 
 EDIM uses **LangGraph** + **langchain-core**, so tracing turns on primarily via **environment variables**. The runtime also attaches **tags** (`agent_id`, `EDIM_ENV`, `request_id`).
 
+LangSmith is the **recommended** backend. The framework also supports selecting **MLflow** or **none** via `EDIM_OBSERVABILITY` — see [observability providers](observability.md).
+
 ---
 
 ## 2. Can we run LangSmith locally in Docker?
