@@ -1,5 +1,9 @@
 # LangSmith setup guide (SDBX / DEV / PROD)
 
+**Learning path:** C5 · [Guide home](../README.md)
+**← Previous:** [Observability](observability.md) · **Next:** [State store](state-store.md) →
+
+
 You asked for help getting productive with LangSmith. This guide is written for that — from zero to first traced EDIM agent run.
 
 **Phase 0:** enable tracing + projects per environment.  
@@ -192,3 +196,8 @@ Traces may include prompt text. EDIM applies **basic PII redaction** (SSN, PAN, 
 - [Environments](environments.md)
 - [Config → observability flow](../architecture/config-to-observability.md)
 - [Reference architecture](../architecture/reference-architecture.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Observability](observability.md) · [Guide home](../README.md) · [State store](state-store.md) →

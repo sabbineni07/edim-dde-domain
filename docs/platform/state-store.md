@@ -1,5 +1,9 @@
 # Control-plane state store (Postgres · Cosmos · Redis · memory)
 
+**Learning path:** C6 · [Guide home](../README.md)
+**← Previous:** [LangSmith setup](langsmith-setup.md) · **Next:** [Retrieval & RAG](retrieval-and-rag.md) →
+
+
 This guide explains **what the control plane is**, **why EDIM has a pluggable state store**, how **Postgres (local)** and **Cosmos DB (deployed)** fit, and how this relates to **`*.agent.yaml` in Azure DevOps**.
 
 ---
@@ -41,6 +45,27 @@ EDIM is split into planes so concerns stay clean:
 | **Not control plane** | Job metrics in UC, Foundry completions, LangSmith traces, the YAML graph definition file |
 
 **Analogy:** In Kubernetes, etcd + API server are control plane; your pods doing work are data plane. In EDIM, Postgres/Cosmos are closer to etcd for *agent platform metadata*; Databricks+Foundry are the workers.
+
+---
+
+## 1b. Design patterns (GoF)
+
+| Pattern | Where | Example |
+|---------|-------|---------|
+| **Strategy** | `StateStore` backends | `EDIM_STATE_STORE=postgres` vs `cosmos` |
+| **Protocol** | `store/protocols.py` | Agent/session/audit CRUD |
+| **Registry** | process-wide `get_state_store()` | Lifespan installs one backend |
+| **Facade** | `configure_state_store_from_env`, `sync_registered_agents_to_store` | API does not talk SQL/Cosmos SDK |
+| **DTO / Record** | `AgentRecord`, `SessionRecord`, `AuditEvent` | Backend-agnostic documents |
+
+```python
+from edim_dde_ai import configure_state_store_from_env, sync_registered_agents_to_store
+from edim_dde_ai.store import get_state_store
+
+configure_state_store_from_env()
+sync_registered_agents_to_store(actor="api-lifespan")
+print(get_state_store().list_agents())
+```
 
 ---
 
@@ -298,10 +323,11 @@ Every backend implements:
 Key Vault bootstrap (optional)
   → configure_observability_from_env()
   → configure_state_store_from_env()     # memory|postgres|cosmos|redis
+  → configure_retrieval_from_env()       # none|faiss|azure_ai_search|…
   → bootstrap_agents()                  # load *.agent.yaml from packages / EDIM_AGENT_DIRS
   → sync_registered_agents_to_store()   # upsert AgentRecord + audit agent.upsert
   → set_llm_provider(lazy Foundry)
-  → ready (/health reports observability + state_store)
+  → ready (/health reports observability + state_store + retrieval)
 ```
 
 Failures configuring the store log a warning and fall back to in-memory so `/health` still works.
@@ -325,3 +351,8 @@ Failures configuring the store log a warning and fall back to in-memory so `/hea
 - [Security baseline](security-baseline.md)
 - [Environments](environments.md)
 - [Environment variables](../reference/env-vars.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [LangSmith setup](langsmith-setup.md) · [Guide home](../README.md) · [Retrieval & RAG](retrieval-and-rag.md) →

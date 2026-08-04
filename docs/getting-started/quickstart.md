@@ -1,6 +1,13 @@
-# Quickstart
+# Quickstart (A1)
 
-Two paths:
+**Learning path:** A1 · [Guide home](../README.md)  
+**Next:** [Core concepts](concepts.md) →
+
+Get a working stack on your laptop in two paths: offline tests, or live HTTP with Foundry.
+
+---
+
+## Two paths
 
 | Path | Skips Databricks? | Skips Foundry? | Use when |
 |------|-------------------|----------------|----------|
@@ -9,10 +16,14 @@ Two paths:
 
 `metrics` / `evidence_pack` in the request body only bypass **SQL warehouse** reads. Both bundled agents still run **`llm_chain`** (sizing for tuning; synthesize for RCA). `include_explanation: false` skips the *explanation* LLM only — not sizing.
 
+---
+
 ## Prerequisites
 
 - Python 3.10+
 - Sibling packages under `edim/`: `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api`
+
+---
 
 ## 1. Install (editable siblings)
 
@@ -39,6 +50,7 @@ Tests install `edim_dde_domain.testing.DomainStubLLM` and pass SQL overrides. **
 ```bash
 cd /Users/sabbineni/projects/edim/edim-dde-domain && pytest -q
 cd /Users/sabbineni/projects/edim/edim-dde-api && pytest -q
+cd /Users/sabbineni/projects/edim/edim-dde-ai && pytest -q
 ```
 
 Plain `uvicorn` does **not** use the stub; its lifespan installs Foundry (see Path B).
@@ -59,6 +71,27 @@ Full list: [configuration](../api/configuration.md) · [env vars](../reference/e
 
 Databricks warehouse env is **optional** if you pass `metrics` / `evidence_pack` overrides below.
 
+### Optional planes (recommended as you grow)
+
+```bash
+export EDIM_ENV=dev
+
+# Observability
+export EDIM_OBSERVABILITY=langsmith
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=lsv2_pt_...
+export LANGCHAIN_PROJECT=edim-dde-dev
+
+# Control plane (optional locally)
+# export EDIM_STATE_STORE=postgres
+# export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
+
+# Retrieval for spark_rca runbooks (optional)
+# pip install 'edim-dde-ai[faiss]'
+# export EDIM_RETRIEVAL=faiss
+# export EDIM_FAISS_INDEX_PATH=/tmp/edim-indexes
+```
+
 ### Start API
 
 ```bash
@@ -67,25 +100,12 @@ source .venv/bin/activate
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```
 
-Lifespan: Key Vault bootstrap (optional) → `bootstrap_agents()` → lazy Foundry provider (constructs the real client on **first** `llm_chain` call so `/health` works before LLM env is set).
+**Lifespan (in order):** Key Vault → observability → state store → retrieval → `bootstrap_agents()` → catalog sync → lazy Foundry.
 
 ```bash
 curl -s localhost:8080/health
-# {"status":"ok","agents":["cluster_tuning","spark_rca",...],"version":"1.0.0"}
+# includes: agents, version, observability, state_store, retrieval
 ```
-
-### Optional: observability (LangSmith recommended)
-
-```bash
-export EDIM_OBSERVABILITY=langsmith   # or mlflow | none | auto
-export EDIM_ENV=dev
-export LANGCHAIN_TRACING_V2=true
-export LANGCHAIN_API_KEY=lsv2_pt_...
-export LANGCHAIN_PROJECT=edim-dde-dev
-```
-
-Pass `X-Request-Id` on curls to correlate API calls with traces.  
-Providers guide: [Observability](../platform/observability.md) · LangSmith: [setup](../platform/langsmith-setup.md).
 
 Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.
 
@@ -94,6 +114,7 @@ Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED
 ```bash
 curl -s localhost:8080/api/v1/recommendations \
   -H 'content-type: application/json' \
+  -H 'X-Request-Id: demo-tuning-1' \
   -d '{
     "job_id": "j-1",
     "cluster_id": "c-1",
@@ -112,13 +133,12 @@ curl -s localhost:8080/api/v1/recommendations \
   }'
 ```
 
-Still invokes the **sizing** `llm_chain`. Set `"include_explanation": true` only if you also want the second (explanation) LLM call.
-
 ### Spark RCA (`evidence_pack` override — skip SQL)
 
 ```bash
 curl -s localhost:8080/api/v1/rca/analyze \
   -H 'content-type: application/json' \
+  -H 'X-Request-Id: demo-rca-1' \
   -d '{
     "job_run_id": "jr-1",
     "job_id": "j-1",
@@ -130,16 +150,25 @@ curl -s localhost:8080/api/v1/rca/analyze \
   }'
 ```
 
-Still invokes the **rca** `llm_chain` after rule classify.
+With `EDIM_RETRIEVAL=faiss` and an indexed corpus, RCA also runs `rag.retrieve` for runbook grounding before the LLM.
 
 ---
 
-## Next
+## What you just exercised
 
-- [Concepts](concepts.md) — agents, state, overrides
-- [Reference architecture (PPT)](../architecture/reference-architecture.md)
-- [Environments](../platform/environments.md)
-- [LangSmith setup](../platform/langsmith-setup.md)
-- [Sources and SQL](../domain/sources-and-sql.md) — `skip_if_key`, overrides
-- [Live warehouse + Foundry](../api/configuration.md)
-- [Build a new agent](../build-agents/step-by-step.md)
+```text
+curl → FastAPI → create_agent().invoke → LangGraph YAML nodes → DTO response
+                      │
+                      ├─ ObservabilityProvider (optional traces)
+                      ├─ StateStore (catalog already synced at startup)
+                      └─ RetrievalProvider (spark_rca only, if enabled)
+```
+
+---
+
+## Next in the learning path
+
+→ **[A2 — Core concepts](concepts.md)** (required next)  
+Then **[B1 — End-to-end design](../architecture/end-to-end-design.md)** for architecture depth.
+
+[Guide home](../README.md)

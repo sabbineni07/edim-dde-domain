@@ -1,5 +1,9 @@
 # HTTP endpoints
 
+**Learning path:** G2 · [Guide home](../README.md)
+**← Previous:** [Configuration](configuration.md) · **Next:** [Environment variables](../reference/env-vars.md) →
+
+
 Base app: `edim_dde_api.main:app`
 
 | Method | Path | Request | Response |
@@ -18,3 +22,8 @@ Response models project agent state explicitly (RCA requires `result`; no full-s
 ### Knowledge ingest
 
 Curated upsert into the active `RetrievalProvider`. Requires `accepted: true`. Optional `summary` is prepended to `text`. Bulk indexing remains platform Jobs — see [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
+
+<!-- edim-learning-nav -->
+---
+
+← [Configuration](configuration.md) · [Guide home](../README.md) · [Environment variables](../reference/env-vars.md) →

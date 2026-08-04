@@ -1,6 +1,9 @@
-# Retrieval, similarity search, and RAG (BL-021)
+# Retrieval, similarity search, and RAG (C7)
 
-This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProvider`** backends (FAISS · Azure AI Search · Databricks Vector Search), how **`spark_rca`** uses runbook grounding, and how engineers operate local vs deployed indexes.
+**Learning path:** C7 · [Guide home](../README.md)  
+**← Previous:** [Control-plane state store](state-store.md) · **Next:** [YAML schema](../framework/yaml-schema.md) →
+
+This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProvider`** backends (FAISS · Azure AI Search · Databricks Vector Search), how **`spark_rca`** uses runbook grounding, design patterns, and how engineers operate local vs deployed indexes.
 
 ---
 
@@ -29,6 +32,26 @@ This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProv
 | **Corpus** | Logical knowledge set (e.g. `spark-runbooks`) — not a backend name |
 
 **Design rule (same as StateStore / Observability):** backends are plug-and-play; agent YAML composes the RAG recipe.
+
+---
+
+## 1b. Design patterns (GoF)
+
+| Pattern | Where | Example |
+|---------|-------|---------|
+| **Strategy** | `RetrievalProvider` implementations | Swap FAISS ↔ Azure via `EDIM_RETRIEVAL` |
+| **Protocol** | `retrieval/protocols.py` | `search` / `upsert` / `delete` / `ping` |
+| **Registry** | process-wide provider + `corpora.yaml` | `provider_for_corpus("spark-runbooks")` |
+| **Facade** | `search_corpus()`, `rag.retrieve` node | Agents never import Azure SDK |
+| **Builder** (ingest) | Jobs / `build_faiss_index_from_dir` | Assemble index from markdown tree |
+
+```python
+from edim_dde_ai import configure_retrieval_from_env
+from edim_dde_ai.retrieval import search_corpus
+
+configure_retrieval_from_env()  # Strategy from EDIM_RETRIEVAL
+hits = search_corpus("OutOfMemoryError executor", corpus="spark-runbooks", top_k=5)
+```
 
 ---
 
@@ -259,8 +282,13 @@ Also listed in [Environment variables](../reference/env-vars.md).
 
 ## Related
 
+- [End-to-end design](../architecture/end-to-end-design.md)
 - [Reference architecture](../architecture/reference-architecture.md)
 - [YAML schema](../framework/yaml-schema.md)
 - [State store](state-store.md) (control plane — different from indexes)
 - [Observability](observability.md)
 - Roadmap items **BL-021–024**
+
+---
+
+← [State store](state-store.md) · [Guide home](../README.md) · [YAML schema](../framework/yaml-schema.md) →

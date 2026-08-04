@@ -1,5 +1,9 @@
 # Auth and SQL
 
+**Learning path:** B7 · [Guide home](../README.md)
+**← Previous:** [Request flow](request-flow.md) · **Next:** [Config → observability](config-to-observability.md) →
+
+
 ## SQL warehouse (two paths only)
 
 | Environment | How the token is obtained |
@@ -21,3 +25,8 @@
 Named connections in `sources.yaml` (no secrets inline). Host/path support `${ENV}` interpolation. Runtime resolves a token via the paths above.
 
 See [domain sources and SQL](../domain/sources-and-sql.md) and the deep dive [DESIGN_SOURCES_AND_SQL_NODES.md](../DESIGN_SOURCES_AND_SQL_NODES.md).
+
+<!-- edim-learning-nav -->
+---
+
+← [Request flow](request-flow.md) · [Guide home](../README.md) · [Config → observability](config-to-observability.md) →

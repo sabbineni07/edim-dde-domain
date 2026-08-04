@@ -1,5 +1,9 @@
 # PII guardrails (BL-014)
 
+**Learning path:** C3 · [Guide home](../README.md)
+**← Previous:** [Security baseline](security-baseline.md) · **Next:** [Observability](observability.md) →
+
+
 **Context:** Current EDIM agents (`cluster_tuning`, `spark_rca`) operate on **telemetry** (cluster/job metrics and logs). They are **not expected** to process customer PII. As a **FinTech** platform we still apply **basic expandable redaction** so accidental PII does not reach logs or LangSmith.
 
 ---
@@ -53,3 +57,8 @@ Document new labels in this page and add unit tests with sample strings.
 
 - [Security baseline](security-baseline.md)
 - [LangSmith setup](langsmith-setup.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Security baseline](security-baseline.md) · [Guide home](../README.md) · [Observability](observability.md) →

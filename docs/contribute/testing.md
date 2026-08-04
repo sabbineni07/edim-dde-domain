@@ -1,5 +1,9 @@
 # Testing
 
+**Learning path:** H4 · [Guide home](../README.md)
+**← Previous:** [Glossary](../reference/glossary.md) · **Next:** [Guide home](../README.md) →
+
+
 ## Packages
 
 ```bash
@@ -19,3 +23,8 @@ cd edim-dde-api && pytest -q
 | **`reset_bootstrap()`** | Allow re-register in fixtures |
 
 Do **not** put production SQL/LLM stubs in main packages.
+
+<!-- edim-learning-nav -->
+---
+
+← [Glossary](../reference/glossary.md) · [Guide home](../README.md) · [Guide home](../README.md) →

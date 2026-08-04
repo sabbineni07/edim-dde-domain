@@ -1,5 +1,9 @@
 # New agent — step by step
 
+**Learning path:** F2 · [Guide home](../README.md)
+**← Previous:** [Agent package layout](agent-package-layout.md) · **Next:** [External plugins](external-plugins.md) →
+
+
 ## 1. Create the package
 
 Under `edim-dde-domain/src/edim_dde_domain/agents/` (bundled) **or** an [external plugin](external-plugins.md) directory:
@@ -89,3 +93,8 @@ Add a route in `edim-dde-api` that:
 - Optional `TestClient` for HTTP
 
 See [testing](../contribute/testing.md).
+
+<!-- edim-learning-nav -->
+---
+
+← [Agent package layout](agent-package-layout.md) · [Guide home](../README.md) · [External plugins](external-plugins.md) →

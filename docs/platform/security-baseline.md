@@ -1,5 +1,9 @@
 # Security baseline (BL-013)
 
+**Learning path:** C2 · [Guide home](../README.md)
+**← Previous:** [Environments](environments.md) · **Next:** [PII guardrails](pii-guardrails.md) →
+
+
 **Phase 0 decision:** Keep the **current identity model**. Add **Azure Key Vault SDK** bootstrap for secrets. Document a **role matrix** for later enforcement.
 
 ---
@@ -70,3 +74,8 @@ Auth to Key Vault uses `DefaultAzureCredential` (managed identity on Apps / `az 
 - [PII guardrails](pii-guardrails.md)
 - [Auth and SQL](../architecture/auth-and-sql.md)
 - [Environments](environments.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Environments](environments.md) · [Guide home](../README.md) · [PII guardrails](pii-guardrails.md) →

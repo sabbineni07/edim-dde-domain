@@ -1,5 +1,9 @@
 # Request flow
 
+**Learning path:** B6 · [Guide home](../README.md)
+**← Previous:** [Reference architecture](reference-architecture.md) · **Next:** [Auth and SQL](auth-and-sql.md) →
+
+
 Lifecycle of a typical `POST /api/v1/recommendations` call (similar idea to documenting job state machines such as [EMR Serverless job states](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/job-states.html)):
 
 ```text
@@ -46,3 +50,8 @@ RCA is the same pattern with `spark_rca` and `RcaResponse` (requires `result` in
 | Knowledge ingest backend unsupported | 501 |
 
 See also [config → observability](config-to-observability.md), [state store](../platform/state-store.md), [retrieval & RAG](../platform/retrieval-and-rag.md), and [LangSmith setup](../platform/langsmith-setup.md).
+
+<!-- edim-learning-nav -->
+---
+
+← [Reference architecture](reference-architecture.md) · [Guide home](../README.md) · [Auth and SQL](auth-and-sql.md) →

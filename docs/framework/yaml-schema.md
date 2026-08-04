@@ -1,5 +1,9 @@
 # YAML schema contract (BL-002)
 
+**Learning path:** D1 · [Guide home](../README.md)
+**← Previous:** [Retrieval & RAG](../platform/retrieval-and-rag.md) · **Next:** [YAML agents](yaml-agents.md) →
+
+
 Canonical config contract for EDIM agents. Machine-readable schema:
 
 [`edim-dde-ai/schemas/agent.schema.json`](../../../edim-dde-ai/schemas/agent.schema.json)
@@ -78,3 +82,8 @@ validate_agent_dict(yaml_safe_load(path))  # raises DefinitionError on failure
 ```
 
 Structural parse remains the source of truth for graph connectivity; JSON Schema covers metadata/extended blocks.
+
+<!-- edim-learning-nav -->
+---
+
+← [Retrieval & RAG](../platform/retrieval-and-rag.md) · [Guide home](../README.md) · [YAML agents](yaml-agents.md) →

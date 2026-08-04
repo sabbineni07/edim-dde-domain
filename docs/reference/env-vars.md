@@ -1,5 +1,9 @@
 # Environment variables
 
+**Learning path:** H1 · [Guide home](../README.md)
+**← Previous:** [HTTP endpoints](../api/endpoints.md) · **Next:** [Node type ids](node-type-ids.md) →
+
+
 | Variable | Used by | Purpose |
 |----------|---------|---------|
 | `EDIM_ENV` | API / tracing | Environment name: `sdbx` \| `dev` \| `uat` \| `intg` \| `prod` (Phase 0 focus: sdbx/dev/prod) |
@@ -47,3 +51,8 @@
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 
 See also: [retrieval & RAG](../platform/retrieval-and-rag.md), [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).
+
+<!-- edim-learning-nav -->
+---
+
+← [HTTP endpoints](../api/endpoints.md) · [Guide home](../README.md) · [Node type ids](node-type-ids.md) →

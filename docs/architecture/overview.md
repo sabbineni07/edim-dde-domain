@@ -1,4 +1,13 @@
-# Architecture overview
+# Architecture overview (B2)
+
+**Learning path:** B2 · [Guide home](../README.md)  
+**← Previous:** [End-to-end design](end-to-end-design.md) · **Next:** [Packages](packages.md) →
+
+Compact system sketch. For GoF patterns, planes, and full lifecycle see **[end-to-end design](end-to-end-design.md)**.
+
+---
+
+## System sketch
 
 ```text
 Client (curl / future UI / Databricks Apps)
@@ -22,9 +31,7 @@ edim-dde-ai  (v1.0.0)
   • create_agent(id)  (compiled graph cached)
   • LangGraph from *.agent.yaml (+ schema contract)
   • llm_chain · invoke_agent · rag.retrieve
-  • LangSmith / MLflow hooks via ObservabilityProvider
-  • StateStore sync (agent metadata, sessions, audit)
-  • RetrievalProvider (similarity search backends)
+  • ObservabilityProvider · StateStore · RetrievalProvider
         │
         ├─ domain.sql.query ──► Databricks SQL / UC          (data plane)
         ├─ domain.tuning.* / domain.rca.* + Foundry          (data plane)
@@ -32,7 +39,9 @@ edim-dde-ai  (v1.0.0)
         └─ StateStore ──► Postgres (local) / Cosmos (deploy) (control plane)
 ```
 
-**Planes**
+---
+
+## Planes
 
 | Plane | Responsibility |
 |-------|----------------|
@@ -41,11 +50,19 @@ edim-dde-ai  (v1.0.0)
 | **Knowledge / retrieval** | RetrievalProvider — similarity search indexes (not StateStore) |
 | **Data plane** | LangGraph + Databricks + Foundry — do the work |
 | **Observability** | LangSmith / MLflow — traces and eval |
+| **Ingest (batch)** | Platform Jobs (+ curated API) — write indexes |
 
-**Design rule:** collect data with declarative SQL in YAML + one generic `domain.sql.query` node. No per-use-case SQL collector classes.
+**Design rule:** collect telemetry with declarative SQL in YAML + one generic `domain.sql.query` node. No per-use-case SQL collector classes.
 
-**Git vs store vs index:** Agent *graphs* stay in Azure DevOps. StateStore holds *catalog metadata*. Vector/keyword indexes hold *knowledge chunks* — see [state-store.md](../platform/state-store.md) and [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
+**Git vs store vs index:** Agent *graphs* stay in Azure DevOps. StateStore holds *catalog metadata*. Vector/keyword indexes hold *knowledge chunks*.
 
-**Presentation / sign-off:** [Reference architecture](reference-architecture.md) · [HTML deck](diagrams/r1-architecture-deck.html)
+---
 
-See also [packages](packages.md), [auth and SQL](auth-and-sql.md), [request flow](request-flow.md), [config → observability](config-to-observability.md).
+## Presentation
+
+- [Reference architecture](reference-architecture.md) · [HTML deck](diagrams/r1-architecture-deck.html)
+- SVGs: [context](diagrams/r1-system-context.svg) · [sequence](diagrams/r1-request-sequence.svg) · [envs](diagrams/r1-environments.svg)
+
+---
+
+← [End-to-end design](end-to-end-design.md) · [Guide home](../README.md) · [Packages](packages.md) →

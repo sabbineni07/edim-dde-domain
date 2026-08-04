@@ -1,5 +1,9 @@
 # EDIM DDE — Release 1 reference architecture
 
+**Learning path:** B4 · [Guide home](../README.md)
+**← Previous:** [Packages](packages.md) · **Next:** [HTML deck (open)](diagrams/r1-architecture-deck.html) →
+
+
 **Status:** Phase 0 / BL-001 — ready for first sign-off  
 **Audience:** Architecture review and PowerPoint export  
 **Version:** R1 (`1.0.0` package baseline)
@@ -214,3 +218,8 @@ Full guide: [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 - [Retrieval & RAG](../platform/retrieval-and-rag.md)
 - [YAML schema contract](../framework/yaml-schema.md)
 - [Orchestration topology](../framework/orchestration-topology.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Packages](packages.md) · [Guide home](../README.md) · [HTML deck (open)](diagrams/r1-architecture-deck.html) →

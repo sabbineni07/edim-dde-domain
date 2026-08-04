@@ -1,5 +1,9 @@
 # Configuration
 
+**Learning path:** G1 · [Guide home](../README.md)
+**← Previous:** [External plugins](../build-agents/external-plugins.md) · **Next:** [HTTP endpoints](endpoints.md) →
+
+
 See also [environment variables](../reference/env-vars.md).
 
 ## Minimum local (live SQL + Foundry)
@@ -44,3 +48,8 @@ curl -s localhost:8080/health   # includes observability + state_store
 ```
 
 Full store guide: [Control-plane state store](../platform/state-store.md).
+
+<!-- edim-learning-nav -->
+---
+
+← [External plugins](../build-agents/external-plugins.md) · [Guide home](../README.md) · [HTTP endpoints](endpoints.md) →

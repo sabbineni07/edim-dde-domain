@@ -1,5 +1,9 @@
 # Config → runtime → observability flow (BL-003)
 
+**Learning path:** B8 · [Guide home](../README.md)
+**← Previous:** [Auth and SQL](auth-and-sql.md) · **Next:** [Environments](../platform/environments.md) →
+
+
 End-to-end path from agent YAML on disk to HTTP response and the active observability backend (LangSmith, MLflow, or none).
 
 ```text
@@ -18,11 +22,13 @@ End-to-end path from agent YAML on disk to HTTP response and the active observab
 ┌──────────────────┐     durable     ┌────────────────────────────┐
 │ MetadataAgent    │────────────────►│ StateStore (control plane) │
 │ ObservabilityProvider │            │ postgres / cosmos / …      │
-│ + correlation    │                 └────────────────────────────┘
+│ RetrievalProvider│────────────────►│ FAISS / Azure / DBX VS     │
+│ + correlation    │   (on retrieve) └────────────────────────────┘
 └────────┬─────────┘
          │ LangGraph node execution
          ├─ domain.sql.query ──► Databricks SQL / UC
          ├─ domain.* logic
+         ├─ rag.retrieve ──► knowledge hits (optional)
          ├─ llm_chain ──► Foundry (Azure OpenAI)
          └─ invoke_agent ──► nested agent (depth-limited)
          ▼
@@ -59,8 +65,15 @@ See [observability providers](../platform/observability.md).
 
 ## Related
 
+- [End-to-end design](end-to-end-design.md)
 - [Request flow](request-flow.md)
 - [Reference architecture](reference-architecture.md)
 - [Control-plane state store](../platform/state-store.md)
+- [Retrieval & RAG](../platform/retrieval-and-rag.md)
 - [Observability providers](../platform/observability.md)
 - [YAML schema](../framework/yaml-schema.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Auth and SQL](auth-and-sql.md) · [Guide home](../README.md) · [Environments](../platform/environments.md) →

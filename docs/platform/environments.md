@@ -1,5 +1,9 @@
 # Environments (BL-046)
 
+**Learning path:** C1 · [Guide home](../README.md)
+**← Previous:** [Config → observability](../architecture/config-to-observability.md) · **Next:** [Security baseline](security-baseline.md) →
+
+
 **Phase 0 focus:** `SDBX`, `DEV`, `PROD`  
 **Documented for later:** `UAT`, `INTG`
 
@@ -66,3 +70,8 @@ Minimum for agent invoke:
 - State store (recommended local): `EDIM_STATE_STORE=postgres` + `EDIM_DATABASE_URL` — see [state-store.md](state-store.md)
 - Retrieval (optional local): `EDIM_RETRIEVAL=faiss` + `EDIM_FAISS_INDEX_PATH` — see [retrieval-and-rag.md](retrieval-and-rag.md)
 - Platform: `EDIM_ENV`, optional `AZURE_KEY_VAULT_URL` + secret name mappings
+
+<!-- edim-learning-nav -->
+---
+
+← [Config → observability](../architecture/config-to-observability.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →
