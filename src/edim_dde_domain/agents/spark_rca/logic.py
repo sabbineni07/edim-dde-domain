@@ -57,6 +57,23 @@ def classify_failure(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
+    """Build a free-text query for runbook similarity search (RAG pilot)."""
+    pack = state.get("evidence_pack") or {}
+    if not isinstance(pack, dict):
+        pack = {}
+    hint = state.get("classification_hint") or {}
+    reason = str((pack.get("raw_anchors") or {}).get("failure_reason") or "")
+    category = str(hint.get("category") or "")
+    excerpts: list[str] = []
+    for item in (pack.get("evidence") or [])[:5]:
+        if isinstance(item, dict) and item.get("excerpt"):
+            excerpts.append(str(item["excerpt"])[:400])
+    parts = [p for p in [category, reason, *excerpts] if p and p.strip()]
+    query = "\n".join(parts).strip() or category or "spark job failure"
+    return {"retrieval_query": query}
+
+
 def _section_text(section: Any, empty_message: str) -> str:
     if not section:
         return empty_message
@@ -72,6 +89,7 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
         pack = {}
     sections = pack.get("sections") or {}
     hint = state.get("classification_hint") or {}
+    runbook_context = state.get("runbook_context") or state.get("retrieval_context")
 
     def _s(value: Any) -> str:
         return "(not provided)" if value is None or value == "" else str(value)
@@ -97,6 +115,9 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
             "(no sql_text/physical_plan/sql_error attrs in this evidence_pack)",
         ),
         "evidence_pack_text": dumps(pack),
+        "runbook_context": _s(runbook_context)
+        if runbook_context
+        else "(no runbook hits retrieved — retrieval disabled or empty index)",
     }
 
 

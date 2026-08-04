@@ -38,7 +38,12 @@ model:
 
 tools: []                 # future tool registry refs
 
-rag: null                 # future RAG block
+rag:
+  enabled: true
+  corpus: spark-runbooks   # logical corpus (see corpora.yaml)
+  top_k: 5
+  search_mode: hybrid      # vector | keyword | hybrid
+  cite: true
 
 security:
   pii_redaction: true

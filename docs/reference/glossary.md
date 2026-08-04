@@ -18,5 +18,9 @@
 | **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |
 | **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Agent catalog** | Metadata rows (`AgentRecord`) synced from registered YAML agents at bootstrap |
+| **Similarity search** | Ranked document/chunk retrieval without an LLM |
+| **RAG** | Retrieve → inject context → LLM answer (pattern built on RetrievalProvider) |
+| **RetrievalProvider** | Pluggable search backend: `none` \| `memory` \| `faiss` \| `azure_ai_search` \| `databricks_vector` |
+| **Corpus** | Logical knowledge collection (e.g. `spark-runbooks`) mapped via `corpora.yaml` |
 | **R1** | Release 1 framework baseline (packages at `1.0.0`) |
 | **SDBX / DEV / PROD** | Phase 0 environments (UAT / INTG documented for later) |

@@ -16,6 +16,16 @@
 | `EDIM_COSMOS_AUDIT_CONTAINER` | Cosmos store | Container id (default `audit`) |
 | `EDIM_REDIS_URL` | Redis store | e.g. `redis://localhost:6379/0` |
 | `EDIM_GIT_SHA` | Catalog sync | Optional git SHA stamped on agent records |
+| `EDIM_RETRIEVAL` | API lifespan / AI | Retrieval: `none` \| `memory` \| `faiss` \| `azure_ai_search` \| `databricks_vector` |
+| `EDIM_FAISS_INDEX_PATH` | FAISS provider | Local dir or Databricks Volume for `{corpus}.faiss` |
+| `EDIM_FAISS_DIM` | FAISS provider | Hash embedding dim (default 384) |
+| `EDIM_AZURE_SEARCH_ENDPOINT` | Azure AI Search | Service endpoint |
+| `EDIM_AZURE_SEARCH_KEY` | Azure AI Search | Key (Key Vault in PROD) |
+| `EDIM_AZURE_SEARCH_INDEX` | Azure AI Search | Default index name |
+| `EDIM_AZURE_SEARCH_CORPUS_MAP` | Azure AI Search | Optional `corpus:index,...` |
+| `EDIM_DBX_VS_ENDPOINT` | Databricks VS | Vector Search endpoint name |
+| `EDIM_DBX_VS_INDEX` | Databricks VS | Default index name |
+| `EDIM_DBX_VS_CORPUS_MAP` | Databricks VS | Optional `corpus:index,...` |
 | `DATABRICKS_HOST` | domain sources | SQL warehouse hostname |
 | `DATABRICKS_HTTP_PATH` | domain sources | Warehouse HTTP path |
 | `DATABRICKS_JOB_CLUSTER_METRICS_TABLE` | cluster_tuning SQL | UC FQN (`catalog.schema.table`) |
@@ -36,4 +46,4 @@
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 
-See also: [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).
+See also: [retrieval & RAG](../platform/retrieval-and-rag.md), [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).

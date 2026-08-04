@@ -9,6 +9,7 @@
 | `echo_result` | Build `result` from listed fields |
 | `llm_chain` | Prompt + skills + LLMProvider / invoker |
 | `invoke_agent` | Call another registered agent (subgraph spike; depth-limited) |
+| `rag.retrieve` | Similarity / hybrid search via RetrievalProvider |
 
 ## Domain shared
 
@@ -21,6 +22,6 @@
 | Prefix | Agent |
 |--------|-------|
 | `domain.tuning.*` | cluster_tuning |
-| `domain.rca.*` | spark_rca |
+| `domain.rca.*` | spark_rca (includes `build_retrieval_query` for RAG pilot) |
 
 Plugins should use their own prefix (e.g. `acme.*`).

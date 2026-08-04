@@ -1,0 +1,13 @@
+corpora:
+  spark-runbooks:
+    description: >
+      Spark RCA runbooks and playbooks for similarity search / RAG grounding.
+      Deployed default backend is Azure AI Search (EDIM_RETRIEVAL=azure_ai_search);
+      local uses FAISS under EDIM_FAISS_INDEX_PATH (local dir or Databricks Volume).
+    # provider: null  → use process EDIM_RETRIEVAL default
+    azure_index: spark-runbooks
+    # Optional FAISS path override (else EDIM_FAISS_INDEX_PATH):
+    # index_path: ${EDIM_FAISS_INDEX_PATH}
+    # Databricks Vector Search override example:
+    # provider: databricks_vector
+    # databricks_index: catalog.schema.spark_runbooks_vs

@@ -7,6 +7,15 @@ entry:
 
 content_dir: ./content
 
+# RAG / retrieval policy (BL-021 pilot). Backend selected via EDIM_RETRIEVAL;
+# corpus metadata lives in domain config/corpora.yaml.
+rag:
+  enabled: true
+  corpus: spark-runbooks
+  top_k: 5
+  search_mode: hybrid
+  cite: true
+
 graph:
   nodes:
     - id: collect_failure_anchors
@@ -158,6 +167,16 @@ graph:
       type: domain.rca.assemble_evidence
     - id: rule_classify
       type: domain.rca.classify_failure
+    - id: build_retrieval_query
+      type: domain.rca.build_retrieval_query
+    - id: retrieve_runbooks
+      type: rag.retrieve
+      corpus: spark-runbooks
+      top_k: 5
+      search_mode: hybrid
+      query_key: retrieval_query
+      output_key: runbook_hits
+      context_key: runbook_context
     - id: prepare_llm_payload
       type: domain.rca.prepare_llm_payload
     - id: synthesize
@@ -178,7 +197,9 @@ graph:
     - [collect_timeline, collect_stage_pressure]
     - [collect_stage_pressure, assemble_evidence]
     - [assemble_evidence, rule_classify]
-    - [rule_classify, prepare_llm_payload]
+    - [rule_classify, build_retrieval_query]
+    - [build_retrieval_query, retrieve_runbooks]
+    - [retrieve_runbooks, prepare_llm_payload]
     - [prepare_llm_payload, synthesize]
     - [synthesize, parse_llm_json]
     - [parse_llm_json, validate_output]

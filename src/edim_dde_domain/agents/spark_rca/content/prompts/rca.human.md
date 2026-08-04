@@ -26,9 +26,14 @@ Perform a Root Cause Analysis (RCA) and generate recommendations for the followi
 --- 4. FULL EVIDENCE PACK (JSON, authoritative — cite evidence[].ref from here) ---
 {evidence_pack_text}
 
+=== SIMILAR RUNBOOKS / PLAYBOOKS (retrieved; may be empty) ===
+{runbook_context}
+[Note: Use these only as supporting hints. Prefer telemetry evidence_pack facts. Do not invent citations for runbooks not listed.]
+
 === INSTRUCTIONS ===
 1. Apply STEPs 1–4 and domain skills from the system prompt to diagnose this job run.
 2. If raw PySpark/Scala source is absent, infer bottlenecks from SQL text and physical plan operators in section 3 (and the full pack).
 3. Never return empty contributing_factors or recommended_actions when summary is non-empty; if evidence is thin, emit low-confidence investigatory checks.
 4. Populate recommendations.code_query_rewrites, recommendations.spark_delta_configs, and recommendations.infrastructure (empty arrays allowed per section).
-5. Produce the final RCA as **one JSON object** only, matching the system output schema. No markdown outside JSON.
+5. When runbook hits are present, you may align recommended_actions with them but still ground claims in the evidence_pack.
+6. Produce the final RCA as **one JSON object** only, matching the system output schema. No markdown outside JSON.

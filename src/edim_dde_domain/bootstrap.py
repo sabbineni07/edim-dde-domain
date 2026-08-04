@@ -175,6 +175,7 @@ def bootstrap_agents(*, load_external: bool = True) -> None:
         if _READY:
             return
         load_sources()
+        _load_corpora()
         _import_packaged_agent_nodes()
         try:
             ids = register_from_directory(
@@ -195,6 +196,23 @@ def bootstrap_agents(*, load_external: bool = True) -> None:
             # dirs=None → EDIM_AGENT_DIRS + entry points
             load_external_agents()
         _READY = True
+
+
+def _load_corpora() -> None:
+    """Register logical corpora from packaged ``config/corpora.yaml`` if present."""
+    path = Path(__file__).resolve().parent / "config" / "corpora.yaml"
+    if not path.is_file():
+        return
+    try:
+        from edim_dde_ai.retrieval import load_corpora_yaml
+
+        loaded = load_corpora_yaml(path)
+        logger.info(
+            "loaded_corpora",
+            extra={"path": str(path), "corpora": [c.name for c in loaded]},
+        )
+    except Exception as exc:  # noqa: BLE001 — bootstrap should not hard-fail
+        logger.warning("corpora.yaml load skipped/failed: %s", exc)
 
 
 def reset_bootstrap() -> None:

@@ -25,6 +25,14 @@ def classify_failure_factory(_config: dict[str, Any]):
     return _node
 
 
+@register_node("domain.rca.build_retrieval_query")
+def build_retrieval_query_factory(_config: dict[str, Any]):
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.build_retrieval_query(state)
+
+    return _node
+
+
 @register_node("domain.rca.prepare_llm_payload")
 def prepare_llm_payload_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:

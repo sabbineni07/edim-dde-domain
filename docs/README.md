@@ -36,6 +36,7 @@ Inspired by product docs such as [Databricks](https://docs.databricks.com/aws/en
 
 - [Environments (SDBX / DEV / PROD)](platform/environments.md)
 - [**Control-plane state store** (Postgres / Cosmos / Redis)](platform/state-store.md)
+- [**Retrieval & RAG** (FAISS / Azure AI Search / Databricks)](platform/retrieval-and-rag.md)
 - [Observability providers (LangSmith / MLflow)](platform/observability.md)
 - [Security baseline & role matrix](platform/security-baseline.md)
 - [PII guardrails](platform/pii-guardrails.md)

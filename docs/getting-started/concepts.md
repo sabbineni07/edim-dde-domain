@@ -36,7 +36,7 @@ Prompts and skills for `llm_chain`, usually under `content/` next to the agent Y
 
 Hosts must also `set_llm_provider(...)` for LLM nodes (API does this in lifespan).
 
-The API lifespan also configures **ObservabilityProvider** and **StateStore**, then syncs registered agent metadata into the control-plane catalog (see [state-store.md](../platform/state-store.md)). Git remains the source of truth for `*.agent.yaml`.
+The API lifespan also configures **ObservabilityProvider**, **StateStore**, and **RetrievalProvider**, then syncs registered agent metadata into the control-plane catalog. Git remains the source of truth for `*.agent.yaml`. Knowledge indexes are separate — see [state-store.md](../platform/state-store.md) and [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 
 ## Hybrid model
 

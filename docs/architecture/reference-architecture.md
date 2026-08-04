@@ -96,8 +96,7 @@ Dependency direction: `api` → `domain` → `ai`.
 Deferred past Release 1 / Phase 0:
 
 - Full MCP connector mesh (ADO / ServiceNow / JIRA)
-- Enterprise RAG / Azure AI Search platform
-- HITL review UI
+- Enterprise RAG / Azure AI Search platform (framework **RetrievalProvider spike** + `spark_rca` pilot exist; full knowledge platform / retention still later)- HITL review UI
 - Governance dashboard / risk questionnaires
 - Enforced RBAC roles beyond current identity paths (role **matrix is documented**; enforcement is later)
 
@@ -189,6 +188,22 @@ Full guide: [state-store.md](../platform/state-store.md).
 
 ---
 
+## 9. Retrieval & RAG (knowledge plane)
+
+Pluggable `RetrievalProvider` for similarity / hybrid search. **RAG** = retrieve + LLM in the agent graph (pilot: `spark_rca` runbooks).
+
+| Env | Typical backend |
+|-----|-----------------|
+| Local / Volume | `EDIM_RETRIEVAL=faiss` + `EDIM_FAISS_INDEX_PATH` |
+| Deployed default | `EDIM_RETRIEVAL=azure_ai_search` |
+| Lakehouse corpus override | `databricks_vector` per corpus in `corpora.yaml` |
+
+R1 non-goals above still defer full enterprise RAG platform / retention — this section is the **framework spike** toward BL-021.
+
+Full guide: [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
+
+---
+
 ## Related docs
 
 - [Architecture overview](overview.md)
@@ -196,5 +211,6 @@ Full guide: [state-store.md](../platform/state-store.md).
 - [Auth and SQL](auth-and-sql.md)
 - [Config → observability flow](config-to-observability.md)
 - [Control-plane state store](../platform/state-store.md)
+- [Retrieval & RAG](../platform/retrieval-and-rag.md)
 - [YAML schema contract](../framework/yaml-schema.md)
 - [Orchestration topology](../framework/orchestration-topology.md)
