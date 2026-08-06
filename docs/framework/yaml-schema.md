@@ -117,7 +117,16 @@ When `true`, the agent/prompt policy should **ground answers in retrieved source
 
 **In CI** = add a pipeline (or `make`/pytest) step that loads every bundled `*.agent.yaml`, runs `validate_agent_dict(..., use_jsonschema=True)`, and **fails the build** if an agent drifts from the schema. That way a bad YAML cannot merge unnoticed.
 
-Today: schema file + parse-time extended-block checks exist; a dedicated CI job that validates all bundled agents against JSON Schema is the remaining freeze work.
+Today: schema file + parse-time extended-block checks exist; **pytest gates** validate example agents (`edim-dde-ai/tests/test_example_agent_schema.py`) and bundled domain agents (`edim-dde-domain/tests/test_bundled_agent_schema.py`). Wire those tests into your PR CI (BL-045).
+
+```bash
+# From edim-dde-ai
+make validate-schema
+# or: pytest -q tests/test_example_agent_schema.py
+
+# From edim-dde-domain
+pytest -q tests/test_bundled_agent_schema.py
+```
 
 ---
 

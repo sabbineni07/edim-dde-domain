@@ -101,6 +101,7 @@ Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md
 | **H3** | [Glossary](reference/glossary.md) | Terms |
 | **H4** | [Testing](contribute/testing.md) | How we test |
 | **H5** | [Live & dry smoke test](contribute/live-smoke-test.md) | Engineer runbook: env checklist, local + remote |
+| **H5b** | [Windows smoke checklist](contribute/windows-smoke-checklist.md) | Same smoke, PowerShell / Windows steps |
 | — | [Product backlog](../../BACKLOG.md) | Day-to-day EDIM |
 | — | [Platform capability backlog](../../AI_Framework_Platform_Capability_Backlog.md) | Enterprise roadmap |
 

@@ -5,6 +5,8 @@
 
 This runbook proves the stack works **beyond unit tests**: API up, agents registered, Foundry reachable (when live), and optionally Databricks SQL.
 
+**On Windows?** Prefer the PowerShell-oriented checklist: [windows-smoke-checklist.md](windows-smoke-checklist.md).
+
 ---
 
 ## 1. Choose a mode

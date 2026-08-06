@@ -28,7 +28,7 @@ Do **not** put production SQL/LLM stubs in main packages.
 
 For a shared engineer runbook (what info to gather, where to configure, dry vs live vs remote):
 
-→ **[Live & dry smoke test](live-smoke-test.md)**
+→ **[Live & dry smoke test](live-smoke-test.md)** · **[Windows checklist](windows-smoke-checklist.md)**
 
 <!-- edim-learning-nav -->
 ---

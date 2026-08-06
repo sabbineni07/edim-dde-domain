@@ -21,6 +21,7 @@ keyvault = ["azure-identity>=1.15", "azure-keyvault-secrets>=4.8"]
 llm = ["openai>=1.40", "azure-identity>=1.15"]
 dev = [
   "pytest>=8",
+  "jsonschema>=4.0",
   "databricks-sql-connector>=3.0",
   "azure-identity>=1.15",
   "azure-keyvault-secrets>=4.8",
