@@ -45,8 +45,8 @@
 | `LANGCHAIN_PROJECT` | LangSmith | Project name (`edim-dde-sdbx` / `edim-dde-dev` / `edim-dde-prod`) |
 | `LANGCHAIN_ENDPOINT` | LangSmith | Default `https://api.smith.langchain.com` |
 | `EDIM_LANGSMITH_ENABLED` | runtime | Set `false` to force-disable EDIM tracing helpers |
-| `EDIM_CORS_ORIGINS` | API | Comma-separated browser origins |
-| `EDIM_AGENT_DIRS` | domain bootstrap | External agent directory roots |
+| `EDIM_STRICT_STARTUP` | API | `1`/`true` → fail process start if Foundry endpoint missing |
+| `EDIM_REQUIRE_SQL` | API | With strict: also require Databricks host/path |
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 

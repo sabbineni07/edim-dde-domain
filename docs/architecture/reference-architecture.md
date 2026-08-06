@@ -4,7 +4,7 @@
 **← Previous:** [Packages](packages.md) · **Next:** [HTML deck (open)](diagrams/r1-architecture-deck.html) →
 
 
-**Status:** Phase 0 / BL-001 — ready for first sign-off  
+**Status:** Phase 0 / BL-001 — **signed off 2026-08-05**  
 **Audience:** Architecture review and PowerPoint export  
 **Version:** R1 (`1.0.0` package baseline)
 
@@ -16,9 +16,7 @@ This document is the **approved reference map** for the EDIM AI agent stack: pac
 
 | Role | Name | Date | Decision |
 |------|------|------|----------|
-| First sign-off | _(you)_ | TBD | Approve R1 architecture for Phase 0 |
-
-Update this table when you formally approve.
+| First sign-off | Stakeholder (product/architecture owner) | 2026-08-05 | **Approved** — R1 architecture for Phase 0 |
 
 ---
 

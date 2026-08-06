@@ -24,7 +24,13 @@ cd edim-dde-api && pytest -q
 
 Do **not** put production SQL/LLM stubs in main packages.
 
+## Live / dry smoke (beyond pytest)
+
+For a shared engineer runbook (what info to gather, where to configure, dry vs live vs remote):
+
+→ **[Live & dry smoke test](live-smoke-test.md)**
+
 <!-- edim-learning-nav -->
 ---
 
-← [Glossary](../reference/glossary.md) · [Guide home](../README.md) · [Guide home](../README.md) →
+← [Glossary](../reference/glossary.md) · [Guide home](../README.md) · [Live smoke](live-smoke-test.md) →

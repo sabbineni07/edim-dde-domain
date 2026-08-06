@@ -100,6 +100,7 @@ Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md
 | **H2** | [Node type ids](reference/node-type-ids.md) | Allowlisted types |
 | **H3** | [Glossary](reference/glossary.md) | Terms |
 | **H4** | [Testing](contribute/testing.md) | How we test |
+| **H5** | [Live & dry smoke test](contribute/live-smoke-test.md) | Engineer runbook: env checklist, local + remote |
 | — | [Product backlog](../../BACKLOG.md) | Day-to-day EDIM |
 | — | [Platform capability backlog](../../AI_Framework_Platform_Capability_Backlog.md) | Enterprise roadmap |
 

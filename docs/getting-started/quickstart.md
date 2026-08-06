@@ -171,4 +171,6 @@ curl → FastAPI → create_agent().invoke → LangGraph YAML nodes → DTO resp
 → **[A2 — Core concepts](concepts.md)** (required next)  
 Then **[B1 — End-to-end design](../architecture/end-to-end-design.md)** for architecture depth.
 
+**Proving the stack with Foundry / SQL:** [Live & dry smoke test](../contribute/live-smoke-test.md)
+
 [Guide home](../README.md)
