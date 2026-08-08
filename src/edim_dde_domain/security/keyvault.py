@@ -14,18 +14,21 @@ from typing import Any, Mapping
 
 logger = logging.getLogger(__name__)
 
-# Vault secret names → env. Foundry SP goes to EDIM_FOUNDRY_* (not AZURE_CLIENT_*)
+# Env var → vault secret name. Foundry SP goes to EDIM_FOUNDRY_* (not AZURE_CLIENT_*)
 # so DefaultAzureCredential for SQL does not pick up the Foundry workload SP.
 _DEFAULT_SECRET_MAP: dict[str, str] = {
-    "azure-client-id": "EDIM_FOUNDRY_CLIENT_ID",
-    "azure-client-secret": "EDIM_FOUNDRY_CLIENT_SECRET",
-    "azure-tenant-id": "EDIM_FOUNDRY_TENANT_ID",
-    "langchain-api-key": "LANGCHAIN_API_KEY",
+    "EDIM_FOUNDRY_CLIENT_ID": "azure-client-id",
+    "EDIM_FOUNDRY_CLIENT_SECRET": "azure-client-secret",
+    "EDIM_FOUNDRY_TENANT_ID": "azure-tenant-id",
+    "LANGCHAIN_API_KEY": "langchain-api-key",
 }
 
 
 def parse_secret_map(raw: str | None) -> dict[str, str]:
-    """Parse ``vaultSecret:ENV_VAR,vaultSecret2:ENV_VAR2`` pairs."""
+    """Parse ``ENV_VAR:vaultSecret,OTHER_ENV:otherSecret`` pairs.
+
+    Returns ``{env_name: vault_secret_name}``.
+    """
     if not raw or not raw.strip():
         return dict(_DEFAULT_SECRET_MAP)
     out: dict[str, str] = {}
@@ -35,13 +38,14 @@ def parse_secret_map(raw: str | None) -> dict[str, str]:
             continue
         if ":" not in part:
             raise ValueError(
-                f"Invalid EDIM_KV_SECRET_MAP entry {part!r}; expected secret:ENV_VAR"
+                f"Invalid EDIM_KV_SECRET_MAP entry {part!r}; "
+                "expected ENV_VAR:vaultSecretName"
             )
-        secret_name, env_name = part.split(":", 1)
-        secret_name, env_name = secret_name.strip(), env_name.strip()
-        if not secret_name or not env_name:
+        env_name, secret_name = part.split(":", 1)
+        env_name, secret_name = env_name.strip(), secret_name.strip()
+        if not env_name or not secret_name:
             raise ValueError(f"Invalid EDIM_KV_SECRET_MAP entry {part!r}")
-        out[secret_name] = env_name
+        out[env_name] = secret_name
     return out
 
 
@@ -110,7 +114,11 @@ def load_key_vault_secrets(
     vault_url: str | None = None,
     secret_map: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """Fetch secrets and set env vars. Returns ``{env_name: vault_secret_name}`` loaded."""
+    """Fetch secrets and set env vars.
+
+    ``secret_map`` / ``EDIM_KV_SECRET_MAP`` use ``{env_name: vault_secret_name}``.
+    Returns ``{env_name: vault_secret_name}`` for secrets actually loaded.
+    """
     url = (vault_url or os.environ.get("AZURE_KEY_VAULT_URL") or "").strip()
     if not url:
         logger.debug("AZURE_KEY_VAULT_URL not set; skipping Key Vault bootstrap")
@@ -137,7 +145,7 @@ def load_key_vault_secrets(
     client = SecretClient(vault_url=url, credential=credential)
 
     loaded: dict[str, str] = {}
-    for secret_name, env_name in mapping.items():
+    for env_name, secret_name in mapping.items():
         if not _should_set_env(env_name):
             continue
         secret = client.get_secret(secret_name)

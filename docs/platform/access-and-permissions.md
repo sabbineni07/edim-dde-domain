@@ -110,16 +110,19 @@ How to grant the MI warehouse + UC: [Deploy & hosting §6.3](../api/deploy-and-h
 
 ---
 
-## 4. Where to find Identity A
+## 4. Where to find Identity A (App SP)
 
 | Host | Where to look | Grant on Key Vault |
 |------|---------------|--------------------|
-| **Databricks Apps** | Apps → app → **Authorization** → service principal | That SP → **Key Vault Secrets User** ([step-by-step](key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user)) |
+| **Databricks Apps** | **Apps → your app → Authorization** → copy **Application (client) ID** of the **app service principal** | That SP → **Key Vault Secrets User** — full UI + CLI: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user) |
 | **Azure Container Apps** | ACA → Identity → system/user-assigned MI | That MI → **Key Vault Secrets User** |
 | **Local** | Your user after `az login` | Your user (or skip KV; use `.env`) |
 | **Explicit reader** | Entra app for `EDIM_KV_CLIENT_*` | That SP → **Key Vault Secrets User** |
 
-Apps injects `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET`. Set **`AZURE_TENANT_ID`** (tenant GUID) so the App SP can open Key Vault via client-credentials.
+**Apps UI path (short):** workspace → **Apps** → **`edim-dde-api-dev`** → **Authorization** → App service principal → **Application (client) ID**.  
+That ID is Identity **A** (opens KV). It is **not** the Foundry SP and **not** your user.
+
+Apps injects the same principal as `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET`. Set **`AZURE_TENANT_ID`** (directory GUID) so the App SP can open Key Vault via client-credentials.
 
 Apps docs: [Configure authorization in a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth).
 
@@ -141,7 +144,7 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 
 | Symptom | Likely cause |
 |---------|----------------|
-| Foundry 503 | Identity B missing / no Foundry role |
+| Foundry 503 / `DefaultAzureCredential failed` on Apps after SQL works | Identity **B** not in env — App SP (A) cannot read KV, or secret map wrong. Find App SP + grant: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user) |
 | SQL OK local, fail Apps | Need forwarded **user** token (Identity U) |
 | Apps `RequestError` / OpenSession fails | User authorization missing scope **`sql`** (App SP warehouse CAN MANAGE alone is not enough); or no `X-Forwarded-Access-Token`; or user lacks CAN USE / UC SELECT. Check `GET /api/v1/debug/sql-auth` |
 | Do we need a UI to pass the token? | **No.** Swagger at `https://<app-url>/docs` is enough; the Apps gateway injects the header. You never set `X-Forwarded-Access-Token` yourself. |

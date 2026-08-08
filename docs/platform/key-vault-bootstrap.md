@@ -35,16 +35,17 @@ Secrets loaded from the vault are usually **Identity B** (`EDIM_FOUNDRY_*`) and 
 
 ## 2. What is `EDIM_KV_SECRET_MAP`?
 
-Maps **Key Vault secret names** → **process environment variable names** at API startup.
+Maps **process environment variable names** ← **Key Vault secret names** at API startup  
+(“what the app needs” → “which vault secret”).
 
 | Without `EDIM_KV_SECRET_MAP` | With `EDIM_KV_SECRET_MAP` |
 |------------------------------|---------------------------|
-| Code uses the **default** map (§3) | You choose which vault secrets land in which env vars |
+| Code uses the **default** map (§3) | You choose which env vars are filled from which vault secrets |
 
 **Format** (comma-separated pairs):
 
 ```text
-vaultSecretName:ENV_VAR_NAME,otherSecret:OTHER_ENV
+ENV_VAR_NAME:vaultSecretName,OTHER_ENV:otherSecret
 ```
 
 **Rules:**
@@ -60,12 +61,12 @@ vaultSecretName:ENV_VAR_NAME,otherSecret:OTHER_ENV
 
 Used when `EDIM_KV_SECRET_MAP` is **unset**:
 
-| Vault secret name | Env var set |
-|-------------------|-------------|
-| `azure-client-id` | `EDIM_FOUNDRY_CLIENT_ID` |
-| `azure-client-secret` | `EDIM_FOUNDRY_CLIENT_SECRET` |
-| `azure-tenant-id` | `EDIM_FOUNDRY_TENANT_ID` |
-| `langchain-api-key` | `LANGCHAIN_API_KEY` |
+| Env var set | Vault secret name |
+|-------------|-------------------|
+| `EDIM_FOUNDRY_CLIENT_ID` | `azure-client-id` |
+| `EDIM_FOUNDRY_CLIENT_SECRET` | `azure-client-secret` |
+| `EDIM_FOUNDRY_TENANT_ID` | `azure-tenant-id` |
+| `LANGCHAIN_API_KEY` | `langchain-api-key` |
 
 Foundry goes to `EDIM_FOUNDRY_*` (not `AZURE_CLIENT_*`) so SQL’s `DefaultAzureCredential` is not tied to the Foundry SP.
 
@@ -85,13 +86,13 @@ Create vault secrets named `azure-client-id`, `azure-client-secret`, `azure-tena
 ### Custom vault secret names
 
 ```text
-EDIM_KV_SECRET_MAP=foundry-client-id:EDIM_FOUNDRY_CLIENT_ID,foundry-client-secret:EDIM_FOUNDRY_CLIENT_SECRET,foundry-tenant-id:EDIM_FOUNDRY_TENANT_ID,langsmith-key:LANGCHAIN_API_KEY
+EDIM_KV_SECRET_MAP=EDIM_FOUNDRY_CLIENT_ID:foundry-client-id,EDIM_FOUNDRY_CLIENT_SECRET:foundry-client-secret,EDIM_FOUNDRY_TENANT_ID:foundry-tenant-id,LANGCHAIN_API_KEY:langsmith-key
 ```
 
 ### Also load Cosmos / Search keys later
 
 ```text
-EDIM_KV_SECRET_MAP=azure-client-id:EDIM_FOUNDRY_CLIENT_ID,azure-client-secret:EDIM_FOUNDRY_CLIENT_SECRET,azure-tenant-id:EDIM_FOUNDRY_TENANT_ID,cosmos-key:EDIM_COSMOS_KEY,search-key:EDIM_AZURE_SEARCH_KEY
+EDIM_KV_SECRET_MAP=EDIM_FOUNDRY_CLIENT_ID:azure-client-id,EDIM_FOUNDRY_CLIENT_SECRET:azure-client-secret,EDIM_FOUNDRY_TENANT_ID:azure-tenant-id,EDIM_COSMOS_KEY:cosmos-key,EDIM_AZURE_SEARCH_KEY:search-key
 ```
 
 ### Force overwrite of already-set env
@@ -107,7 +108,7 @@ EDIM_KV_FORCE=1
 | Variable | Purpose |
 |----------|---------|
 | `AZURE_KEY_VAULT_URL` | Vault URI; unset = skip bootstrap |
-| `EDIM_KV_SECRET_MAP` | Optional secret→env map (§2–§4) |
+| `EDIM_KV_SECRET_MAP` | Optional `ENV:vaultSecret` map (§2–§4) |
 | `EDIM_KV_FORCE` | `1` = overwrite existing env |
 | `EDIM_KV_CLIENT_*` | Optional dedicated vault-reader SP |
 | `DATABRICKS_CLIENT_*` + `AZURE_TENANT_ID` | Apps SP opens vault |
@@ -122,47 +123,74 @@ Full catalog: [Environment variables](../reference/env-vars.md).
 | Symptom | Likely cause |
 |---------|----------------|
 | KV skipped | `AZURE_KEY_VAULT_URL` unset |
-| 403 Key Vault | Identity A missing **Key Vault Secrets User**; tenant; firewall |
-| Apps SP warning | Set `AZURE_TENANT_ID` |
+| 403 Key Vault | **App SP** missing **Key Vault Secrets User** (§7); wrong tenant; vault firewall |
+| Apps SP warning in logs | Set `AZURE_TENANT_ID` (directory GUID) in `app.yaml` |
 | Wrong env after load | Check `EDIM_KV_SECRET_MAP` pairs; secret names in vault |
-| Foundry still missing | Secret not in map / not created / `EDIM_KV_FORCE` needed |
+| SQL works, Foundry fails with `DefaultAzureCredential failed… EnvironmentCredential…` | **Identity B not loaded** — KV bootstrap failed or secrets missing. App SP must open vault (§7); map must set `EDIM_FOUNDRY_CLIENT_ID` + `EDIM_FOUNDRY_CLIENT_SECRET`. Not an SSO / SQL-scope issue. |
+| Foundry still missing after grant | Secret names wrong; wait for RBAC propagation; restart App; check logs (§7.5) |
 
 ---
 
 ## 7. Grant Databricks App SP → Key Vault Secrets User
 
-Required when the App opens the vault with injected `DATABRICKS_CLIENT_ID` / `SECRET` (Identity A).
+Required when the App opens the vault with injected `DATABRICKS_CLIENT_ID` / `SECRET` (**Identity A**).
 
-### 7.1 Find the App service principal
+Do **not** confuse these three:
 
-1. Databricks workspace → **Apps** → open **`edim-dde-api-dev`** (or your API app name).  
-2. Open **Authorization** (sometimes labeled permissions / service principal).  
-3. Copy the Entra **Application (client) ID** of the app’s service principal.  
-   (Also available after `databricks apps create` — confirm in UI.)
+| Name | What it is | Used for |
+|------|------------|----------|
+| **App SP** (Identity A) | Databricks-created service principal **for this App** | Open Key Vault at startup |
+| **Foundry SP** (Identity B) | Separate Entra app whose id/secret live **in** the vault → `EDIM_FOUNDRY_*` | Call Azure AI Foundry / OpenAI |
+| **Signed-in user** (Identity U) | Person using Swagger / the App | Databricks SQL via `X-Forwarded-Access-Token` |
+
+SQL can succeed while Foundry fails if A cannot read B’s secrets from the vault.
+
+### 7.1 Where to find the App SP (Databricks UI)
+
+1. Sign into the **Databricks workspace** that hosts the App.  
+2. Left nav (or app switcher) → **Compute** → **Apps**, or workspace **Apps**.  
+3. Open your API app (e.g. **`edim-dde-api-dev`**).  
+4. Open the **Authorization** tab  
+   (UI labels vary: **Authorization**, **Permissions**, or **Service principal**).  
+5. Find the **App service principal** / **OAuth** client for **this app** (not a warehouse user, not the Foundry SP).  
+6. Copy the **Application (client) ID** (GUID).  
+   - This is the value Azure IAM needs as the assignee.  
+   - Databricks also injects the same id into the running App as `DATABRICKS_CLIENT_ID` (secret is `DATABRICKS_CLIENT_SECRET` — do not put those in git).
+
+**CLI alternative** (after `databricks auth login`):
+
+```bash
+databricks apps get edim-dde-api-dev
+# Look for the app’s service principal / client id in the JSON
+# (field names vary by CLI version — search for client_id / service_principal)
+```
 
 Official: [Configure authorization in a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth).
 
-### 7.2 Portal (DEV vault)
+### 7.2 Portal — assign Key Vault Secrets User
 
-1. Azure Portal → **Key Vault** (e.g. `edim-dde-dev-kv`).  
-2. **Access control (IAM)** → **Add role assignment**.  
+1. Azure Portal → **Key Vault** used by the App  
+   (from `AZURE_KEY_VAULT_URL`, e.g. `dlabs-dev-eus-app-a-kv`).  
+2. **Access control (IAM)** → **Add** → **Add role assignment**.  
 3. Role: **Key Vault Secrets User**.  
-4. Members: find the App SP by application (client) ID or display name → **Review + assign**.  
-5. If the vault uses **access policies** (legacy) instead of RBAC: add a policy for that SP with **Get** + **List** on secrets (prefer RBAC on new vaults).
+4. **Members** → **+ Select members** → paste the **Application (client) ID** from §7.1  
+   (or search the SP display name).  
+5. **Review + assign**.  
+6. If the vault still uses **access policies** (legacy) instead of RBAC: add a policy for that SP with **Get** + **List** on secrets (prefer RBAC on new vaults).
 
 Also ensure network rules allow the App’s egress (public allowlist / private endpoint as required).
+
+RBAC can take a few minutes to propagate; then **restart or redeploy** the App.
 
 ### 7.3 Azure CLI
 
 ```bash
 # Values you fill in
-VAULT_NAME=edim-dde-dev-kv
-APP_SP_CLIENT_ID=<application-client-id-from-apps-authorization>
+VAULT_NAME=dlabs-dev-eus-app-a-kv   # or your vault name
+APP_SP_CLIENT_ID=<application-client-id-from-§7.1>
 
-# Resolve vault resource id
 VAULT_ID=$(az keyvault show --name "$VAULT_NAME" --query id -o tsv)
 
-# Assign RBAC role (assignee = app id or object id — CLI accepts both in most tenants)
 az role assignment create \
   --role "Key Vault Secrets User" \
   --assignee "$APP_SP_CLIENT_ID" \
@@ -180,9 +208,28 @@ az role assignment create \
   --scope "$VAULT_ID"
 ```
 
-### 7.4 Verify
+### 7.4 Secrets the App must be able to read
 
-Redeploy or restart the App with `AZURE_KEY_VAULT_URL` + `AZURE_TENANT_ID` set. Logs should show Key Vault auth via `DATABRICKS_CLIENT_* (Apps SP)` and loaded `EDIM_FOUNDRY_*` (no 403).
+With current `deploy/databricks-app/app.yaml` style map:
+
+```text
+EDIM_KV_SECRET_MAP=EDIM_FOUNDRY_CLIENT_ID:DLABS-DIM-ADB-APP-AIF-APPID,EDIM_FOUNDRY_CLIENT_SECRET:DLABS-DIM-ADB-APP-AIF-APPKEY
+```
+
+Those **vault secret names** (right side) must exist. Tenant often comes from `AZURE_TENANT_ID` in `app.yaml` (shared directory GUID), or add `EDIM_FOUNDRY_TENANT_ID:<vault-secret>`.
+
+### 7.5 Verify (logs + behavior)
+
+Redeploy or **Start** the App with `AZURE_KEY_VAULT_URL` + `AZURE_TENANT_ID` set. In App logs look for:
+
+| Log / behavior | Meaning |
+|----------------|---------|
+| `Key Vault auth via DATABRICKS_CLIENT_* (Apps SP) → https://…vault.azure.net/` | Identity A opened the vault |
+| `Loaded Key Vault secret … → env EDIM_FOUNDRY_CLIENT_ID` (and `…_SECRET`) | Identity B env ready |
+| `Key Vault bootstrap skipped/failed: …` or 403 | Fix §7.2 grant / secret names / network |
+| Foundry still `DefaultAzureCredential failed…` | `EDIM_FOUNDRY_CLIENT_*` still unset — secrets not loaded |
+
+**Quick prove-out without KV:** Apps → Environment / secrets → set `EDIM_FOUNDRY_CLIENT_ID`, `EDIM_FOUNDRY_CLIENT_SECRET`, `EDIM_FOUNDRY_TENANT_ID` directly; temporarily unset `AZURE_KEY_VAULT_URL` if you only want to validate Foundry.
 
 Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-deploy--databricks-apps-default).
 

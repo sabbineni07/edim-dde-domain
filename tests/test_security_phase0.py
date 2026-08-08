@@ -35,15 +35,15 @@ def test_redact_nested():
 
 def test_parse_secret_map_default():
     m = parse_secret_map(None)
-    assert m["azure-client-id"] == "EDIM_FOUNDRY_CLIENT_ID"
-    assert m["azure-client-secret"] == "EDIM_FOUNDRY_CLIENT_SECRET"
-    assert m["azure-tenant-id"] == "EDIM_FOUNDRY_TENANT_ID"
-    assert m["langchain-api-key"] == "LANGCHAIN_API_KEY"
+    assert m["EDIM_FOUNDRY_CLIENT_ID"] == "azure-client-id"
+    assert m["EDIM_FOUNDRY_CLIENT_SECRET"] == "azure-client-secret"
+    assert m["EDIM_FOUNDRY_TENANT_ID"] == "azure-tenant-id"
+    assert m["LANGCHAIN_API_KEY"] == "langchain-api-key"
 
 
 def test_parse_secret_map_custom():
-    m = parse_secret_map("my-secret:MY_ENV,other:OTHER")
-    assert m == {"my-secret": "MY_ENV", "other": "OTHER"}
+    m = parse_secret_map("MY_ENV:my-secret,OTHER:other")
+    assert m == {"MY_ENV": "my-secret", "OTHER": "other"}
 
 
 def test_vault_credential_prefers_databricks_apps_sp(monkeypatch):
