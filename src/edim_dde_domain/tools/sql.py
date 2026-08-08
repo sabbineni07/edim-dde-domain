@@ -132,12 +132,28 @@ def execute_sql(
     """Run a parameterized query against a resolved Databricks SQL source."""
     from databricks import sql
 
-    with sql.connect(**source.connection_params()) as conn:
-        with conn.cursor() as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            rows = cursor.fetchall()
-            columns = [d[0] for d in cursor.description] if cursor.description else []
-            return rows_to_dicts(columns, rows)
+    try:
+        with sql.connect(**source.connection_params()) as conn:
+            with conn.cursor() as cursor:
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                rows = cursor.fetchall()
+                columns = (
+                    [d[0] for d in cursor.description] if cursor.description else []
+                )
+                return rows_to_dicts(columns, rows)
+    except DomainToolError:
+        raise
+    except Exception as exc:
+        # Connector often wraps 401/scope/network as a generic RequestError
+        raise DomainToolError(
+            f"Databricks SQL failed for source {source.name!r} "
+            f"(host={source.server_hostname!r}, http_path={source.http_path!r}): "
+            f"{type(exc).__name__}: {exc}. "
+            "On Apps: ensure User authorization includes scope `sql`, warehouse "
+            "resource is bound, caller receives X-Forwarded-Access-Token, and the "
+            "user has CAN USE + UC SELECT. "
+            f"Underlying: {exc!r}"
+        ) from exc

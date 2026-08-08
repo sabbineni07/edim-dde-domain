@@ -8,6 +8,7 @@ from edim_dde_domain.errors import DomainToolError
 from edim_dde_domain.sources.auth import (
     extract_forwarded_databricks_token,
     get_request_databricks_token,
+    is_databricks_apps_runtime,
     reset_request_databricks_token,
     set_request_databricks_token,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "get_request_databricks_token",
     "get_resolved_source",
     "get_source_spec",
+    "is_databricks_apps_runtime",
     "list_sources",
     "load_sources",
     "reset_request_databricks_token",

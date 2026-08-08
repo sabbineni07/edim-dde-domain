@@ -143,6 +143,8 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 |---------|----------------|
 | Foundry 503 | Identity B missing / no Foundry role |
 | SQL OK local, fail Apps | Need forwarded **user** token (Identity U) |
+| Apps `RequestError` / OpenSession fails | User authorization missing scope **`sql`** (App SP warehouse CAN MANAGE alone is not enough); or no `X-Forwarded-Access-Token`; or user lacks CAN USE / UC SELECT. Check `GET /api/v1/debug/sql-auth` |
+| Do we need a UI to pass the token? | **No.** Swagger at `https://<app-url>/docs` is enough; the Apps gateway injects the header. You never set `X-Forwarded-Access-Token` yourself. |
 | SQL fail ACA | MI not granted warehouse/UC — [§6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
 | KV / map errors | [Key Vault bootstrap](key-vault-bootstrap.md) |
 | `dbutils` on Apps | Not available |

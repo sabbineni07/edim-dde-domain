@@ -19,10 +19,13 @@
 
 Code: `edim_dde_domain.sources.auth.resolve_access_token`
 
-1. **Request-scoped user OAuth** — if API middleware set `X-Forwarded-Access-Token` (Databricks Apps)  
+1. **Request-scoped user OAuth** — if API binds `X-Forwarded-Access-Token` (Databricks Apps)  
 2. Else **`DefaultAzureCredential`** — local `az login`, ACA managed identity  
 
-`Authorization: Bearer` is **not** treated as a Databricks user token.
+On **Databricks Apps**, step 2 is disabled by default (fail closed): without the forwarded user token you get a clear 503. The App also needs User authorization scope **`sql`** or OpenSession fails even when the header is present.
+
+`Authorization: Bearer` is **not** treated as a Databricks user token.  
+Diagnostics: `GET /api/v1/debug/sql-auth` (booleans only).
 
 Do **not** put the Foundry SP in `AZURE_CLIENT_*` — that makes SQL’s `DefaultAzureCredential` reuse Foundry. Use `EDIM_FOUNDRY_*` instead.
 

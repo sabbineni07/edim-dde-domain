@@ -373,15 +373,40 @@ Databricks substitutes `$DATABRICKS_APP_PORT`. Env for warehouse / Foundry / KV:
 
 ### 5.7 Validate on Apps (closes P0 Apps token check)
 
+#### SQL user-auth prerequisites (before recommendations)
+
+This API uses **user SQL** (Identity U): the Apps gateway injects `X-Forwarded-Access-Token`; code passes that token to the warehouse. You do **not** need a separate UI app, and you do **not** manually set that header.
+
+**Swagger / OpenAPI is fine** if you open it on the **App URL** (Apps → your app → Open → `/docs`). Browser calls from `/docs` to `/api/v1/*` still go through the Apps reverse proxy, which adds the forwarded user token. Opening `/docs` on localhost does **not**.
+
+Warehouse **CAN MANAGE** for the **App service principal** only helps the **app-identity** SQL path. Our code does **not** use `DATABRICKS_CLIENT_*` for SQL, so App SP warehouse grants alone will not fix recommendations.
+
+Confirm all of:
+
+1. **App → Authorization → User authorization** → add scope **`sql`** (defaults are only `iam.*` identity reads — not SQL).  
+2. Optionally **App → Resources** → add the same SQL warehouse (common Apps setup; often paired with App SP CAN USE/MANAGE). This is **not** a substitute for the `sql` user scope.  
+3. Workspace admin has enabled user authorization if required; **restart/redeploy** after adding scopes; open the App once and **consent** when prompted.  
+4. **Your user** has **CAN USE** on that warehouse + **SELECT** on the UC metrics tables.  
+5. Call via the **App URL** while signed into the workspace (Swagger on App URL counts).
+
+Quick check from Swagger: `GET /api/v1/debug/sql-auth`  
+Or:
+
 ```bash
 export BASE="https://<your-app-url>"
+curl -sS "$BASE/api/v1/debug/sql-auth" | python3 -m json.tool
+```
 
+**Pass:** `"forwarded_access_token_present": true`.  
+**Fail:** missing user-auth/`sql` scope, no consent, or not calling through the App URL.
+
+```bash
 curl -sS "$BASE/health" | python3 -m json.tool
 ```
 
 **Pass:** `"status":"ok"`, agents include `cluster_tuning` / `spark_rca`.
 
-Then, **while authenticated as an App user** (gateway forwards `X-Forwarded-Access-Token`):
+Then live tuning:
 
 ```bash
 curl -sS "$BASE/api/v1/recommendations" \
@@ -391,9 +416,10 @@ curl -sS "$BASE/api/v1/recommendations" \
 ```
 
 **Pass:** HTTP 200 with UC-backed metrics.  
-**Fail auth:** warehouse/UC grants for the **user**, or missing forwarded token (laptop `az login` does not apply inside the App for user SQL).
+**Fail:** `RequestError` / OpenSession → almost always missing `sql` scope, missing forwarded token, or user warehouse/UC grants — see [Access & permissions](../platform/access-and-permissions.md).
 
-Smoke details: [Live & dry smoke](../contribute/live-smoke-test.md).
+Smoke details: [Live & dry smoke](../contribute/live-smoke-test.md).  
+Platform docs: [Configure authorization in a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth).
 
 ### 5.8 First-deploy checklist (ordered)
 
