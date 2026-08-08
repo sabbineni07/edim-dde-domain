@@ -1,13 +1,15 @@
-"""Databricks SQL access tokens — two paths only.
+"""Databricks SQL access tokens — host-agnostic resolution.
 
-1. **Databricks Apps (deployed):** API middleware reads user OAuth from
+1. **Databricks Apps:** API middleware reads user OAuth from
    ``X-Forwarded-Access-Token`` and calls ``set_request_databricks_token``.
-2. **Local dev:** ``DefaultAzureCredential`` after ``az login``.
+2. **Else (local, ACA, Docker, …):** ``DefaultAzureCredential``
+   (``az login``, managed identity). Do **not** put Foundry SP in
+   ``AZURE_CLIENT_*`` — use ``EDIM_FOUNDRY_*`` instead.
 
 ``Authorization: Bearer`` is intentionally ignored so API-level auth (if
 added later) is never forwarded to Databricks SQL as the user token.
 
-Extend later if CI / service-principal hosting is needed.
+See docs/platform/access-and-permissions.md for per-host identity matrix.
 """
 
 from __future__ import annotations
@@ -93,8 +95,11 @@ def get_azure_databricks_token() -> str:
         raise DatabricksNotConfiguredError(
             "Failed to obtain Databricks token via DefaultAzureCredential "
             f"({type(exc).__name__}: {exc}). "
-            "For local dev run `az login`. "
-            "On Databricks Apps, ensure middleware sets the user OAuth token."
+            "Local: run `az login`. "
+            "Databricks Apps: ensure middleware sets X-Forwarded-Access-Token. "
+            "ACA/Docker: ensure managed identity (or a dedicated SQL SP) can "
+            "access the workspace — do not reuse Foundry EDIM_FOUNDRY_* via "
+            "AZURE_CLIENT_* (see docs/platform/access-and-permissions.md)."
         ) from exc
 
 

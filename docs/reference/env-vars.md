@@ -37,9 +37,10 @@
 | `DATABRICKS_SPARK_LOGS_TABLE` | spark_rca SQL | UC FQN |
 | `AZURE_OPENAI_ENDPOINT` | Foundry | OpenAI v1 endpoint |
 | `AZURE_OPENAI_DEPLOYMENT_NAME` | Foundry | Deployment name |
-| `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | Foundry (prod) | Foundry workload SP (often from Key Vault) |
+| `EDIM_FOUNDRY_TENANT_ID` / `EDIM_FOUNDRY_CLIENT_ID` / `EDIM_FOUNDRY_CLIENT_SECRET` | Foundry (prod) | Foundry workload SP (often from Key Vault). Keeps SQL `DefaultAzureCredential` clean |
+| `AZURE_TENANT_ID` | Apps → Key Vault | Directory GUID for Apps SP client-credentials. Not the Foundry SP |
 | `AZURE_KEY_VAULT_URL` | API lifespan | Vault URI for secret bootstrap |
-| `EDIM_KV_SECRET_MAP` | Key Vault | Optional `secret:ENV_VAR,...` map |
+| `EDIM_KV_SECRET_MAP` | Key Vault | Optional `vaultSecret:ENV_VAR,...` map — [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
 | `EDIM_KV_FORCE` | Key Vault | `1` = overwrite existing env from vault |
 | `EDIM_KV_CLIENT_ID` / `EDIM_KV_CLIENT_SECRET` / `EDIM_KV_TENANT_ID` | Key Vault | Optional dedicated vault-reader SP |
 | `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` | Apps (injected) | App SP — used to open KV when tenant set |
@@ -53,7 +54,17 @@
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 
-See also: [retrieval & RAG](../platform/retrieval-and-rag.md), [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md), [access & permissions](../platform/access-and-permissions.md), [deploy & hosting](../api/deploy-and-hosting.md).
+---
+
+## Key Vault–related vars
+
+Canonical how-to (defaults, `EDIM_KV_SECRET_MAP` examples, force overwrite):
+
+→ **[Key Vault bootstrap](../platform/key-vault-bootstrap.md)**
+
+This page stays a **catalog** of names; do not duplicate secret-map tutorials here.
+
+See also: [access & permissions](../platform/access-and-permissions.md), [deploy & hosting](../api/deploy-and-hosting.md), [environments](../platform/environments.md), [security baseline](../platform/security-baseline.md).
 
 <!-- edim-learning-nav -->
 ---

@@ -3,24 +3,45 @@
 **Learning path:** B7 · [Guide home](../README.md)
 **← Previous:** [Request flow](request-flow.md) · **Next:** [Config → observability](config-to-observability.md) →
 
+**This page covers:** how code resolves a Databricks SQL warehouse token, and how Foundry authenticates.
 
-## SQL warehouse (two paths only)
+**Not on this page:**
 
-| Environment | How the token is obtained |
-|-------------|---------------------------|
-| **Local** | `az login` → `DefaultAzureCredential` |
-| **Databricks Apps** | Gateway sends `X-Forwarded-Access-Token` → API middleware → ContextVar → SQL connector |
+| Topic | Go to |
+|-------|--------|
+| Identities U / A / B by host | [Access & permissions](../platform/access-and-permissions.md) |
+| Key Vault / `EDIM_KV_SECRET_MAP` | [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
+| ACA MI warehouse + UC grant steps | [Deploy & hosting §6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
 
-`Authorization: Bearer` is **not** treated as a Databricks user token (reserved for future API auth).
+---
+
+## SQL warehouse token resolution (all hosts)
+
+Code: `edim_dde_domain.sources.auth.resolve_access_token`
+
+1. **Request-scoped user OAuth** — if API middleware set `X-Forwarded-Access-Token` (Databricks Apps)  
+2. Else **`DefaultAzureCredential`** — local `az login`, ACA managed identity  
+
+`Authorization: Bearer` is **not** treated as a Databricks user token.
+
+Do **not** put the Foundry SP in `AZURE_CLIENT_*` — that makes SQL’s `DefaultAzureCredential` reuse Foundry. Use `EDIM_FOUNDRY_*` instead.
+
+| Host | Typical SQL identity |
+|------|----------------------|
+| Local machine | Your user via `az login` |
+| Databricks Apps | Signed-in **user** (forwarded token) |
+| Azure Container Apps | Container **managed identity** |
 
 ## Foundry / Azure OpenAI LLM
 
-| Environment | Auth |
-|-------------|------|
-| **Local** | `az login` (leave `AZURE_CLIENT_*` unset) |
-| **Prod / Apps** | Foundry **workload SP** in `AZURE_CLIENT_*` — often loaded from Key Vault at startup |
+| Host | Auth |
+|------|------|
+| Local | `az login` if `EDIM_FOUNDRY_*` unset; else SP from `.env` / KV |
+| Databricks Apps / ACA | Foundry **workload SP** in `EDIM_FOUNDRY_*` (KV bootstrap or host secrets) |
 
-**Important:** On Databricks Apps, the identity that **opens** Key Vault (App SP) is **not** the same as the Foundry SP. See [Access & permissions](../platform/access-and-permissions.md).
+Foundry uses `ClientSecretCredential` when `EDIM_FOUNDRY_*` is set; otherwise `DefaultAzureCredential`.
+
+**Do not confuse** the Databricks **App SP** (opens KV) with the **Foundry SP** (calls the model). See [Access & permissions](../platform/access-and-permissions.md).
 
 ## Sources
 

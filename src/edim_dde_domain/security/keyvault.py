@@ -1,9 +1,9 @@
 """Azure Key Vault secret bootstrap (BL-013).
 
 Loads mapped secrets into ``os.environ``. Credential used to *open* the vault
-is chosen separately from Foundry ``AZURE_CLIENT_*`` values written *from* the
-vault (see ``_vault_credential``) so Databricks Apps SP and Foundry SP do not
-collide.
+is chosen separately from Foundry ``EDIM_FOUNDRY_*`` values written *from* the
+vault (see ``_vault_credential``) so Apps SP / MI, Foundry SP, and SQL auth
+do not collide via ``AZURE_CLIENT_*``.
 """
 
 from __future__ import annotations
@@ -14,10 +14,12 @@ from typing import Any, Mapping
 
 logger = logging.getLogger(__name__)
 
+# Vault secret names → env. Foundry SP goes to EDIM_FOUNDRY_* (not AZURE_CLIENT_*)
+# so DefaultAzureCredential for SQL does not pick up the Foundry workload SP.
 _DEFAULT_SECRET_MAP: dict[str, str] = {
-    "azure-client-id": "AZURE_CLIENT_ID",
-    "azure-client-secret": "AZURE_CLIENT_SECRET",
-    "azure-tenant-id": "AZURE_TENANT_ID",
+    "azure-client-id": "EDIM_FOUNDRY_CLIENT_ID",
+    "azure-client-secret": "EDIM_FOUNDRY_CLIENT_SECRET",
+    "azure-tenant-id": "EDIM_FOUNDRY_TENANT_ID",
     "langchain-api-key": "LANGCHAIN_API_KEY",
 }
 

@@ -19,6 +19,9 @@ How to package and run the EDIM stack on **Databricks Apps** (default first cut)
 | **Thin host adapters** | Databricks = `app.yaml` + port; containers = `Dockerfile` + `PORT`. |
 | **Secrets outside Git** | Key Vault / Apps secrets / ACA secret refs → same env **names**. |
 
+How many agents per app (one runtime vs domain split vs hub):  
+→ [Agent deployment & composition](../architecture/agent-deployment-and-composition.md)
+
 ```text
   wheels (ai + domain + api)
            │
@@ -122,11 +125,17 @@ For live RCA on the host, also set spark metrics/logs table FQNs.
 
 ### 4.2 Auth matrix by host
 
-| Host | SQL warehouse | Foundry LLM |
-|------|---------------|-------------|
-| **Databricks Apps** | User OAuth via `X-Forwarded-Access-Token` (middleware) | SP from secrets / Key Vault (`AZURE_CLIENT_*`) |
-| **Azure Container Apps** | SP / MI or forwarded token if you put a gateway in front | SP / MI via Key Vault references |
-| **Local laptop** | `az login` | `az login` or SP |
+| Host | SQL warehouse | Foundry LLM | Opens Key Vault |
+|------|---------------|-------------|-----------------|
+| **Local machine** | `az login` → `DefaultAzureCredential` | `az login` or `EDIM_FOUNDRY_*` | Optional MI/user via `DefaultAzureCredential` |
+| **Databricks Apps** | **User** `X-Forwarded-Access-Token` | Foundry SP → `EDIM_FOUNDRY_*` (KV or Apps secrets) | App SP `DATABRICKS_CLIENT_*` |
+| **Azure Container Apps / Docker** | MI — [§6.3 grant steps](#63-aca-sql--grant-managed-identity-warehouse--uc) | Foundry SP → `EDIM_FOUNDRY_*` | ACA **managed identity** |
+| **AKS / App Service** (later) | Same pattern as ACA | Same | Workload MI |
+
+Identities U / A / B: [Access & permissions](../platform/access-and-permissions.md)  
+Vault / secret map: [Key Vault bootstrap](../platform/key-vault-bootstrap.md)
+
+**Code:** one credential resolver for all hosts — no per-host Python forks. Foundry SP uses `EDIM_FOUNDRY_*` so it does not collide with SQL’s `DefaultAzureCredential`.
 
 ### 4.3 Optional planes (first cut defaults)
 
@@ -147,7 +156,7 @@ Full catalog: [Environment variables](../reference/env-vars.md) · matrix: [Envi
 |------|--------|
 | Databricks Apps | `deploy/databricks-app/app.yaml` `env:` **and/or** Apps UI → Environment / secrets |
 | Docker / ACA | `--env-file`, ACA env settings, Key Vault refs |
-| Secrets | Never commit; use Apps secrets or `AZURE_KEY_VAULT_URL` + `EDIM_KV_SECRET_MAP` |
+| Secrets | Never commit; use Apps secrets or `AZURE_KEY_VAULT_URL` — see [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
 
 Template values live in `app.yaml` as `REPLACE_*` — replace per workspace before deploy.
 
@@ -259,18 +268,52 @@ docker run --rm -p 8080:8080 --env-file ../edim-dde-domain/.env edim-dde-api:loc
 curl -sS http://127.0.0.1:8080/health
 ```
 
-### 6.3 Azure Container Apps mapping
+### 6.3 ACA SQL — grant managed identity warehouse + UC
+
+On ACA there is no Databricks Apps user token. SQL authenticates as the container **managed identity** (Identity A) via `DefaultAzureCredential`. Foundry stays on `EDIM_FOUNDRY_*` (Identity B).
+
+```text
+ACA MI ──► Key Vault (Secrets User) ──► EDIM_FOUNDRY_* ──► Foundry LLM
+ACA MI ──► Databricks AAD token     ──► SQL warehouse + UC tables
+```
+
+Do **not** set `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` on the container (that would steal SQL away from the MI).
+
+**Steps:**
+
+1. **Enable MI** — Container App → **Identity** → system-assigned **On**, or attach a user-assigned MI.  
+2. **Copy Application (client) ID** — for system-assigned, open the linked managed identity / enterprise app and copy **Application (client) ID** (not only Object ID). For user-assigned, use the MI resource **Client ID**.  
+3. **Register in Databricks** — Account console → **User management** → **Service principals** → add Microsoft Entra ID application with that client ID → assign to the workspace.  
+4. **Warehouse Can Use** — SQL Warehouses → warehouse → **Permissions** → add the SP → **Can Use**.  
+5. **Unity Catalog** — as metastore admin / owner:
+
+```sql
+-- Replace <mi-app-client-id> with the MI Application (client) ID
+GRANT USE CATALOG ON CATALOG my_catalog TO `<mi-app-client-id>`;
+GRANT USE SCHEMA ON SCHEMA my_catalog.my_schema TO `<mi-app-client-id>`;
+GRANT SELECT ON TABLE my_catalog.my_schema.job_cluster_metrics TO `<mi-app-client-id>`;
+-- Add SELECT for spark_metrics / spark_logs as needed
+```
+
+6. **Key Vault** — same MI → role **Key Vault Secrets User**.  
+7. **Smoke** — invoke an agent on the ACA URL; warehouse/permission errors usually mean step 4 or 5.
+
+UC privilege reference: [Manage privileges in Unity Catalog](https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/manage-privileges/).  
+Identities overview: [Access & permissions](../platform/access-and-permissions.md).
+
+### 6.4 Azure Container Apps mapping
 
 | Concern | Setting |
 |---------|---------|
 | Image | Push `edim-dde-api:<version>` to ACR |
 | Ingress | External or internal; target port **8080** (or set `PORT`) |
 | Env | Same as [§4](#4-configuration--environment) |
-| Secrets | ACA secret refs / Key Vault → `AZURE_CLIENT_SECRET`, etc. |
-| SQL auth | Usually SP/MI (no Apps forwarded user token unless you add a gateway) |
+| Secrets | Prefer `AZURE_KEY_VAULT_URL` + MI as vault reader — [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
+| SQL auth | Container MI — complete [§6.3](#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| Foundry | Foundry SP from KV into `EDIM_FOUNDRY_*` |
 | Scaling | HTTP scale rules on `/health` or request rate |
 
-No application code change required if the env contract is honored.
+No application code change vs Apps if the env contract is honored — only identity wiring differs.
 
 ---
 
@@ -310,7 +353,9 @@ When adding a new host, only verify:
 | [Configuration](configuration.md) | Local env primer |
 | [Environments](../platform/environments.md) | SDBX / DEV / PROD matrix |
 | [Security baseline](../platform/security-baseline.md) | App role matrix |
-| [**Access & permissions**](../platform/access-and-permissions.md) | User / App SP / Foundry SP, Key Vault IAM |
+| [**Access & permissions**](../platform/access-and-permissions.md) | Identities U / A / B by host |
+| [Key Vault bootstrap](../platform/key-vault-bootstrap.md) | Vault load + `EDIM_KV_SECRET_MAP` |
+| [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | One vs many apps; cross-app SDLC |
 | [Live smoke](../contribute/live-smoke-test.md) | Validation curls |
 | [Windows smoke](../contribute/windows-smoke-checklist.md) | Windows local path |
 

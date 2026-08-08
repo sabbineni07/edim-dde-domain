@@ -63,10 +63,21 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 
 ## 5. Not in Phase 0
 
+- Cross-app remote invoke (see [Agent deployment & composition](../architecture/agent-deployment-and-composition.md))  
 - Cross-agent long-term memory  
 - Capability-based router across a marketplace of agents (Phase 4+)  
 - HITL interrupt nodes  
 
+---
+
+## 6. Related
+
+| Doc | Topic |
+|-----|--------|
+| [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | Option A/B/C topologies; DE SDLC; cross-app |
+| [External plugins](../build-agents/external-plugins.md) | Loading packs into one runtime |
+
+<!-- edim-learning-nav -->
 ---
 
 ← [Content and LLM](content-and-llm.md) · [Guide home](../README.md) · [Sources and SQL](../domain/sources-and-sql.md) →

@@ -1,7 +1,7 @@
 # Environments (BL-046)
 
 **Learning path:** C1 · [Guide home](../README.md)
-**← Previous:** [Config → observability](../architecture/config-to-observability.md) · **Next:** [Security baseline](security-baseline.md) →
+**← Previous:** [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · **Next:** [Security baseline](security-baseline.md) →
 
 
 **Phase 0 focus:** `SDBX`, `DEV`, `PROD`  
@@ -26,7 +26,11 @@ Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 | Retrieval (typical) | `faiss` or `memory` | `faiss` / Azure | **`azure_ai_search`** |
 | Tracing verbosity | High OK | On | On + PII redaction |
 | Agent YAML changes | Experimental OK | Feature branches | Approved versions only |
-| Foundry auth | `az login` or SP | SP or `az login` | **SP from Key Vault** |
+| Foundry auth | `az login` or SP | SP or `az login` | **`EDIM_FOUNDRY_*` from Key Vault** |
+| Typical **host** (runtime) | Local / SDBX Apps | Local or DEV Apps | **Databricks Apps** (ACA optional) |
+
+Hosting & identity: [Deploy & hosting](../api/deploy-and-hosting.md) · [Access & permissions](access-and-permissions.md) · [Key Vault bootstrap](key-vault-bootstrap.md).  
+Agent packing / one vs many apps: [Agent deployment & composition](../architecture/agent-deployment-and-composition.md).
 
 ---
 
@@ -76,4 +80,4 @@ Minimum for agent invoke:
 <!-- edim-learning-nav -->
 ---
 
-← [Config → observability](../architecture/config-to-observability.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →
+← [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →

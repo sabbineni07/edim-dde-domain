@@ -35,7 +35,9 @@ def test_redact_nested():
 
 def test_parse_secret_map_default():
     m = parse_secret_map(None)
-    assert m["azure-client-id"] == "AZURE_CLIENT_ID"
+    assert m["azure-client-id"] == "EDIM_FOUNDRY_CLIENT_ID"
+    assert m["azure-client-secret"] == "EDIM_FOUNDRY_CLIENT_SECRET"
+    assert m["azure-tenant-id"] == "EDIM_FOUNDRY_TENANT_ID"
     assert m["langchain-api-key"] == "LANGCHAIN_API_KEY"
 
 
@@ -75,9 +77,9 @@ def test_vault_credential_prefers_explicit_kv_reader(monkeypatch):
 def test_should_set_env_respects_existing_unless_force(monkeypatch):
     from edim_dde_domain.security.keyvault import _should_set_env
 
-    monkeypatch.setenv("AZURE_CLIENT_ID", "already")
+    monkeypatch.setenv("EDIM_FOUNDRY_CLIENT_ID", "already")
     monkeypatch.delenv("EDIM_KV_FORCE", raising=False)
-    assert _should_set_env("AZURE_CLIENT_ID") is False
+    assert _should_set_env("EDIM_FOUNDRY_CLIENT_ID") is False
 
     monkeypatch.setenv("EDIM_KV_FORCE", "1")
-    assert _should_set_env("AZURE_CLIENT_ID") is True
+    assert _should_set_env("EDIM_FOUNDRY_CLIENT_ID") is True

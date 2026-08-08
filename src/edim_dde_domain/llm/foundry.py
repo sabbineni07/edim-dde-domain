@@ -1,9 +1,12 @@
 """Azure AI Foundry (OpenAI v1) LLM provider for edim-dde-ai ``llm_chain``.
 
-Auth (same pattern as Databricks SQL):
-1. ``AZURE_TENANT_ID`` + ``AZURE_CLIENT_ID`` + ``AZURE_CLIENT_SECRET``
-   → ``ClientSecretCredential`` (prod: inject id/secret from Key Vault into env)
-2. Else ``DefaultAzureCredential`` (local ``az login`` / Managed Identity)
+Auth:
+1. ``EDIM_FOUNDRY_TENANT_ID`` + ``EDIM_FOUNDRY_CLIENT_ID`` +
+   ``EDIM_FOUNDRY_CLIENT_SECRET`` → ``ClientSecretCredential``
+   (prod: inject from Key Vault into these env names — not ``AZURE_CLIENT_*``)
+2. Legacy fallback: ``AZURE_TENANT_ID`` / ``AZURE_CLIENT_ID`` / ``AZURE_CLIENT_SECRET``
+   (deprecated; pollutes ``DefaultAzureCredential`` used for SQL)
+3. Else ``DefaultAzureCredential`` (local ``az login`` / Managed Identity)
 
 Scope: ``https://ai.azure.com/.default``
 """
@@ -20,6 +23,7 @@ from edim_dde_domain.errors import DomainToolError
 logger = logging.getLogger(__name__)
 
 AZURE_FOUNDRY_AAD_SCOPE = "https://ai.azure.com/.default"
+_legacy_sp_warned = False
 
 
 class FoundryLLMNotConfiguredError(DomainToolError):
@@ -38,13 +42,25 @@ def _openai_v1_base_url(endpoint: str) -> str:
 
 
 def _azure_credential(settings: DomainSettings):
-    tenant_id = (settings.azure_tenant_id or "").strip()
-    client_id = (settings.azure_client_id or "").strip()
-    client_secret = (settings.azure_client_secret or "").strip()
+    global _legacy_sp_warned
+    tenant_id, client_id, client_secret = settings.foundry_sp_credentials()
     try:
         if tenant_id and client_id and client_secret:
             from azure.identity import ClientSecretCredential
 
+            dedicated = bool(
+                (settings.edim_foundry_client_id or "").strip()
+                and (settings.edim_foundry_client_secret or "").strip()
+            )
+            if not dedicated and not _legacy_sp_warned:
+                _legacy_sp_warned = True
+                logger.warning(
+                    "Foundry auth is using legacy AZURE_CLIENT_ID/SECRET "
+                    "(and/or AZURE_TENANT_ID). Prefer EDIM_FOUNDRY_CLIENT_ID / "
+                    "EDIM_FOUNDRY_CLIENT_SECRET / EDIM_FOUNDRY_TENANT_ID so SQL "
+                    "DefaultAzureCredential is not tied to the Foundry SP. "
+                    "See docs/platform/access-and-permissions.md"
+                )
             return ClientSecretCredential(
                 tenant_id=tenant_id,
                 client_id=client_id,
@@ -76,7 +92,8 @@ def get_foundry_access_token(settings: Optional[DomainSettings] = None) -> str:
             "Failed to obtain Foundry token via Azure credential "
             f"({type(exc).__name__}: {exc}). "
             "For local dev run `az login`. "
-            "For prod set AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET "
+            "For prod set EDIM_FOUNDRY_TENANT_ID / EDIM_FOUNDRY_CLIENT_ID / "
+            "EDIM_FOUNDRY_CLIENT_SECRET "
             "(secrets typically loaded from Azure Key Vault into the environment)."
         ) from exc
 
@@ -101,7 +118,7 @@ class FoundryLLMProvider:
         if not endpoint:
             raise FoundryLLMNotConfiguredError(
                 "Azure AI Foundry is not configured. Set AZURE_OPENAI_ENDPOINT "
-                "and authenticate with AZURE_TENANT_ID/CLIENT_ID/SECRET "
+                "and authenticate with EDIM_FOUNDRY_TENANT_ID/CLIENT_ID/SECRET "
                 "(Key Vault → env in prod) or `az login` locally."
             )
         self._base_url = _openai_v1_base_url(endpoint)

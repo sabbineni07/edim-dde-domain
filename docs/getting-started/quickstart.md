@@ -62,7 +62,7 @@ Plain `uvicorn` does **not** use the stub; its lifespan installs Foundry (see Pa
 ### Foundry (required for curl)
 
 ```bash
-az login   # or set AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+az login   # or set EDIM_FOUNDRY_TENANT_ID / EDIM_FOUNDRY_CLIENT_ID / EDIM_FOUNDRY_CLIENT_SECRET
 export AZURE_OPENAI_ENDPOINT=https://….openai.azure.com
 export AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 ```

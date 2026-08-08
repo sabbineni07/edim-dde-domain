@@ -41,16 +41,27 @@ Dependency direction: **`api` → `domain` → `ai`**.
 | **B6** | [Request flow](architecture/request-flow.md) | One HTTP call, step by step |
 | **B7** | [Auth and SQL](architecture/auth-and-sql.md) | Identity paths into the warehouse |
 | **B8** | [Config → observability](architecture/config-to-observability.md) | YAML → registries → traces + store + retrieval |
+| **B9** | [**Agent deployment & composition**](architecture/agent-deployment-and-composition.md) | One app vs many; DE SDLC; cross-app; **§1b capability matrix** |
 
 ### Part C — Platform planes (same order as API lifespan)
 
-API startup configures concerns in roughly this order — docs follow it so mental model matches runtime:
+API startup configures concerns in roughly this order — docs follow it so mental model matches runtime.
+
+**Security / access topic map (keep separate):**
+
+| Need | Page |
+|------|------|
+| App roles / trust boundaries | **C2** Security baseline |
+| Who is U / A / B on Local, Apps, ACA | **C2b** Access & permissions |
+| Key Vault + `EDIM_KV_SECRET_MAP` | **C2c** Key Vault bootstrap |
+| Package & grant ACA MI warehouse/UC | **G3** Deploy & hosting |
 
 | Step | Page | Plane |
 |------|------|-------|
 | **C1** | [Environments](platform/environments.md) | SDBX / DEV / PROD matrix |
 | **C2** | [Security baseline](platform/security-baseline.md) | Trust boundaries, app role matrix (docs) |
-| **C2b** | [**Access & permissions**](platform/access-and-permissions.md) | User / App SP / Foundry SP, Key Vault, Apps |
+| **C2b** | [**Access & permissions**](platform/access-and-permissions.md) | Identities U/A/B — who runs SQL / Foundry / KV per host |
+| **C2c** | [**Key Vault bootstrap**](platform/key-vault-bootstrap.md) | Vault auth order, `EDIM_KV_SECRET_MAP`, examples |
 | **C3** | [PII guardrails](platform/pii-guardrails.md) | Redaction before logs/traces |
 | **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |
 | **C5** | [LangSmith setup](platform/langsmith-setup.md) | Projects, keys, local vs SaaS |
@@ -92,7 +103,7 @@ Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md
 |------|------|----------------|
 | **G1** | [Configuration](api/configuration.md) | Env for a working API |
 | **G2** | [HTTP endpoints](api/endpoints.md) | OpenAPI surface |
-| **G3** | [**Deploy & hosting**](api/deploy-and-hosting.md) | Databricks Apps (default), Docker/ACA, packaging & env |
+| **G3** | [**Deploy & hosting**](api/deploy-and-hosting.md) | Apps / Docker / ACA packaging; ACA MI warehouse+UC grants |
 
 ### Part H — Reference & contribute
 

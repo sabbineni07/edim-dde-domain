@@ -1,274 +1,166 @@
-# Access & permissions (identities, Key Vault, Apps)
+# Access & permissions (identities by host)
 
 **Learning path:** C2b · [Guide home](../README.md)  
-**← Previous:** [Security baseline](security-baseline.md) · **Next:** [PII guardrails](pii-guardrails.md) →
+**← Previous:** [Security baseline](security-baseline.md) · **Next:** [Key Vault bootstrap](key-vault-bootstrap.md) →
 
-This page explains **who authenticates to what** in EDIM DDE — especially on **Databricks Apps**, how that relates to **Azure Key Vault**, and how that differs from notebook `dbutils.secrets`.
+**This page covers:** who is Identity **U / A / B**, and which identity runs SQL vs Foundry vs Key Vault on each host.
+
+**Not on this page** (follow the links):
+
+| Topic | Go to |
+|-------|--------|
+| Key Vault load order, `EDIM_KV_SECRET_MAP`, examples | [Key Vault bootstrap](key-vault-bootstrap.md) |
+| Packaging Apps / Docker / ACA | [Deploy & hosting](../api/deploy-and-hosting.md) |
+| Step-by-step: grant ACA MI warehouse + UC | [Deploy & hosting — ACA SQL MI](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| Token resolution code paths | [Auth and SQL](../architecture/auth-and-sql.md) |
+| Env var catalog | [Environment variables](../reference/env-vars.md) |
+
+**No separate code forks per host** — one API process; behavior follows env + credential resolution.
 
 ---
 
-## 1. The core idea: three identities (do not mix them)
-
-EDIM uses up to **three different identities** in production. Each has one job.
+## 1. Three identities (do not mix them)
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Identity U — USER (person using the App)                                 │
-│   SQL warehouse / UC reads on behalf of the signed-in user               │
-│   Via: X-Forwarded-Access-Token → API middleware → Databricks SQL        │
+│ Identity U — USER                                                        │
+│   SQL as the signed-in person (Databricks Apps)                          │
+│   Via: X-Forwarded-Access-Token → middleware → warehouse                 │
 └──────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Identity A — APP RUNTIME (Databricks App service principal)              │
-│   “Who is this App process?”                                             │
-│   Opens Key Vault (optional) · Databricks resource bindings              │
-│   Via: DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET (injected by Apps) │
-│   Find it: Apps → your app → Authorization tab                           │
+│ Identity A — HOST RUNTIME (“who is this process?”)                       │
+│   Opens Key Vault; may call Azure as the platform identity               │
+│   Manifests as:                                                          │
+│     • Databricks Apps → app SP (DATABRICKS_CLIENT_ID / SECRET)           │
+│     • Azure Container Apps → managed identity (DefaultAzureCredential)   │
+│     • Local laptop → az login (DefaultAzureCredential)                   │
+│     • Optional → EDIM_KV_CLIENT_* dedicated vault-reader SP              │
 └──────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Identity B — FOUNDRY WORKLOAD SP (your Entra app registration)           │
-│   “Who calls Azure AI Foundry / OpenAI?”                                 │
-│   Via: AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET            │
-│   Those values often live *inside* Key Vault as secrets                  │
+│ Identity B — FOUNDRY WORKLOAD SP (Entra app you create)                  │
+│   Calls Azure AI Foundry / OpenAI                                        │
+│   Via: EDIM_FOUNDRY_TENANT_ID + EDIM_FOUNDRY_CLIENT_ID +                 │
+│        EDIM_FOUNDRY_CLIENT_SECRET                                        │
+│   Often stored in Key Vault, loaded at API startup                       │
+│   Never put Foundry SP in AZURE_CLIENT_* (pollutes SQL DAC)              │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Identity | Typical name in your org | Used for | Where credentials live |
-|----------|--------------------------|----------|-------------------------|
-| **U** User | Your AAD user | Databricks SQL (Apps) | Forwarded access token (not in KV) |
-| **A** App SP | Auto-created per Databricks App | Read KV; Databricks app resources | Injected by Apps as `DATABRICKS_CLIENT_*` |
-| **B** Foundry SP | The Entra SP **you** created | Azure AI Foundry chat | Secret values in KV → loaded into `AZURE_*` |
+| Identity | Used for | Databricks Apps | ACA / Docker | Local machine |
+|----------|----------|-----------------|--------------|---------------|
+| **U** | SQL as end user | Forwarded access token | Usually **absent** | N/A (`az login` is you) |
+| **A** | Open KV / platform Azure | App SP (`DATABRICKS_CLIENT_*`) | Container **managed identity** | `az login` |
+| **B** | Foundry LLM | Secrets → `EDIM_FOUNDRY_*` | Same (KV or ACA secret refs) | `az login` or `.env` SP |
 
-**Your recent work** (create Entra SP, store client id/secret in KV for Foundry) = **Identity B only**. That does **not** replace Identity A or U.
+Creating an Entra SP and storing its client id/secret in KV for Foundry = **Identity B only**.
 
 ---
 
-## 2. End-to-end flow (Databricks Apps + Key Vault)
+## 2. Host comparison matrix
+
+| Host | How you run | SQL warehouse auth | Foundry auth | Who opens Key Vault | Deploy artifact |
+|------|-------------|--------------------|--------------|---------------------|-----------------|
+| **Local machine** | `uvicorn` / IDE | `az login` → `DefaultAzureCredential` | `az login` if `EDIM_FOUNDRY_*` empty; else SP | Optional: `DefaultAzureCredential` | Editable installs |
+| **Databricks Apps** | `app.yaml` + Apps runtime | **Identity U** (`X-Forwarded-Access-Token`) | **Identity B** from KV or Apps secrets | **Identity A** = App SP | `deploy/databricks-app/` |
+| **Docker (local/CI)** | `deploy/docker/Dockerfile` | Same as local or MI | SP via `EDIM_FOUNDRY_*` / KV | Inject secrets or host `az login` | Same image as ACA |
+| **Azure Container Apps** | Same Docker image | **Identity A** = container MI | Identity B → `EDIM_FOUNDRY_*` | **Identity A** = ACA MI | ACR + ACA env |
+| **AKS / App Service** (later) | Same image / startup CMD | Same pattern as ACA | Same | Workload MI | Same env contract |
+
+**Why `EDIM_FOUNDRY_*`:** SQL’s `DefaultAzureCredential` auto-reads `AZURE_CLIENT_*`. Foundry must use dedicated names so ACA SQL stays on the **MI**, not the Foundry SP. Details: [Key Vault bootstrap](key-vault-bootstrap.md).
+
+---
+
+## 3. End-to-end flows by host
+
+### 3.1 Databricks Apps + Key Vault
 
 ```text
-  Browser / caller
-        │  (user session)
-        ▼
-  Databricks Apps gateway
-        │  attaches X-Forwarded-Access-Token   ← Identity U
-        ▼
-  edim-dde-api (uvicorn)
-        │
-        ├─ lifespan: load_key_vault_secrets()
-        │     │
-        │     │  auth to vault with Identity A
-        │     │  (DATABRICKS_CLIENT_ID + SECRET + AZURE_TENANT_ID)
-        │     ▼
-        │  Azure Key Vault
-        │     secrets: azure-client-id, azure-client-secret, azure-tenant-id, …
-        │     │
-        │     └─► os.environ AZURE_CLIENT_ID / SECRET / TENANT   ← Identity B
-        │
-        ├─ POST /api/v1/recommendations
-        │     ├─ domain.sql.query  → warehouse with Identity U token
-        │     └─ llm_chain         → Foundry with Identity B (ClientSecretCredential)
-        │
-        └─ /health (no secrets required)
+  User → Apps gateway → X-Forwarded-Access-Token (U)
+                      → edim-dde-api
+                           ├─ KV auth = DATABRICKS_CLIENT_* (A) → EDIM_FOUNDRY_* (B)
+                           ├─ SQL → U
+                           └─ LLM → B
 ```
 
-Notebook comparison:
-
-| Notebook | Databricks Apps / API |
-|----------|------------------------|
-| `dbutils.secrets.get(scope, key)` | **Not available** — Apps is a normal Python process |
-| Secret scope (often KV-backed) | Direct **Key Vault SDK** (`SecretClient`) or Apps env secrets |
-| Cluster / job identity | App SP (**A**) + user token (**U**) + Foundry SP (**B**) |
-
-Same Key Vault can back both worlds; the **client** differs (`dbutils` vs our SDK bootstrap).
-
----
-
-## 3. Where to find the App’s identity (Identity A)
-
-1. Databricks workspace → **Apps** → open your app.  
-2. Open the **Authorization** tab.  
-3. Copy the app’s **service principal** application (client) id.  
-
-Databricks creates this SP when the app is created. It stays stable across redeploys; deleting the app deletes the SP.
-
-Official docs: [Configure authorization in a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth).
-
-At runtime Apps injects (names may vary slightly by cloud/docs version):
-
-| Env var | Meaning |
-|---------|---------|
-| `DATABRICKS_CLIENT_ID` | App SP client id (Identity A) |
-| `DATABRICKS_CLIENT_SECRET` | App SP secret |
-
-You also set **`AZURE_TENANT_ID`** (directory / tenant GUID — not secret) so the API can use client-credentials against Azure AD for Key Vault.
-
----
-
-## 4. Grant Identity A permission to read Key Vault
-
-Only required if the App will call Key Vault at startup (`AZURE_KEY_VAULT_URL` set).
-
-### 4.1 Portal steps
-
-1. Azure Portal → your **Key Vault**.  
-2. Confirm permission model is **Azure role-based access control** (recommended).  
-3. **Access control (IAM)** → **Add role assignment**.  
-4. Role: **Key Vault Secrets User** (get/list secrets).  
-5. Members: find the **App service principal** from §3 (search by name or application id).  
-6. Review + assign. Wait a few minutes for RBAC propagation.
-
-### 4.2 What Identity B needs (separate)
-
-On the **Foundry / Azure OpenAI** resource (not the vault):
-
-1. IAM → grant your **Foundry SP** (Identity B) a role that can call the deployment  
-   (e.g. **Cognitive Services OpenAI User** or your org’s equivalent).  
-2. Store that SP’s client id, secret, and tenant as vault secrets (names below).
-
-Identity A only needs vault **read**. Identity B needs Foundry **invoke**.
-
----
-
-## 5. How EDIM loads secrets (runtime)
-
-Code: `edim_dde_domain.security.keyvault.load_key_vault_secrets`  
-Called from API lifespan when `AZURE_KEY_VAULT_URL` is set.
-
-### 5.1 Which credential opens the vault?
-
-| Priority | Condition | Credential |
-|----------|-----------|------------|
-| 1 | `EDIM_KV_CLIENT_ID` + `EDIM_KV_CLIENT_SECRET` + tenant | Explicit vault-reader SP |
-| 2 | `DATABRICKS_CLIENT_ID` + `DATABRICKS_CLIENT_SECRET` + `AZURE_TENANT_ID` | **Apps SP (Identity A)** |
-| 3 | Else | `DefaultAzureCredential` (local `az login`, ACA managed identity, …) |
-
-This avoids using `AZURE_CLIENT_*` to open the vault, so those names stay free for **Foundry (Identity B)** values loaded from secrets.
-
-### 5.2 Default secret name → env map
-
-| Key Vault secret name | Written to env |
-|-----------------------|----------------|
-| `azure-client-id` | `AZURE_CLIENT_ID` |
-| `azure-client-secret` | `AZURE_CLIENT_SECRET` |
-| `azure-tenant-id` | `AZURE_TENANT_ID` |
-| `langchain-api-key` | `LANGCHAIN_API_KEY` |
-
-Override: `EDIM_KV_SECRET_MAP=vault-name:ENV_VAR,...`
-
-### 5.3 Overwrite rules
-
-- If an env var is **already set**, KV does **not** overwrite it (so laptop `.env` wins).  
-- Set `EDIM_KV_FORCE=1` to overwrite (use carefully).
-
-Install: `pip install 'edim-dde-domain[azure,keyvault]'`.
-
----
-
-## 6. Recommended setups
-
-### 6.1 Databricks Apps — Key Vault fetch (full Option B)
+### 3.2 Local machine
 
 ```text
-App env (non-secret):
-  AZURE_KEY_VAULT_URL=https://your-vault.vault.azure.net/
-  AZURE_TENANT_ID=<directory-guid>          # for Apps SP → AAD
-  AZURE_OPENAI_ENDPOINT=...
-  AZURE_OPENAI_DEPLOYMENT_NAME=...
-  DATABRICKS_HOST / HTTP_PATH / table FQNs
-  # DATABRICKS_CLIENT_* injected by platform
-
-Vault secrets (Identity B):
-  azure-client-id, azure-client-secret, azure-tenant-id (± langchain-api-key)
-
-Azure IAM:
-  App SP (A) → Key Vault Secrets User on vault
-  Foundry SP (B) → OpenAI / Foundry data-plane role
+  az login → uvicorn
+               ├─ optional KV via DefaultAzureCredential
+               ├─ SQL → az login
+               └─ LLM → az login or EDIM_FOUNDRY_* from .env / KV
 ```
 
-Do **not** put Foundry client secret in `app.yaml`.
-
-### 6.2 Databricks Apps — inject Foundry SP via Apps secrets (simpler first cut)
+### 3.3 Azure Container Apps
 
 ```text
-App env / secrets UI:
-  AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET   ← Identity B
-  AZURE_OPENAI_* , DATABRICKS_* table settings
-
-Leave AZURE_KEY_VAULT_URL unset → skip SDK bootstrap.
-Still store the same values in KV as the human source of truth if you want.
+  Caller → ACA (Docker image, MI = A)
+               ├─ KV via MI → EDIM_FOUNDRY_* (B)
+               ├─ SQL → MI (A)
+               └─ LLM → B
 ```
 
-### 6.3 Local laptop
+How to grant the MI warehouse + UC: [Deploy & hosting §6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc).
 
-```text
-az login
-# Optional: AZURE_KEY_VAULT_URL + DefaultAzureCredential reads vault
-# Or put AZURE_CLIENT_* in .env for Foundry without KV
-```
+### 3.4 Notebook `dbutils` (not Apps)
 
-SQL + Foundry both use `az login` when SP env is empty.
-
-### 6.4 Azure Container Apps
-
-Prefer **managed identity** as Identity A (`DefaultAzureCredential`) → KV → Foundry `AZURE_*`.  
-Grant the ACA MI **Key Vault Secrets User**; Foundry SP remains Identity B in the vault.
+`dbutils.secrets.get` works only in Databricks notebooks/jobs. Apps/API use Key Vault SDK or host secret injection.
 
 ---
 
-## 7. Permissions checklist (copy/paste)
+## 4. Where to find Identity A
 
-**Azure Key Vault**
+| Host | Where to look | Grant on Key Vault |
+|------|---------------|--------------------|
+| **Databricks Apps** | Apps → app → **Authorization** → service principal | That SP → **Key Vault Secrets User** |
+| **Azure Container Apps** | ACA → Identity → system/user-assigned MI | That MI → **Key Vault Secrets User** |
+| **Local** | Your user after `az login` | Your user (or skip KV; use `.env`) |
+| **Explicit reader** | Entra app for `EDIM_KV_CLIENT_*` | That SP → **Key Vault Secrets User** |
 
-- [ ] Vault URI known → `AZURE_KEY_VAULT_URL`  
-- [ ] Secrets created with expected names (or `EDIM_KV_SECRET_MAP`)  
-- [ ] Identity A (App SP or ACA MI) has **Key Vault Secrets User**  
-- [ ] Network: App can reach vault (public / private endpoint / firewall allow)
+Apps injects `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET`. Set **`AZURE_TENANT_ID`** (tenant GUID) so the App SP can open Key Vault via client-credentials.
 
-**Foundry / Azure OpenAI**
-
-- [ ] Identity B SP created in Entra  
-- [ ] Identity B granted invoke role on the Foundry/OpenAI resource  
-- [ ] Deployment name matches `AZURE_OPENAI_DEPLOYMENT_NAME`  
-- [ ] Client id/secret stored in vault (or Apps secrets)
-
-**Databricks**
-
-- [ ] App created; Authorization tab SP noted  
-- [ ] Users who call the App can use the warehouse / UC tables (Identity U)  
-- [ ] App resource bindings (warehouse) as required by your workspace  
-
-**API config**
-
-- [ ] `AZURE_TENANT_ID` set when using Apps SP → KV  
-- [ ] `EDIM_STRICT_STARTUP` optional for fail-fast  
+Apps docs: [Configure authorization in a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth).
 
 ---
 
-## 8. Troubleshooting
+## 5. Permissions checklist
+
+- [ ] Foundry endpoint + deployment  
+- [ ] Warehouse host/path + table FQNs (live SQL)  
+- [ ] If KV: follow [Key Vault bootstrap](key-vault-bootstrap.md) (URL, secrets, Identity A = Secrets User)  
+- [ ] Apps: Authorization SP + tenant; users can query UC  
+- [ ] ACA: [grant MI warehouse + UC](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc)  
+- [ ] Local: `az login`  
+- [ ] Foundry SP only in `EDIM_FOUNDRY_*`  
+
+---
+
+## 6. Troubleshooting (identity)
 
 | Symptom | Likely cause |
 |---------|----------------|
-| KV skipped in logs | `AZURE_KEY_VAULT_URL` unset |
-| 403 from Key Vault | App SP (A) missing **Secrets User**; wrong tenant; firewall |
-| Warning: Apps SP present but no tenant | Set `AZURE_TENANT_ID` |
-| Foundry 503 after KV load | Identity B missing Foundry role; wrong secret names; empty secret |
-| Foundry still using wrong SP | `AZURE_CLIENT_*` already set (`.env` / Apps) and `EDIM_KV_FORCE` not set |
-| SQL works locally, fails on Apps | Local used `az login`; Apps needs **user** forwarded token (U), not Foundry SP |
-| Expecting `dbutils` on Apps | Not available — use KV SDK or Apps secrets |
+| Foundry 503 | Identity B missing / no Foundry role |
+| SQL OK local, fail Apps | Need forwarded **user** token (Identity U) |
+| SQL fail ACA | MI not granted warehouse/UC — [§6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| KV / map errors | [Key Vault bootstrap](key-vault-bootstrap.md) |
+| `dbutils` on Apps | Not available |
 
 ---
 
-## 9. Related docs
+## 7. Related docs
 
 | Doc | Topic |
 |-----|--------|
-| [Security baseline](security-baseline.md) | Role matrix (app roles, Phase 0 docs-only) |
-| [Auth and SQL](../architecture/auth-and-sql.md) | User token vs `az login` for warehouse |
-| [Deploy & hosting](../api/deploy-and-hosting.md) | Apps / Docker packaging |
-| [Env vars](../reference/env-vars.md) | Full variable catalog |
+| [Key Vault bootstrap](key-vault-bootstrap.md) | Vault auth order + `EDIM_KV_SECRET_MAP` |
+| [Deploy & hosting](../api/deploy-and-hosting.md) | Apps / Docker / ACA packaging + ACA MI grants |
+| [Security baseline](security-baseline.md) | App role matrix |
+| [Auth and SQL](../architecture/auth-and-sql.md) | Token resolution |
+| [Environments](environments.md) | SDBX / DEV / PROD |
+| [Env vars](../reference/env-vars.md) | Catalog |
 
 <!-- edim-learning-nav -->
 ---
 
-← [Security baseline](security-baseline.md) · [Guide home](../README.md) · [PII guardrails](pii-guardrails.md) →
+← [Security baseline](security-baseline.md) · [Guide home](../README.md) · [Key Vault bootstrap](key-vault-bootstrap.md) →

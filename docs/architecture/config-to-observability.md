@@ -1,7 +1,7 @@
 # Config → runtime → observability flow (BL-003)
 
 **Learning path:** B8 · [Guide home](../README.md)
-**← Previous:** [Auth and SQL](auth-and-sql.md) · **Next:** [Environments](../platform/environments.md) →
+**← Previous:** [Auth and SQL](auth-and-sql.md) · **Next:** [Agent deployment & composition](agent-deployment-and-composition.md) →
 
 
 End-to-end path from agent YAML on disk to HTTP response and the active observability backend (LangSmith, MLflow, or none).
@@ -72,8 +72,9 @@ See [observability providers](../platform/observability.md).
 - [Retrieval & RAG](../platform/retrieval-and-rag.md)
 - [Observability providers](../platform/observability.md)
 - [YAML schema](../framework/yaml-schema.md)
+- [Agent deployment & composition](agent-deployment-and-composition.md)
 
 <!-- edim-learning-nav -->
 ---
 
-← [Auth and SQL](auth-and-sql.md) · [Guide home](../README.md) · [Environments](../platform/environments.md) →
+← [Auth and SQL](auth-and-sql.md) · [Guide home](../README.md) · [Agent deployment & composition](agent-deployment-and-composition.md) →

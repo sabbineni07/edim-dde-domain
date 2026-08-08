@@ -34,7 +34,7 @@ Copy this table and fill values with your team / Azure / Databricks admins. **Do
 | 1 | Azure subscription / tenant access | — | Your org IAM; you must be able to `az login` **or** receive an SP | Auth for Foundry (and SQL when live local) |
 | 2 | Foundry / Azure OpenAI **endpoint** | `https://my-foundry.openai.azure.com` | Azure Portal → Azure OpenAI / AI Foundry resource → **Keys and Endpoint** → Endpoint | `AZURE_OPENAI_ENDPOINT` |
 | 3 | **Deployment name** (model) | `gpt-4o` | Same resource → **Deployments** → name column (not the model SKU alone) | `AZURE_OPENAI_DEPLOYMENT_NAME` |
-| 4 | Foundry auth | `az login` **or** SP triple | Local: Azure CLI. Prod: Key Vault → `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | env or Key Vault map |
+| 4 | Foundry auth | `az login` **or** SP triple | Local: Azure CLI. Prod: Key Vault → `EDIM_FOUNDRY_TENANT_ID` / `EDIM_FOUNDRY_CLIENT_ID` / `EDIM_FOUNDRY_CLIENT_SECRET` | env or Key Vault map |
 | 5 | Sibling repos checked out | `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api` | Git remotes / workspace folder | local paths |
 
 ### 2.2 Live smoke only (SQL)
@@ -123,7 +123,7 @@ az login
 az account show   # confirm correct subscription/tenant
 ```
 
-For SP auth instead of `az login`, set `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` (Foundry; and SQL will also use DefaultAzureCredential chain).
+For SP auth instead of `az login`, set `EDIM_FOUNDRY_TENANT_ID`, `EDIM_FOUNDRY_CLIENT_ID`, `EDIM_FOUNDRY_CLIENT_SECRET` (Foundry only — do not use `AZURE_CLIENT_*`, which would also affect SQL’s `DefaultAzureCredential`).
 
 ### 3.5 Sanity: unit tests (optional but recommended)
 
