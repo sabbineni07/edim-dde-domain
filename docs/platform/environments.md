@@ -56,6 +56,8 @@ Promotion checklist (manual for Phase 0):
 4. Secrets present in target Key Vault
 5. Table FQNs and Foundry deployment confirmed for target env
 
+**Hosting:** first cut = **Databricks Apps**; portable Docker image for Azure Container Apps — see [Deploy & hosting](../api/deploy-and-hosting.md).
+
 ---
 
 ## Required env vars by environment

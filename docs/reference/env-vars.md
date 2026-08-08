@@ -1,7 +1,7 @@
 # Environment variables
 
 **Learning path:** H1 · [Guide home](../README.md)
-**← Previous:** [HTTP endpoints](../api/endpoints.md) · **Next:** [Node type ids](node-type-ids.md) →
+**← Previous:** [Deploy & hosting](../api/deploy-and-hosting.md) · **Next:** [Node type ids](node-type-ids.md) →
 
 
 | Variable | Used by | Purpose |
@@ -37,9 +37,12 @@
 | `DATABRICKS_SPARK_LOGS_TABLE` | spark_rca SQL | UC FQN |
 | `AZURE_OPENAI_ENDPOINT` | Foundry | OpenAI v1 endpoint |
 | `AZURE_OPENAI_DEPLOYMENT_NAME` | Foundry | Deployment name |
-| `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | Foundry (prod) | Service principal (prefer Key Vault) |
+| `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | Foundry (prod) | Foundry workload SP (often from Key Vault) |
 | `AZURE_KEY_VAULT_URL` | API lifespan | Vault URI for secret bootstrap |
-| `EDIM_KV_SECRET_MAP` | Key Vault | Optional `secret:ENV_VAR,...` map (defaults include Foundry SP + LangSmith key) |
+| `EDIM_KV_SECRET_MAP` | Key Vault | Optional `secret:ENV_VAR,...` map |
+| `EDIM_KV_FORCE` | Key Vault | `1` = overwrite existing env from vault |
+| `EDIM_KV_CLIENT_ID` / `EDIM_KV_CLIENT_SECRET` / `EDIM_KV_TENANT_ID` | Key Vault | Optional dedicated vault-reader SP |
+| `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` | Apps (injected) | App SP — used to open KV when tenant set |
 | `LANGCHAIN_TRACING_V2` | LangSmith | Set `true` to enable tracing |
 | `LANGCHAIN_API_KEY` | LangSmith | API key (from UI or Key Vault) |
 | `LANGCHAIN_PROJECT` | LangSmith | Project name (`edim-dde-sdbx` / `edim-dde-dev` / `edim-dde-prod`) |
@@ -50,9 +53,9 @@
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 
-See also: [retrieval & RAG](../platform/retrieval-and-rag.md), [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md).
+See also: [retrieval & RAG](../platform/retrieval-and-rag.md), [state store](../platform/state-store.md), [observability providers](../platform/observability.md), [environments](../platform/environments.md), [LangSmith setup](../platform/langsmith-setup.md), [security baseline](../platform/security-baseline.md), [access & permissions](../platform/access-and-permissions.md), [deploy & hosting](../api/deploy-and-hosting.md).
 
 <!-- edim-learning-nav -->
 ---
 
-← [HTTP endpoints](../api/endpoints.md) · [Guide home](../README.md) · [Node type ids](node-type-ids.md) →
+← [Deploy & hosting](../api/deploy-and-hosting.md) · [Guide home](../README.md) · [Node type ids](node-type-ids.md) →

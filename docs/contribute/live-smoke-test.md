@@ -322,11 +322,13 @@ curl -sS http://127.0.0.1:8080/api/v1/rca/analyze \
 
 ## 6. Remote / shared environment smoke
 
+Prefer the full host guide: [Deploy & hosting (Databricks Apps / Docker / ACA)](../api/deploy-and-hosting.md).
+
 Use the same curls against a **deployed** base URL instead of `localhost`.
 
 | Step | Action |
 |------|--------|
-| 1 | Get base URL from team (e.g. Databricks App / App Service) — `https://…` |
+| 1 | Get base URL from team (e.g. Databricks App) — `https://…` |
 | 2 | Confirm network (VPN / private link) if required |
 | 3 | `curl -sS "$BASE/health"` |
 | 4 | Dry or live POSTs to `$BASE/api/v1/recommendations` and `/rca/analyze` |

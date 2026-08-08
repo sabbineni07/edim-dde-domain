@@ -18,7 +18,9 @@
 | Environment | Auth |
 |-------------|------|
 | **Local** | `az login` (leave `AZURE_CLIENT_*` unset) |
-| **Prod** | `AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET` (inject from Key Vault → env) |
+| **Prod / Apps** | Foundry **workload SP** in `AZURE_CLIENT_*` — often loaded from Key Vault at startup |
+
+**Important:** On Databricks Apps, the identity that **opens** Key Vault (App SP) is **not** the same as the Foundry SP. See [Access & permissions](../platform/access-and-permissions.md).
 
 ## Sources
 

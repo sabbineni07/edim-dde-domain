@@ -1,10 +1,14 @@
 # Security baseline (BL-013)
 
 **Learning path:** C2 · [Guide home](../README.md)
-**← Previous:** [Environments](environments.md) · **Next:** [PII guardrails](pii-guardrails.md) →
+**← Previous:** [Environments](environments.md) · **Next:** [Access & permissions](access-and-permissions.md) →
 
 
 **Phase 0 decision:** Keep the **current identity model**. Add **Azure Key Vault SDK** bootstrap for secrets. Document a **role matrix** for later enforcement.
+
+For **who opens Key Vault vs who calls Foundry vs who runs SQL**, and Databricks Apps step-by-step, see:
+
+→ **[Access & permissions](access-and-permissions.md)** (Identities U / A / B, diagrams, IAM checklist)
 
 ---
 
@@ -41,36 +45,27 @@ YAML **cannot** dynamically import Python. Node and router type ids must already
 
 ---
 
-## Key Vault SDK bootstrap
+## Key Vault SDK bootstrap (summary)
 
-When `AZURE_KEY_VAULT_URL` is set, API startup loads mapped secrets into process environment **without overwriting** values already present (so local `.env` still wins).
+When `AZURE_KEY_VAULT_URL` is set, API startup loads mapped secrets into process environment.
 
 | Env var | Purpose |
 |---------|---------|
 | `AZURE_KEY_VAULT_URL` | Vault URI, e.g. `https://edim-dde-dev-kv.vault.azure.net/` |
-| `EDIM_KV_SECRET_MAP` | Optional JSON or `vaultSecret:ENV_VAR` pairs (see below) |
+| `EDIM_KV_SECRET_MAP` | Optional `vaultSecret:ENV_VAR` pairs |
+| `AZURE_TENANT_ID` | Required when using Databricks Apps SP to open the vault |
+| `EDIM_KV_FORCE` | `1` = overwrite existing env from vault |
+| `EDIM_KV_CLIENT_*` | Optional dedicated vault-reader SP (overrides Apps SP) |
 
-Default mapping (if `EDIM_KV_SECRET_MAP` unset):
+**Vault auth order:** `EDIM_KV_CLIENT_*` → `DATABRICKS_CLIENT_*` (Apps SP) → `DefaultAzureCredential`.
 
-| Vault secret name | Target env var |
-|-------------------|----------------|
-| `azure-client-id` | `AZURE_CLIENT_ID` |
-| `azure-client-secret` | `AZURE_CLIENT_SECRET` |
-| `azure-tenant-id` | `AZURE_TENANT_ID` |
-| `langchain-api-key` | `LANGCHAIN_API_KEY` |
-
-Custom map example:
-
-```bash
-EDIM_KV_SECRET_MAP=azure-client-id:AZURE_CLIENT_ID,azure-client-secret:AZURE_CLIENT_SECRET,langchain-api-key:LANGCHAIN_API_KEY
-```
-
-Auth to Key Vault uses `DefaultAzureCredential` (managed identity on Apps / `az login` locally).
+Default secret map: `azure-client-id` → `AZURE_CLIENT_ID`, etc. Full design and IAM steps: [Access & permissions](access-and-permissions.md).
 
 ---
 
 ## Related
 
+- [**Access & permissions**](access-and-permissions.md) — identities, KV, Apps
 - [PII guardrails](pii-guardrails.md)
 - [Auth and SQL](../architecture/auth-and-sql.md)
 - [Environments](environments.md)
@@ -78,4 +73,4 @@ Auth to Key Vault uses `DefaultAzureCredential` (managed identity on Apps / `az 
 <!-- edim-learning-nav -->
 ---
 
-← [Environments](environments.md) · [Guide home](../README.md) · [PII guardrails](pii-guardrails.md) →
+← [Environments](environments.md) · [Guide home](../README.md) · [Access & permissions](access-and-permissions.md) →

@@ -49,7 +49,8 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | Step | Page | Plane |
 |------|------|-------|
 | **C1** | [Environments](platform/environments.md) | SDBX / DEV / PROD matrix |
-| **C2** | [Security baseline](platform/security-baseline.md) | Trust boundaries, role matrix (docs) |
+| **C2** | [Security baseline](platform/security-baseline.md) | Trust boundaries, app role matrix (docs) |
+| **C2b** | [**Access & permissions**](platform/access-and-permissions.md) | User / App SP / Foundry SP, Key Vault, Apps |
 | **C3** | [PII guardrails](platform/pii-guardrails.md) | Redaction before logs/traces |
 | **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |
 | **C5** | [LangSmith setup](platform/langsmith-setup.md) | Projects, keys, local vs SaaS |
@@ -91,6 +92,7 @@ Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md
 |------|------|----------------|
 | **G1** | [Configuration](api/configuration.md) | Env for a working API |
 | **G2** | [HTTP endpoints](api/endpoints.md) | OpenAPI surface |
+| **G3** | [**Deploy & hosting**](api/deploy-and-hosting.md) | Databricks Apps (default), Docker/ACA, packaging & env |
 
 ### Part H — Reference & contribute
 

@@ -51,6 +51,8 @@ Full store guide: [Control-plane state store](../platform/state-store.md).
 
 **Smoke testing (dry Foundry-only or live SQL):** [Live & dry smoke test](../contribute/live-smoke-test.md).
 
+**Deploy (Databricks Apps / Docker / ACA):** [Deploy & hosting](deploy-and-hosting.md).
+
 <!-- edim-learning-nav -->
 ---
 

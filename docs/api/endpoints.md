@@ -1,7 +1,7 @@
 # HTTP endpoints
 
 **Learning path:** G2 · [Guide home](../README.md)
-**← Previous:** [Configuration](configuration.md) · **Next:** [Environment variables](../reference/env-vars.md) →
+**← Previous:** [Configuration](configuration.md) · **Next:** [Deploy & hosting](deploy-and-hosting.md) →
 
 
 Base app: `edim_dde_api.main:app`
@@ -26,4 +26,4 @@ Curated upsert into the active `RetrievalProvider`. Requires `accepted: true`. O
 <!-- edim-learning-nav -->
 ---
 
-← [Configuration](configuration.md) · [Guide home](../README.md) · [Environment variables](../reference/env-vars.md) →
+← [Configuration](configuration.md) · [Guide home](../README.md) · [Deploy & hosting](deploy-and-hosting.md) →
