@@ -74,7 +74,8 @@ From `edim-dde-api` (siblings `edim-dde-ai` / `edim-dde-domain` next to it):
 
 ```bash
 cd /path/to/edim/edim-dde-api
-./deploy/scripts/build_vendor_wheels.sh
+make vendor-wheels
+# equivalent: ./deploy/scripts/build_vendor_wheels.sh
 ```
 
 If siblings live elsewhere:
@@ -154,7 +155,7 @@ Full catalog: [Environment variables](../reference/env-vars.md) · matrix: [Envi
 
 | Host | Where |
 |------|--------|
-| Databricks Apps | `deploy/databricks-app/app.yaml` `env:` **and/or** Apps UI → Environment / secrets |
+| Databricks Apps | `deploy/databricks-app/app.yaml` `env:` **and/or** Apps console → Environment / secrets |
 | Docker / ACA | `--env-file`, ACA env settings, Key Vault refs |
 | Secrets | Never commit; use Apps secrets or `AZURE_KEY_VAULT_URL` — see [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
 
@@ -164,29 +165,199 @@ Template values live in `app.yaml` as `REPLACE_*` — replace per workspace befo
 
 ## 5. Deploy — Databricks Apps (default)
 
+**Makefile (from `edim-dde-api/`):** `make help` · `make vendor-wheels` · `make apps-create` · `make apps-deploy`  
+(see [Makefile targets](#59-makefile-targets-edim-dde-api)).
+
 ### 5.1 Prerequisites
 
-- Workspace admin / rights to create Apps  
-- SQL warehouse running; UC tables granted to App users  
-- Foundry endpoint + deployment; SP or Key Vault for non-interactive Foundry  
-- Wheels built (§3.2)
+- Workspace rights to **create Apps**  
+- Databricks CLI ≥ current Apps support (`databricks apps -h`) and a configured profile (`databricks auth login` / `.databrickscfg`)  
+- SQL warehouse running; UC tables granted to **App users**  
+- Foundry endpoint + deployment; Key Vault with Foundry SP secrets **or** Apps secrets for `EDIM_FOUNDRY_*`  
+- Wheels built (`make vendor-wheels`)
 
-### 5.2 Files to sync
+### 5.2 Build wheels (required before sync/deploy)
 
-Upload or Git-deploy the contents of:
-
-```text
-edim-dde-api/deploy/databricks-app/
-  app.yaml
-  requirements.txt
-  requirements.vendor.txt
-  vendor/*.whl
-  README.md
+```bash
+cd /path/to/edim/edim-dde-api
+make vendor-wheels
+# equivalent: ./deploy/scripts/build_vendor_wheels.sh
 ```
 
-Official platform docs: [Configure app.yaml](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime), [Deploy an app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy).
+Outputs `deploy/databricks-app/vendor/*.whl` + `requirements.vendor.txt`.  
+`vendor/` is gitignored — rebuild before each deploy.
 
-### 5.3 `app.yaml` command
+### 5.3 What gets deployed (not the Python `src/` tree)
+
+Apps installs from the **`deploy/databricks-app/`** folder. It does **not** upload editable `src/` trees from the three packages.
+
+| Artifact | Role |
+|----------|------|
+| `app.yaml` | Start command (`uvicorn edim_dde_api.main:app`) + env |
+| `requirements.txt` | Includes `-r requirements.vendor.txt` + host pins |
+| `requirements.vendor.txt` | Exact `./vendor/*.whl` paths (generated) |
+| `vendor/*.whl` | Built `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api` wheels |
+
+`vendor/` is **gitignored** — rebuild with `make vendor-wheels` before each deploy (unless you use Option C below).
+
+### 5.3b Packaging / deploy options
+
+#### Option A — Source bundle upload/sync (**recommended now**)
+
+1. `make vendor-wheels`  
+2. Ensure `app.yaml`, `requirements*.txt`, and `vendor/*.whl` are present under `deploy/databricks-app/`  
+3. Create app `edim-dde-api-dev` ([§5.4](#54-create-a-new-databricks-app))  
+4. Sync that folder to a Workspace path (or upload in the Apps console)  
+5. Deploy → Apps installs wheels from `requirements.vendor.txt` → starts FastAPI  
+
+**Manual (Apps console):** create app → Deploy → select the folder that contains `app.yaml` + `vendor/`.  
+**CLI:** `make apps-sync` then `make apps-deploy` (see §5.4–5.5).
+
+This is the simplest path for first DEV validation.
+
+#### Option B — Git-backed app source
+
+1. Point the Databricks App at a Git repo/path that contains the same `databricks-app` layout.  
+2. On deploy, Apps builds from that folder.
+
+**Caveat:** `vendor/` is not in Git by default. Either:
+
+- Commit/regenerate vendor in a release branch (heavy), or  
+- Prefer **Option C** so Git only holds `app.yaml` + version pins.
+
+See [Deploy from a Git repository](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy).
+
+#### Option C — Private package index (**best long-term**)
+
+1. Publish wheels to Artifactory / Azure Artifacts / similar.  
+2. Replace `requirements.vendor.txt` with pins, e.g. `edim-dde-api==1.0.0`.  
+3. Deploy source **without** vendored wheel blobs.
+
+Documented in [§3.3](#33-later-private-package-index). Track as a follow-on after first successful Apps smoke (product backlog packaging item).
+
+#### Option D — Wheels on Databricks Volume / ADLS (**possible, not first path**)
+
+You *can* store `.whl` files on a UC Volume or ADLS, but Apps dependency install is driven by `requirements.txt` at build/start time. Remote wheels need **custom bootstrap** (download before `pip install`) plus auth to the Volume/ADLS — more failure points than Option A.
+
+| Approach | Use when |
+|----------|----------|
+| **A — Workspace bundle + `vendor/`** | Now (DEV prove-out) |
+| **B — Git** | After Option C, or with a release artifact that includes wheels |
+| **C — Private index** | Durable CI/CD |
+| **D — Volume/ADLS** | Only if org forbids workspace upload *and* private index is unavailable — design bootstrap first |
+
+**Practical recommendation:** name the app **`edim-dde-api-dev`**, deploy with **Option A**, then migrate packaging to **Option C**.
+
+### 5.4 Create a new Databricks App
+
+**Naming (API vs future UI):** use an **`api`** suffix so a later UI app can coexist:
+
+| Env | API app | Future UI app |
+|-----|---------|----------------|
+| DEV | `edim-dde-api-dev` | `edim-dde-ui-dev` |
+| UAT | `edim-dde-api-uat` | `edim-dde-ui-uat` |
+| PROD | `edim-dde-api-prod` | `edim-dde-ui-prod` |
+
+Helps IAM, observability filters, and incident ownership.
+
+**Runtime vs control plane (wording):** the **runtime** is always **FastAPI** (`uvicorn` in `app.yaml`). “Apps console” / create-deploy steps below mean the **Databricks Apps control plane** (web console or CLI) — **not** an Angular/React frontend.
+
+#### A) Manual (Databricks Apps console)
+
+1. Workspace → app switcher → **Databricks Apps** (or **Compute → Apps**).  
+2. **Create app** → name **`edim-dde-api-dev`** → description e.g. `EDIM DDE FastAPI (DEV)` → create.  
+3. Open the app → **Authorization** → note the **service principal** application (client) ID.  
+4. Grant that SP **Key Vault Secrets User** — [Key Vault bootstrap §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user).  
+5. Fill non-secret env in `app.yaml` (or Apps → Environment). Never commit Foundry client secrets.  
+6. Continue with [§5.5 Deploy](#55-deploy-the-app).
+
+#### B) CLI (manual / scripted)
+
+```bash
+databricks auth login --host https://<workspace>.azuredatabricks.net
+
+databricks apps create edim-dde-api-dev \
+  --description "EDIM DDE FastAPI (DEV)"
+
+cd /path/to/edim/edim-dde-api
+make apps-create APP_NAME=edim-dde-api-dev
+```
+
+Then Apps console → **Authorization** → copy App SP client ID → [KV grant](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user).
+
+```bash
+databricks apps list
+databricks apps get edim-dde-api-dev
+```
+
+#### C) Automate from CI/CD
+
+| Stage | What to run |
+|-------|-------------|
+| Build | `make vendor-wheels` |
+| Auth | Databricks CLI OAuth / OIDC — not a laptop PAT in logs |
+| Sync | Upload `deploy/databricks-app/` (Option A) |
+| Create (once) | `databricks apps create edim-dde-api-dev` or create once in console |
+| Deploy | `databricks apps deploy … --source-code-path …` |
+| Smoke | `curl "$BASE/health"` |
+
+```bash
+export APP_NAME=edim-dde-api-dev
+export WS_SOURCE=/Workspace/Users/<you>@example.com/apps/${APP_NAME}
+
+make vendor-wheels
+
+databricks workspace import-dir \
+  deploy/databricks-app \
+  "$WS_SOURCE" \
+  --overwrite
+
+databricks apps deploy "$APP_NAME" \
+  --source-code-path "$WS_SOURCE" \
+  --mode SNAPSHOT
+```
+
+**Makefile:** `make apps-sync` · `make apps-deploy` (require `APP_NAME`, `WS_SOURCE`).
+
+```yaml
+# CI pseudocode
+steps:
+  - checkout
+  - run: make vendor-wheels
+  - run: make apps-sync APP_NAME=edim-dde-api-dev WS_SOURCE=/Workspace/Shared/edim-dde-api-dev
+  - run: make apps-deploy APP_NAME=edim-dde-api-dev WS_SOURCE=/Workspace/Shared/edim-dde-api-dev
+  - run: curl -sfS "$APP_URL/health"
+```
+
+Prefer **create once**; every merge **rebuilds wheels + deploy**.
+
+### 5.5 Deploy the app
+
+After create + env + KV grant + `make vendor-wheels`:
+
+#### Apps console
+
+1. Sync/upload `deploy/databricks-app/` (with `vendor/`) into a workspace folder.  
+2. Apps → **`edim-dde-api-dev`** → **Deploy**.  
+3. Select the folder that contains `app.yaml` + `requirements.txt` + `vendor/`.  
+4. Deploy → wait until **Running**.  
+5. Copy the **App URL**.
+
+#### CLI
+
+```bash
+make apps-deploy APP_NAME=edim-dde-api-dev \
+  WS_SOURCE=/Workspace/Users/<you>/apps/edim-dde-api-dev
+
+# or:
+databricks apps deploy edim-dde-api-dev \
+  --source-code-path /Workspace/Users/<you>/apps/edim-dde-api-dev \
+  --mode SNAPSHOT
+```
+
+`--mode SNAPSHOT` is typical for CI; `AUTO_SYNC` for iterative DIY. Confirm with `databricks apps deploy -h`.
+
+### 5.6 `app.yaml` command
 
 ```yaml
 command:
@@ -198,54 +369,59 @@ command:
   - "$DATABRICKS_APP_PORT"
 ```
 
-Databricks substitutes `$DATABRICKS_APP_PORT` and typically sets `UVICORN_HOST` / `UVICORN_PORT`.
+Databricks substitutes `$DATABRICKS_APP_PORT`. Env for warehouse / Foundry / KV: edit `deploy/databricks-app/app.yaml` (see comments there).
 
-### 5.4 Create and deploy (UI sketch)
-
-1. Workspace → **Compute** / **Apps** → **Create app**.  
-2. Point source at the synced `databricks-app` folder (or Git ref that contains it).  
-3. Confirm `requirements.txt` is at the app root Databricks builds from.  
-4. Set/replace env in UI if you prefer not to bake non-secret config into `app.yaml`.  
-5. Deploy; wait until status is running.  
-6. Open the App URL.
-
-### 5.5 Create and deploy (CLI sketch)
-
-Exact CLI flags vary by CLI version; pattern:
+### 5.7 Validate on Apps (closes P0 Apps token check)
 
 ```bash
-# After syncing deploy/databricks-app to workspace path or using source-code path
-databricks apps deploy <app-name>  # see current CLI help for your cloud
-```
+export BASE="https://<your-app-url>"
 
-Prefer following your workspace’s current [Deploy a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy) page for the precise command.
-
-### 5.6 Validate on Apps (closes P0 Apps token check)
-
-```bash
-export BASE="https://<your-app-url>"   # from Apps overview
-
-curl -sS "$BASE/health"
+curl -sS "$BASE/health" | python3 -m json.tool
 ```
 
 **Pass:** `"status":"ok"`, agents include `cluster_tuning` / `spark_rca`.
 
-Then, **while authenticated as an App user** (browser session or token the gateway forwards):
+Then, **while authenticated as an App user** (gateway forwards `X-Forwarded-Access-Token`):
 
 ```bash
-# Live tuning — NO metrics override — SQL must use forwarded user token
 curl -sS "$BASE/api/v1/recommendations" \
   -H "content-type: application/json" \
   -H "X-Request-Id: apps-live-tuning-001" \
   -d '{"job_id":"<real>","cluster_id":"<real>","include_explanation":false}'
 ```
 
-**Pass:** HTTP 200 with UC-backed `job_cluster_metrics`.  
-**Fail with Databricks not configured / auth errors:** warehouse path, grants, or missing forwarded access token (local `az login` does **not** apply inside the App for user SQL).
-
-Dry override still works on Apps if you need a Foundry-only check without SQL.
+**Pass:** HTTP 200 with UC-backed metrics.  
+**Fail auth:** warehouse/UC grants for the **user**, or missing forwarded token (laptop `az login` does not apply inside the App for user SQL).
 
 Smoke details: [Live & dry smoke](../contribute/live-smoke-test.md).
+
+### 5.8 First-deploy checklist (ordered)
+
+1. [ ] `make vendor-wheels`  
+2. [ ] Fill `app.yaml` REPLACE_* (no secrets in git)  
+3. [ ] Create app **`edim-dde-api-dev`** — [§5.4](#54-create-a-new-databricks-app)  
+4. [ ] Grant App SP → Key Vault Secrets User — [KV §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user)  
+5. [ ] Sync + deploy Option A — [§5.3b](#53b-packaging--deploy-options) / [§5.5](#55-deploy-the-app)  
+6. [ ] `GET /health` then live recommendations — [§5.7](#57-validate-on-apps-closes-p0-apps-token-check)  
+
+Official platform docs: [Configure app.yaml](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime) · [Deploy an app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy) · [CLI apps](https://docs.databricks.com/aws/en/dev-tools/cli/reference/apps-commands).
+
+### 5.9 Makefile targets (`edim-dde-api`)
+
+| Target | Purpose |
+|--------|---------|
+| `make help` | List targets |
+| `make vendor-wheels` | Build ai + domain + api wheels into `deploy/databricks-app/vendor/` |
+| `make apps-create` | `databricks apps create $(APP_NAME)` |
+| `make apps-sync` | `import-dir` local bundle → `$(WS_SOURCE)` |
+| `make apps-deploy` | Deploy app from `$(WS_SOURCE)` |
+| `make docker-build` | Build API image only |
+| `make docker-run` | Run API image alone (no Postgres) |
+| `make compose-up` / `compose-down` / `compose-ps` | API + **Postgres** StateStore |
+| `make e2e-dry` / `e2e-local` | Local container dry E2E (health + tuning + RCA) |
+| `make compose-logs` | Tail API + Postgres |
+
+Variables: `APP_NAME`, `WS_SOURCE`, `EDIM_AI_PATH`, `EDIM_DOMAIN_PATH`, `PYTHON`.
 
 ---
 
@@ -253,22 +429,63 @@ Smoke details: [Live & dry smoke](../contribute/live-smoke-test.md).
 
 Same wheels, same env **names**, different glue.
 
-### 6.1 Build image
+**Postgres in this stack:** used only as the optional **control-plane StateStore** (`EDIM_STATE_STORE=postgres`) for agent catalog / sessions — **not** for Databricks SQL / UC telemetry. See [State store](../platform/state-store.md).
+
+### 6.1 Docker Compose (API + Postgres) — recommended locally
+
+Postgres is included as the **control-plane StateStore** (`EDIM_STATE_STORE=postgres`). Use this stack for **local end-to-end** dry smoke (API + Postgres + Foundry; SQL skipped via overrides).
+
+From `edim-dde-api/`:
+
+```bash
+# Put Foundry (+ optional Databricks) vars in ../edim-dde-domain/.env
+make compose-up          # vendor-wheels + API + Postgres
+make e2e-dry             # /health (assert state_store=postgres) + dry tuning + dry RCA
+# or one shot:
+make e2e-local
+
+make compose-logs        # optional
+make compose-down
+```
+
+| Target | What it does |
+|--------|----------------|
+| `make compose-up` | Build/start **api** + **postgres** |
+| `make e2e-health` | Wait for `/health`; require `state_store=postgres` |
+| `make e2e-dry` | Dry E2E script (`deploy/scripts/e2e_smoke.sh`) |
+| `make e2e-local` | `compose-up` then `e2e-dry` |
+
+Compose file: [`edim-dde-api/docker-compose.yml`](../../../edim-dde-api/docker-compose.yml)
+
+| Service | Port | Role |
+|---------|------|------|
+| `api` | 8080 | FastAPI (`edim_dde_api.main:app`) |
+| `postgres` | 5432 | StateStore (`postgresql://edim:edim@postgres:5432/edim`) |
+| `redis` | 6379 | Optional (`docker compose --profile redis up -d`) |
+
+**Dry E2E** needs Foundry in `.env` (warehouse optional). **Live SQL** against the same containers: set `DATABRICKS_*` in `.env`, recreate `api`, then run live curls from [Live smoke §5](../contribute/live-smoke-test.md) with `BASE=http://127.0.0.1:8080` (and `az login` on the **host** does not inject into the container — use `EDIM_FOUNDRY_*` and, for SQL from the container, a path that works inside Docker, or run live SQL smoke on Apps/host uvicorn).
+
+**Postgres-only** (API on the host via uvicorn): workspace root [`docker-compose.state-store.yml`](../../../docker-compose.state-store.yml).
+
+### 6.2 Build image (without Compose)
 
 ```bash
 cd /path/to/edim/edim-dde-api
-./deploy/scripts/build_vendor_wheels.sh
-docker build -f deploy/docker/Dockerfile -t edim-dde-api:local .
+make docker-build
+# or: make vendor-wheels && docker build -f deploy/docker/Dockerfile -t edim-dde-api:local .
 ```
 
-### 6.2 Run locally
+### 6.3 Run image alone
 
 ```bash
-docker run --rm -p 8080:8080 --env-file ../edim-dde-domain/.env edim-dde-api:local
+make docker-run
+# or: docker run --rm -p 8080:8080 --env-file ../edim-dde-domain/.env edim-dde-api:local
 curl -sS http://127.0.0.1:8080/health
 ```
 
-### 6.3 ACA SQL — grant managed identity warehouse + UC
+Without Compose, default state store is whatever is in `.env` (often `memory`).
+
+### 6.4 ACA SQL — grant managed identity warehouse + UC
 
 On ACA there is no Databricks Apps user token. SQL authenticates as the container **managed identity** (Identity A) via `DefaultAzureCredential`. Foundry stays on `EDIM_FOUNDRY_*` (Identity B).
 
@@ -301,7 +518,7 @@ GRANT SELECT ON TABLE my_catalog.my_schema.job_cluster_metrics TO `<mi-app-clien
 UC privilege reference: [Manage privileges in Unity Catalog](https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/manage-privileges/).  
 Identities overview: [Access & permissions](../platform/access-and-permissions.md).
 
-### 6.4 Azure Container Apps mapping
+### 6.5 Azure Container Apps mapping
 
 | Concern | Setting |
 |---------|---------|

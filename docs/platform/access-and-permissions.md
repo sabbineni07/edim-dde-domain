@@ -114,7 +114,7 @@ How to grant the MI warehouse + UC: [Deploy & hosting §6.3](../api/deploy-and-h
 
 | Host | Where to look | Grant on Key Vault |
 |------|---------------|--------------------|
-| **Databricks Apps** | Apps → app → **Authorization** → service principal | That SP → **Key Vault Secrets User** |
+| **Databricks Apps** | Apps → app → **Authorization** → service principal | That SP → **Key Vault Secrets User** ([step-by-step](key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user)) |
 | **Azure Container Apps** | ACA → Identity → system/user-assigned MI | That MI → **Key Vault Secrets User** |
 | **Local** | Your user after `az login` | Your user (or skip KV; use `.env`) |
 | **Explicit reader** | Entra app for `EDIM_KV_CLIENT_*` | That SP → **Key Vault Secrets User** |

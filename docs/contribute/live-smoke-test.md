@@ -17,7 +17,18 @@ This runbook proves the stack works **beyond unit tests**: API up, agents regist
 | **Live smoke** | **Required** (warehouse + UC tables) | **Required** | Full path including SQL collect | ~30–60 min |
 | **Offline only** | N/A | Stub (`DomainStubLLM`) | CI / laptop without cloud | `pytest` only — see [Testing](testing.md) |
 
-> **Important:** Dry ≠ offline. Dry skips the **warehouse** only. `uvicorn` always uses Foundry for bundled agents. True offline = `pytest` with `DomainStubLLM`.
+> **Important:** Dry ≠ offline. Dry skips the **warehouse** only. `uvicorn` / Compose API always use Foundry for bundled agents. True offline = `pytest` with `DomainStubLLM`.
+
+### Compose stack (API + Postgres) for local E2E
+
+```bash
+cd edim-dde-api
+# Foundry (and optional Databricks) in ../edim-dde-domain/.env
+make e2e-local
+# equivalent: make compose-up && make e2e-dry
+```
+
+This starts **Postgres** (StateStore) + **API**, then runs health + dry tuning + dry RCA (`deploy/scripts/e2e_smoke.sh`). See [Deploy §6.1](../api/deploy-and-hosting.md#61-docker-compose-api--postgres--recommended-locally).
 
 **Startup env validation** (runs on API lifespan) only checks that env **strings are present**. It does **not** open Databricks or Foundry connections. Default = log warnings. `EDIM_STRICT_STARTUP=1` fails process start if Foundry endpoint is missing (optional `EDIM_REQUIRE_SQL=1` also requires warehouse host/path).
 

@@ -188,9 +188,22 @@ Append-only: `event_id`, `action` (e.g. `agent.upsert`), `actor`, `detail`.
 
 ## 6. Local Postgres quickstart
 
-From the `edim/` workspace root:
+Postgres backs the **control-plane StateStore** (catalog / sessions) — not Databricks SQL.
+
+**Option A — API + Postgres together (Compose + E2E):**
 
 ```bash
+cd edim-dde-api
+make e2e-local    # compose-up (api+postgres) + dry smoke
+# or: make compose-up && make e2e-dry && make compose-down
+```
+
+See [`edim-dde-api/docker-compose.yml`](../../edim-dde-api/docker-compose.yml) and [Deploy & hosting §6.1](../api/deploy-and-hosting.md#61-docker-compose-api--postgres--recommended-locally).
+
+**Option B — Postgres only (API via host uvicorn):**
+
+```bash
+# from edim/ workspace root
 docker compose -f docker-compose.state-store.yml up -d
 
 pip install 'edim-dde-ai[postgres]'
@@ -199,7 +212,6 @@ export EDIM_STATE_STORE=postgres
 export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 export EDIM_ENV=sdbx
 
-# start API as usual
 uvicorn edim_dde_api.main:app --port 8080
 curl -s localhost:8080/health
 ```
@@ -210,7 +222,7 @@ On startup the API:
 2. Bootstraps agents from Git-packaged YAML  
 3. Syncs each registered agent into Postgres (`edim_agents` + `edim_audit` tables; schema auto-created)
 
-Optional Redis profile:
+Optional Redis profile (postgres-only compose):
 
 ```bash
 docker compose -f docker-compose.state-store.yml --profile redis up -d

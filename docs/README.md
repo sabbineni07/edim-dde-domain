@@ -103,7 +103,7 @@ Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md
 |------|------|----------------|
 | **G1** | [Configuration](api/configuration.md) | Env for a working API |
 | **G2** | [HTTP endpoints](api/endpoints.md) | OpenAPI surface |
-| **G3** | [**Deploy & hosting**](api/deploy-and-hosting.md) | Apps / Docker / ACA packaging; ACA MI warehouse+UC grants |
+| **G3** | [**Deploy & hosting**](api/deploy-and-hosting.md) | Apps create (console/CLI/CI), naming `edim-dde-api-*`, packaging A–D, KV grant |
 
 ### Part H — Reference & contribute
 

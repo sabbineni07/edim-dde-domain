@@ -28,8 +28,9 @@ Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 | Agent YAML changes | Experimental OK | Feature branches | Approved versions only |
 | Foundry auth | `az login` or SP | SP or `az login` | **`EDIM_FOUNDRY_*` from Key Vault** |
 | Typical **host** (runtime) | Local / SDBX Apps | Local or DEV Apps | **Databricks Apps** (ACA optional) |
+| Databricks App name (API) | `edim-dde-api-sdbx` (optional) | **`edim-dde-api-dev`** | `edim-dde-api-prod` |
 
-Hosting & identity: [Deploy & hosting](../api/deploy-and-hosting.md) · [Access & permissions](access-and-permissions.md) · [Key Vault bootstrap](key-vault-bootstrap.md).  
+Hosting & identity: [Deploy & hosting](../api/deploy-and-hosting.md) §5 (naming + packaging) · [Access & permissions](access-and-permissions.md) · [Key Vault bootstrap](key-vault-bootstrap.md).  
 Agent packing / one vs many apps: [Agent deployment & composition](../architecture/agent-deployment-and-composition.md).
 
 ---
