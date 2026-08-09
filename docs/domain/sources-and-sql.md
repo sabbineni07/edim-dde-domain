@@ -1,5 +1,9 @@
 # Sources and SQL
 
+**Learning path:** E1 · [Guide home](../README.md)
+**← Previous:** [Orchestration](../framework/orchestration-topology.md) · **Next:** [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →
+
+
 ## Named sources
 
 `config/sources.yaml` (shipped with domain) defines connection **shape** without secrets:
@@ -33,3 +37,8 @@ Before connecting, `domain.sql.query` short-circuits in either case:
 `evidence_pack` itself is the structured RCA input (excerpts, anchors, refs) that the synthesize prompt consumes — normally built from SQL sections; injectable for tests/demos without Databricks.
 
 Deep dive: [DESIGN_SOURCES_AND_SQL_NODES.md](../DESIGN_SOURCES_AND_SQL_NODES.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Orchestration](../framework/orchestration-topology.md) · [Guide home](../README.md) · [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →

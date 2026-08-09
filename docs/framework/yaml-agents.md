@@ -1,5 +1,9 @@
 # YAML agents
 
+**Learning path:** D2 · [Guide home](../README.md)
+**← Previous:** [YAML schema](yaml-schema.md) · **Next:** [Nodes and routers](nodes-and-routers.md) →
+
+
 Agents are declared as `*.agent.yaml` and loaded with:
 
 ```python
@@ -34,4 +38,9 @@ graph:
 
 Compiled agents are **cached** after first `create_agent`; re-registering YAML invalidates that id.
 
-More detail: [edim-dde-ai USAGE](../../../edim-dde-ai/docs/USAGE.md) · [DESIGN](../../../edim-dde-ai/docs/DESIGN.md)
+More detail: `edim-dde-ai/docs/USAGE.md` · `edim-dde-ai/docs/DESIGN.md`
+
+<!-- edim-learning-nav -->
+---
+
+← [YAML schema](yaml-schema.md) · [Guide home](../README.md) · [Nodes and routers](nodes-and-routers.md) →

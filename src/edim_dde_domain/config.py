@@ -57,9 +57,14 @@ class DomainSettings(BaseSettings):
     databricks_spark_metrics_table: str = ""
     databricks_job_cluster_metrics_table: str = ""
 
-    # Azure AI Foundry (OpenAI v1). Client id/secret may be injected from Key Vault in prod.
+    # Azure AI Foundry (OpenAI v1). Prefer EDIM_FOUNDRY_* so DefaultAzureCredential
+    # (SQL) is not polluted by Foundry SP env names.
     azure_openai_endpoint: str = ""
     azure_openai_deployment_name: str = "gpt-4o"
+    edim_foundry_tenant_id: str = ""
+    edim_foundry_client_id: str = ""
+    edim_foundry_client_secret: str = ""
+    # Legacy Foundry SP names (deprecated — EnvironmentCredential / SQL also read these).
     azure_tenant_id: str = ""
     azure_client_id: str = ""
     azure_client_secret: str = ""
@@ -71,6 +76,27 @@ class DomainSettings(BaseSettings):
     @property
     def sql_http_path(self) -> str:
         return normalize_http_path(self.databricks_http_path)
+
+    def foundry_sp_credentials(self) -> tuple[str, str, str]:
+        """Return (tenant_id, client_id, client_secret) for Foundry SP auth.
+
+        Prefers ``EDIM_FOUNDRY_*``. Falls back to legacy ``AZURE_CLIENT_*`` /
+        ``AZURE_TENANT_ID`` when the dedicated vars are incomplete.
+        """
+        tenant = (self.edim_foundry_tenant_id or "").strip()
+        client_id = (self.edim_foundry_client_id or "").strip()
+        client_secret = (self.edim_foundry_client_secret or "").strip()
+        if tenant and client_id and client_secret:
+            return tenant, client_id, client_secret
+
+        legacy_tenant = (self.azure_tenant_id or "").strip()
+        legacy_id = (self.azure_client_id or "").strip()
+        legacy_secret = (self.azure_client_secret or "").strip()
+        # Allow mixing: e.g. EDIM_FOUNDRY_CLIENT_* + shared AZURE_TENANT_ID.
+        tenant = tenant or legacy_tenant
+        client_id = client_id or legacy_id
+        client_secret = client_secret or legacy_secret
+        return tenant, client_id, client_secret
 
     def sql_configured(self) -> bool:
         return bool(self.sql_hostname and self.sql_http_path)

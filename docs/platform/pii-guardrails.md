@@ -1,15 +1,19 @@
 # PII guardrails (BL-014)
 
+**Learning path:** C3 · [Guide home](../README.md)
+**← Previous:** [Key Vault bootstrap](key-vault-bootstrap.md) · **Next:** [Observability](observability.md) →
+
+
 **Context:** Current EDIM agents (`cluster_tuning`, `spark_rca`) operate on **telemetry** (cluster/job metrics and logs). They are **not expected** to process customer PII. As a **FinTech** platform we still apply **basic expandable redaction** so accidental PII does not reach logs or LangSmith.
 
 ---
 
-## Default patterns (Phase 0)
+## Default patterns (current)
 
 | Label | Detects | Redaction |
 |-------|---------|-----------|
 | `ssn` | US SSN-like `###-##-####` / 9-digit groups | `[REDACTED:ssn]` |
-| `credit_card` | 13–19 digit PAN-like sequences (Luhn not required for Phase 0) | `[REDACTED:credit_card]` |
+| `credit_card` | 13–19 digit PAN-like sequences (Luhn not required yet) | `[REDACTED:credit_card]` |
 | `account_number` | Phrases like `account number` / `acct` followed by digits | `[REDACTED:account_number]` |
 | `member_id` | `member id` / `memberid` / `member#` followed by alphanumerics | `[REDACTED:member_id]` |
 
@@ -51,5 +55,12 @@ Document new labels in this page and add unit tests with sample strings.
 
 ## Related
 
+- [Key Vault bootstrap](key-vault-bootstrap.md)
+- [Access & permissions](access-and-permissions.md)
 - [Security baseline](security-baseline.md)
 - [LangSmith setup](langsmith-setup.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Key Vault bootstrap](key-vault-bootstrap.md) · [Guide home](../README.md) · [Observability](observability.md) →

@@ -1,9 +1,13 @@
 # LangSmith setup guide (SDBX / DEV / PROD)
 
+**Learning path:** C5 · [Guide home](../README.md)
+**← Previous:** [Observability](observability.md) · **Next:** [State store](state-store.md) →
+
+
 You asked for help getting productive with LangSmith. This guide is written for that — from zero to first traced EDIM agent run.
 
-**Phase 0:** enable tracing + projects per environment.  
-**Later (Phase 2+):** datasets, evaluators, CI quality gates.
+**R1:** enable tracing + projects per environment.  
+**Later:** datasets, evaluators, CI quality gates.
 
 ---
 
@@ -179,7 +183,7 @@ Traces may include prompt text. EDIM applies **basic PII redaction** (SSN, PAN, 
 
 ---
 
-## 10. Next (not Phase 0)
+## 10. Next (later)
 
 - Upload golden datasets for `cluster_tuning` / `spark_rca`
 - Add evaluators and CI gates (backlog BL-033–035)
@@ -192,3 +196,8 @@ Traces may include prompt text. EDIM applies **basic PII redaction** (SSN, PAN, 
 - [Environments](environments.md)
 - [Config → observability flow](../architecture/config-to-observability.md)
 - [Reference architecture](../architecture/reference-architecture.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Observability](observability.md) · [Guide home](../README.md) · [State store](state-store.md) →

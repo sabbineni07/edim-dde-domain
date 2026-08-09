@@ -1,6 +1,10 @@
 # EDIM DDE — Release 1 reference architecture
 
-**Status:** Phase 0 / BL-001 — ready for first sign-off  
+**Learning path:** B4 · [Guide home](../README.md)
+**← Previous:** [Packages](packages.md) · **Next:** [Architecture deck](architecture-deck.md) →
+
+
+**Status:** BL-001 — **signed off 2026-08-05**  
 **Audience:** Architecture review and PowerPoint export  
 **Version:** R1 (`1.0.0` package baseline)
 
@@ -12,9 +16,7 @@ This document is the **approved reference map** for the EDIM AI agent stack: pac
 
 | Role | Name | Date | Decision |
 |------|------|------|----------|
-| First sign-off | _(you)_ | TBD | Approve R1 architecture for Phase 0 |
-
-Update this table when you formally approve.
+| First sign-off | Stakeholder (product/architecture owner) | 2026-08-05 | **Approved** — R1 architecture |
 
 ---
 
@@ -32,7 +34,7 @@ Update this table when you formally approve.
 1. Open the HTML deck in Chrome (allows Simple Icons CDN for brand marks).
 2. Click **Present** (fullscreen) and capture slides 01–09.
 3. For the three detailed diagrams, prefer **Insert → Picture → SVG** from the files above (crisper in Zoom/print).
-4. Icons in the HTML deck use [Simple Icons](https://simpleicons.org/) (Databricks, Azure, LangChain, FastAPI). For final Marketing brand packs, swap logos if required.
+4. Icons in the HTML deck use [Simple Icons](https://simpleicons.org/) (Databricks, LangChain, FastAPI). The Azure mark is an inlined Simple Icons SVG (`data:` URI) because `cdn.simpleicons.org/microsoftazure` currently 404s. For final Marketing brand packs, swap logos if required.
 
 ---
 
@@ -71,9 +73,9 @@ Domain package (`edim-dde-domain`) still owns sources, SQL nodes, PII, and bundl
 
 | Boundary | What crosses it | Auth |
 |----------|-----------------|------|
-| Client → API | JSON over HTTPS | Apps gateway / network; CORS allow-list |
-| API → SQL | Queries via `domain.sql.query` | Apps: `X-Forwarded-Access-Token`; local: `az login` |
-| API → Foundry | Chat completions | Local: `az login`; PROD: SP from Key Vault |
+| Client → API | JSON over HTTPS | Apps gateway / network; CORS allow-list (Swagger `/docs` on App URL OK) |
+| API → SQL | Queries via `domain.sql.query` | **U:** Apps `X-Forwarded-Access-Token` + User auth scope `sql`; local: `az login` |
+| API → Foundry | Chat completions | **B:** `EDIM_FOUNDRY_*` (from Key Vault via **A** App SP); local: `az login` if unset |
 | Runtime → LangSmith | Traces (redacted) | `LANGCHAIN_API_KEY` / project per env |
 | Runtime → StateStore | Catalog / sessions / audit | Postgres URL, Cosmos keys, or Redis URL |
 
@@ -93,7 +95,7 @@ Dependency direction: `api` → `domain` → `ai`.
 
 ## 3. R1 non-goals (explicit)
 
-Deferred past Release 1 / Phase 0:
+Deferred past Release 1:
 
 - Full MCP connector mesh (ADO / ServiceNow / JIRA)
 - Enterprise RAG / Azure AI Search platform (framework **RetrievalProvider spike** + `spark_rca` pilot exist; full knowledge platform / retention still later)- HITL review UI
@@ -136,16 +138,16 @@ Client + LangSmith (trace retained per project retention)
 
 ---
 
-## 5. Environments (Phase 0 focus)
+## 5. Environments (current focus)
 
 Full set later: **SDBX, DEV, UAT, INTG, PROD**.  
-**Phase 0 focus:** SDBX, DEV, PROD — see [environments.md](../platform/environments.md).
+**Current focus:** SDBX, DEV, PROD — see [environments.md](../platform/environments.md).
 
 | Env | Purpose | LangSmith project (convention) |
 |-----|---------|--------------------------------|
 | SDBX | Sandbox / spikes | `edim-dde-sdbx` |
-| DEV | Active development | `edim-dde-dev` |
-| PROD | Production | `edim-dde-prod` |
+| DEV | Active development | `edim-dde-dev` (App: `edim-dde-api-dev`) |
+| PROD | Production | `edim-dde-prod` (App: `edim-dde-api-prod`) |
 
 ---
 
@@ -154,11 +156,12 @@ Full set later: **SDBX, DEV, UAT, INTG, PROD**.
 | Control | R1 behavior |
 |---------|-------------|
 | YAML code execution | **Denied** — node/router types must be pre-registered |
-| SQL identity | Apps user OAuth or local Azure AD |
-| LLM identity | Azure AD / SP from Key Vault |
-| Secrets | Azure Key Vault SDK bootstrap into process env |
+| SQL identity (**U**) | Apps user OAuth + scope `sql`, or local Azure AD |
+| LLM identity (**B**) | `EDIM_FOUNDRY_*` (not `AZURE_CLIENT_*`) |
+| Vault opener (**A**) | Apps SP (`DATABRICKS_CLIENT_*` + `AZURE_TENANT_ID`) → Key Vault |
+| Secrets | Azure Key Vault SDK; map `ENV_VAR:vaultSecret` into process env |
 | PII | Expandable redaction patterns (SSN, PAN, account, member id) before logs/traces |
-| Roles | Documented matrix; **not enforced** in Phase 0 beyond identity above |
+| Roles | Documented matrix; **not enforced** yet beyond identity above |
 
 Details: [security-baseline.md](../platform/security-baseline.md), [pii-guardrails.md](../platform/pii-guardrails.md).
 
@@ -166,7 +169,7 @@ Details: [security-baseline.md](../platform/security-baseline.md), [pii-guardrai
 
 ## 7. Observability (LangSmith)
 
-Phase 0 documents setup and wires optional tracing. Full eval/CI is Phase 2+.
+R1 documents setup and wires optional tracing. Full eval/CI comes later.
 
 Guide: [langsmith-setup.md](../platform/langsmith-setup.md) · [observability.md](../platform/observability.md).
 
@@ -214,3 +217,8 @@ Full guide: [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 - [Retrieval & RAG](../platform/retrieval-and-rag.md)
 - [YAML schema contract](../framework/yaml-schema.md)
 - [Orchestration topology](../framework/orchestration-topology.md)
+
+<!-- edim-learning-nav -->
+---
+
+← [Packages](packages.md) · [Guide home](../README.md) · [Architecture deck](architecture-deck.md) →

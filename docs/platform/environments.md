@@ -1,13 +1,17 @@
 # Environments (BL-046)
 
-**Phase 0 focus:** `SDBX`, `DEV`, `PROD`  
+**Learning path:** C1 · [Guide home](../README.md)
+**← Previous:** [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · **Next:** [Security baseline](security-baseline.md) →
+
+
+**Current focus:** `SDBX`, `DEV`, `PROD`  
 **Documented for later:** `UAT`, `INTG`
 
 Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 
 ---
 
-## Matrix (Phase 0)
+## Matrix (current)
 
 | Concern | SDBX | DEV | PROD |
 |---------|------|-----|------|
@@ -22,7 +26,12 @@ Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 | Retrieval (typical) | `faiss` or `memory` | `faiss` / Azure | **`azure_ai_search`** |
 | Tracing verbosity | High OK | On | On + PII redaction |
 | Agent YAML changes | Experimental OK | Feature branches | Approved versions only |
-| Foundry auth | `az login` or SP | SP or `az login` | **SP from Key Vault** |
+| Foundry auth | `az login` or SP | SP or `az login` | **`EDIM_FOUNDRY_*` from Key Vault** |
+| Typical **host** (runtime) | Local / SDBX Apps | Local or DEV Apps | **Databricks Apps** (ACA optional) |
+| Databricks App name (API) | `edim-dde-api-sdbx` (optional) | **`edim-dde-api-dev`** | `edim-dde-api-prod` |
+
+Hosting & identity: [Deploy & hosting](../api/deploy-and-hosting.md) §5 (naming + packaging) · [Access & permissions](access-and-permissions.md) · [Key Vault bootstrap](key-vault-bootstrap.md).  
+Agent packing / one vs many apps: [Agent deployment & composition](../architecture/agent-deployment-and-composition.md).
 
 ---
 
@@ -37,14 +46,14 @@ Do not invent ad-hoc env names. Extend this matrix when UAT/INTG are stood up.
 
 ---
 
-## Promotion path (Phase 0 simplified)
+## Promotion path (simplified)
 
 ```text
 SDBX  →  DEV  →  PROD
                  (UAT / INTG inserted later)
 ```
 
-Promotion checklist (manual for Phase 0):
+Promotion checklist (manual for now):
 
 1. YAML validates (`edim-dde-ai` schema)
 2. Unit / e2e tests green
@@ -52,11 +61,13 @@ Promotion checklist (manual for Phase 0):
 4. Secrets present in target Key Vault
 5. Table FQNs and Foundry deployment confirmed for target env
 
+**Hosting:** first cut = **Databricks Apps**; portable Docker image for Azure Container Apps — see [Deploy & hosting](../api/deploy-and-hosting.md).
+
 ---
 
 ## Required env vars by environment
 
-See [Environment variables](../reference/env-vars.md) and [.env.example](../../.env.example).
+See [Environment variables](../reference/env-vars.md) and [.env.example — see domain package `.env.example`.
 
 Minimum for agent invoke:
 
@@ -66,3 +77,8 @@ Minimum for agent invoke:
 - State store (recommended local): `EDIM_STATE_STORE=postgres` + `EDIM_DATABASE_URL` — see [state-store.md](state-store.md)
 - Retrieval (optional local): `EDIM_RETRIEVAL=faiss` + `EDIM_FAISS_INDEX_PATH` — see [retrieval-and-rag.md](retrieval-and-rag.md)
 - Platform: `EDIM_ENV`, optional `AZURE_KEY_VAULT_URL` + secret name mappings
+
+<!-- edim-learning-nav -->
+---
+
+← [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →

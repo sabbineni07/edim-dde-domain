@@ -35,10 +35,51 @@ def test_redact_nested():
 
 def test_parse_secret_map_default():
     m = parse_secret_map(None)
-    assert m["azure-client-id"] == "AZURE_CLIENT_ID"
-    assert m["langchain-api-key"] == "LANGCHAIN_API_KEY"
+    assert m["EDIM_FOUNDRY_CLIENT_ID"] == "azure-client-id"
+    assert m["EDIM_FOUNDRY_CLIENT_SECRET"] == "azure-client-secret"
+    assert m["EDIM_FOUNDRY_TENANT_ID"] == "azure-tenant-id"
+    assert m["LANGCHAIN_API_KEY"] == "langchain-api-key"
 
 
 def test_parse_secret_map_custom():
-    m = parse_secret_map("my-secret:MY_ENV,other:OTHER")
-    assert m == {"my-secret": "MY_ENV", "other": "OTHER"}
+    m = parse_secret_map("MY_ENV:my-secret,OTHER:other")
+    assert m == {"MY_ENV": "my-secret", "OTHER": "other"}
+
+
+def test_vault_credential_prefers_databricks_apps_sp(monkeypatch):
+    monkeypatch.setenv("DATABRICKS_CLIENT_ID", "apps-sp-id")
+    monkeypatch.setenv("DATABRICKS_CLIENT_SECRET", "apps-sp-secret")
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-guid")
+    monkeypatch.delenv("EDIM_KV_CLIENT_ID", raising=False)
+    monkeypatch.delenv("EDIM_KV_CLIENT_SECRET", raising=False)
+
+    from edim_dde_domain.security.keyvault import _vault_credential
+
+    cred, source = _vault_credential()
+    assert "Apps SP" in source
+    assert cred.__class__.__name__ == "ClientSecretCredential"
+
+
+def test_vault_credential_prefers_explicit_kv_reader(monkeypatch):
+    monkeypatch.setenv("EDIM_KV_CLIENT_ID", "kv-reader-id")
+    monkeypatch.setenv("EDIM_KV_CLIENT_SECRET", "kv-reader-secret")
+    monkeypatch.setenv("EDIM_KV_TENANT_ID", "tenant-guid")
+    monkeypatch.setenv("DATABRICKS_CLIENT_ID", "apps-sp-id")
+    monkeypatch.setenv("DATABRICKS_CLIENT_SECRET", "apps-sp-secret")
+
+    from edim_dde_domain.security.keyvault import _vault_credential
+
+    cred, source = _vault_credential()
+    assert source == "EDIM_KV_CLIENT_*"
+    assert cred.__class__.__name__ == "ClientSecretCredential"
+
+
+def test_should_set_env_respects_existing_unless_force(monkeypatch):
+    from edim_dde_domain.security.keyvault import _should_set_env
+
+    monkeypatch.setenv("EDIM_FOUNDRY_CLIENT_ID", "already")
+    monkeypatch.delenv("EDIM_KV_FORCE", raising=False)
+    assert _should_set_env("EDIM_FOUNDRY_CLIENT_ID") is False
+
+    monkeypatch.setenv("EDIM_KV_FORCE", "1")
+    assert _should_set_env("EDIM_FOUNDRY_CLIENT_ID") is True

@@ -1,82 +1,150 @@
-# EDIM DDE documentation
+# EDIM DDE — Engineer & developer guide
 
-Engineer guide for the **EDIM DDE** stack: YAML-driven LangGraph agents, domain SQL/auth, and a thin FastAPI host.
+**Release:** R1 / `1.0.0`  
+**Audience:** platform engineers, agent authors, API operators  
+**Browse:** local Docker serves this hub as **MkDocs Material** at `http://127.0.0.1:8080/guide/` (`make -C ../edim-dde-api guide-site && make -C ../edim-dde-api compose-up`). Sidebar + Previous / Next follow the learning path below. **Not** deployed to Databricks Apps.
 
-**Release:** R1 / `1.0.0` (Phase 0 foundation)
+> Temporary docs hub under `edim-dde-domain/docs/` (ownership / ADO Wiki / publish path still open — see `BACKLOG.md` revisit item). Markdown here is the source; MkDocs builds the `/guide` reader.
 
-Inspired by product docs such as [Databricks](https://docs.databricks.com/aws/en/), [Azure Data Factory](https://learn.microsoft.com/en-us/azure/data-factory/), [Apache Airflow](https://airflow.apache.org/docs/), and lifecycle references like [EMR Serverless job states](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/job-states.html).
+---
 
-## Packages
+## Packages at a glance
 
 | Package | Role |
 |---------|------|
-| [`edim-dde-ai`](../../edim-dde-ai/) | Framework: YAML → LangGraph, registries, `llm_chain`, `invoke_agent`, observability + state store |
-| [`edim-dde-domain`](../) | Platform + product agents: sources, SQL, auth, Foundry, Key Vault, PII, bundled RCA/tuning |
-| [`edim-dde-api`](../../edim-dde-api/) | HTTP: CORS, Apps token middleware, KV bootstrap, `/api/v1/*` |
+| `edim-dde-ai` | Framework: YAML → LangGraph, registries, builtins, observability, state store, retrieval |
+| `edim-dde-domain` | Platform + product agents: sources, SQL, auth, Foundry, Key Vault, PII, RCA/tuning, corpora |
+| `edim-dde-api` | HTTP host: CORS, Apps token middleware, lifespan wiring, `/api/v1/*` |
 
-> **Temporary home:** This engineer hub lives under `edim-dde-domain/docs/` until a parent `edim` repo exists. Move the tree later if needed.
+Dependency direction: **`api` → `domain` → `ai`**. (Sibling checkouts next to each other under your workspace.)
 
-## Get started
+---
 
-- [Quickstart](getting-started/quickstart.md) — install, run API, call an endpoint
-- [Core concepts](getting-started/concepts.md) — agent, node, state, content, bootstrap
-- [LangSmith setup](platform/langsmith-setup.md) — tracing for SDBX / DEV / PROD
+## Learning path (read in this order)
 
-## Architecture (R1)
+### Part A — Start here
 
-- [**Reference architecture (sign-off + PPT)**](architecture/reference-architecture.md)
-- [Architecture deck (HTML + brand icons)](architecture/diagrams/r1-architecture-deck.html)
-- [Overview](architecture/overview.md)
-- [Packages](architecture/packages.md)
-- [Auth and SQL](architecture/auth-and-sql.md)
-- [Request flow](architecture/request-flow.md)
-- [Config → observability](architecture/config-to-observability.md)
+| Step | Page | What you learn |
+|------|------|----------------|
+| **A1** | [Quickstart](getting-started/quickstart.md) | Install, run API, call an endpoint |
+| **A2** | [Core concepts](getting-started/concepts.md) | Agent, node, state, bootstrap, planes |
 
-## Platform (Phase 0)
+### Part B — Architecture & design (end-to-end)
 
-- [Environments (SDBX / DEV / PROD)](platform/environments.md)
-- [**Control-plane state store** (Postgres / Cosmos / Redis)](platform/state-store.md)
-- [**Retrieval & RAG** (FAISS / Azure AI Search / Databricks)](platform/retrieval-and-rag.md)
-- [Observability providers (LangSmith / MLflow)](platform/observability.md)
-- [Security baseline & role matrix](platform/security-baseline.md)
-- [PII guardrails](platform/pii-guardrails.md)
-- [LangSmith setup](platform/langsmith-setup.md)
+| Step | Page | What you learn |
+|------|------|----------------|
+| **B1** | [**End-to-end design**](architecture/end-to-end-design.md) | Planes, request lifecycle, GoF patterns, diagrams |
+| **B2** | [Architecture overview](architecture/overview.md) | Compact system sketch |
+| **B3** | [Packages](architecture/packages.md) | Who owns what |
+| **B4** | [Reference architecture (sign-off + PPT)](architecture/reference-architecture.md) | Review / deck / non-goals |
+| **B5** | [Architecture deck](architecture/architecture-deck.md) | HTML slides + SVG assets for presentation |
+| **B6** | [Request flow](architecture/request-flow.md) | One HTTP call, step by step |
+| **B7** | [Auth and SQL](architecture/auth-and-sql.md) | Identity paths into the warehouse |
+| **B8** | [Config → observability](architecture/config-to-observability.md) | YAML → registries → traces + store + retrieval |
+| **B9** | [**Agent deployment & composition**](architecture/agent-deployment-and-composition.md) | One app vs many; DE SDLC; cross-app; **§1b capability matrix** |
 
-## Build
+### Part C — Platform planes (same order as API lifespan)
 
-- [Agent package layout](build-agents/agent-package-layout.md)
-- [New agent step-by-step](build-agents/step-by-step.md)
-- [External plugins](build-agents/external-plugins.md)
+API startup configures concerns in roughly this order — docs follow it so mental model matches runtime.
 
-## Framework (`edim-dde-ai`)
+**Security / access topic map (keep separate):**
 
-- [YAML agents](framework/yaml-agents.md)
-- [YAML schema contract](framework/yaml-schema.md)
-- [Orchestration topology (`invoke_agent`)](framework/orchestration-topology.md)
-- [Nodes and routers](framework/nodes-and-routers.md)
-- [Content and LLM](framework/content-and-llm.md)
-- [Conditional edges](framework/conditional-edges.md)
+| Need | Page |
+|------|------|
+| App roles / trust boundaries | **C2** Security baseline |
+| Who is U / A / B on Local, Apps, ACA | **C2b** Access & permissions |
+| Key Vault + `EDIM_KV_SECRET_MAP` | **C2c** Key Vault bootstrap |
+| Package & grant ACA MI warehouse/UC | **G3** Deploy & hosting |
 
-## Domain & API
+| Step | Page | Plane |
+|------|------|-------|
+| **C1** | [Environments](platform/environments.md) | SDBX / DEV / PROD matrix |
+| **C2** | [Security baseline](platform/security-baseline.md) | Trust boundaries, app role matrix (docs) |
+| **C2b** | [**Access & permissions**](platform/access-and-permissions.md) | Identities U/A/B — who runs SQL / Foundry / KV per host |
+| **C2c** | [**Key Vault bootstrap**](platform/key-vault-bootstrap.md) | Vault auth order, `EDIM_KV_SECRET_MAP`, examples |
+| **C3** | [PII guardrails](platform/pii-guardrails.md) | Redaction before logs/traces |
+| **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |
+| **C5** | [LangSmith setup](platform/langsmith-setup.md) | Projects, keys, local vs SaaS |
+| **C6** | [Control-plane state store](platform/state-store.md) | Postgres / Cosmos / Redis / memory |
+| **C7** | [Retrieval & RAG](platform/retrieval-and-rag.md) | FAISS / Azure AI Search / Databricks; spark_rca pilot |
 
-- [Sources and SQL](domain/sources-and-sql.md)
-- [Bundled agents](domain/bundled-agents.md)
-- [HTTP endpoints](api/endpoints.md)
-- [Configuration](api/configuration.md)
+### Part D — Framework (`edim-dde-ai`)
 
-## Reference
+| Step | Page | What you learn |
+|------|------|----------------|
+| **D1** | [YAML schema contract](framework/yaml-schema.md) | Canonical agent config |
+| **D2** | [YAML agents](framework/yaml-agents.md) | Loading & registration |
+| **D3** | [Nodes and routers](framework/nodes-and-routers.md) | Type ids, factories |
+| **D4** | [Conditional edges](framework/conditional-edges.md) | Branching |
+| **D5** | [Content and LLM](framework/content-and-llm.md) | Prompts, skills, Foundry |
+| **D6** | [Orchestration (`invoke_agent`)](framework/orchestration-topology.md) | Nested agents |
 
-- [Environment variables](reference/env-vars.md)
-- [Node type ids](reference/node-type-ids.md)
-- [Glossary](reference/glossary.md)
+Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 
-## Contribute
+### Part E — Domain agents & SQL
 
-- [Testing](contribute/testing.md)
-- [Product backlog](../../BACKLOG.md) — day-to-day EDIM handoff
-- [Platform capability backlog](../../AI_Framework_Platform_Capability_Backlog.md) — phased enterprise roadmap
+| Step | Page | What you learn |
+|------|------|----------------|
+| **E1** | [Sources and SQL](domain/sources-and-sql.md) | Named sources + `domain.sql.query` |
+| **E2** | [Sources & SQL design (deep)](DESIGN_SOURCES_AND_SQL_NODES.md) | Why one SQL node |
+| **E3** | [Bundled agents](domain/bundled-agents.md) | `cluster_tuning`, `spark_rca` |
 
-## Deep dives (package docs)
+### Part F — Build your own agent
 
-- [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md) · [USAGE](../../edim-dde-ai/docs/USAGE.md)
-- [Domain sources & SQL design](DESIGN_SOURCES_AND_SQL_NODES.md)
+| Step | Page | What you learn |
+|------|------|----------------|
+| **F1** | [Agent package layout](build-agents/agent-package-layout.md) | Directory contract |
+| **F2** | [New agent step-by-step](build-agents/step-by-step.md) | Authoring checklist |
+| **F3** | [External plugins](build-agents/external-plugins.md) | `EDIM_AGENT_DIRS` / entry points |
+
+### Part G — API host
+
+| Step | Page | What you learn |
+|------|------|----------------|
+| **G1** | [Configuration](api/configuration.md) | Env for a working API |
+| **G2** | [HTTP endpoints](api/endpoints.md) | OpenAPI surface |
+| **G3** | [**Deploy & hosting**](api/deploy-and-hosting.md) | Apps create (console/CLI/CI), naming `edim-dde-api-*`, packaging A–D, KV grant |
+
+### Part H — Reference & contribute
+
+| Step | Page | What you learn |
+|------|------|----------------|
+| **H1** | [Environment variables](reference/env-vars.md) | Full env catalog |
+| **H2** | [Node type ids](reference/node-type-ids.md) | Allowlisted types |
+| **H3** | [Glossary](reference/glossary.md) | Terms |
+| **H4** | [Testing](contribute/testing.md) | How we test |
+| **H5** | [Live & dry smoke test](contribute/live-smoke-test.md) | Engineer runbook: env checklist, local + remote |
+| **H5b** | [Windows smoke checklist](contribute/windows-smoke-checklist.md) | Same smoke, PowerShell / Windows steps |
+| — | Workspace root `BACKLOG.md` | Day-to-day EDIM (Git; not in this site) |
+| — | Workspace root `AI_Framework_Platform_Capability_Backlog.md` | Enterprise roadmap (Git; not in this site) |
+
+---
+
+## Mental model (one diagram)
+
+```text
+┌──────────── SOURCE CONTROL (Git / Azure DevOps) ────────────┐
+│  *.agent.yaml · prompts · skills · runbooks · corpora.yaml  │
+└────────────────────────────┬────────────────────────────────┘
+                             │ bootstrap / Jobs ingest
+     ┌───────────────────────┼───────────────────────┐
+     ▼                       ▼                       ▼
+ CONTROL PLANE          KNOWLEDGE PLANE          DATA PLANE
+ StateStore             RetrievalProvider        LangGraph + SQL + LLM
+ (catalog/session)      (FAISS/Azure/DBX)        (do the work)
+     │                       │                       │
+     └───────────────────────┼───────────────────────┘
+                             ▼
+                    OBSERVABILITY PLANE
+                    LangSmith / MLflow
+```
+
+Start at **[B1 — End-to-end design](architecture/end-to-end-design.md)** after A1–A2 if you need the full picture before coding.
+
+---
+
+## Navigation convention
+
+**Primary (MkDocs Material):** sidebar sections A–H and footer **Previous / Next** follow `mkdocs.yml` `nav` (same order as the learning path above).
+
+**In-page labels:** each major page also shows `Learning path: …` plus Previous/Next links at the top (and often a matching footer). Those should match the Material order — if they ever disagree, treat **`mkdocs.yml` as source of truth** and fix the page header.

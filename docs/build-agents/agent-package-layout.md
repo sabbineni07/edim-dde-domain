@@ -1,5 +1,9 @@
 # Agent package layout
 
+**Learning path:** F1 · [Guide home](../README.md)
+**← Previous:** [Bundled agents](../domain/bundled-agents.md) · **Next:** [New agent step-by-step](step-by-step.md) →
+
+
 Convention for every product or plugin agent:
 
 ```text
@@ -33,3 +37,8 @@ agents/<agent_id>/
 - Putting agent rules in top-level `edim_dde_domain/tools/` (that’s shared IO like `sql.py`)
 - Fat `nodes.py` with business logic
 - Secrets in YAML
+
+<!-- edim-learning-nav -->
+---
+
+← [Bundled agents](../domain/bundled-agents.md) · [Guide home](../README.md) · [New agent step-by-step](step-by-step.md) →

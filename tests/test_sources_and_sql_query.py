@@ -104,6 +104,16 @@ def test_extract_forwarded_databricks_token():
     assert extract_forwarded_databricks_token({}) is None
 
 
+def test_apps_runtime_requires_forwarded_token(monkeypatch):
+    from edim_dde_domain.errors import DatabricksNotConfiguredError
+    from edim_dde_domain.sources.auth import resolve_access_token
+
+    monkeypatch.setenv("DATABRICKS_APP_PORT", "8080")
+    monkeypatch.delenv("EDIM_ALLOW_APPS_AZURE_SQL_FALLBACK", raising=False)
+    with pytest.raises(DatabricksNotConfiguredError, match="X-Forwarded-Access-Token"):
+        resolve_access_token(source_name="warehouse")
+
+
 def test_bind_named_query_order():
     sql, values = bind_named_query(
         "SELECT 1 WHERE a = :job_id AND b = :cluster_id AND a2 = :job_id",

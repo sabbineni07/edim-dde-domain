@@ -1,5 +1,9 @@
 # Glossary
 
+**Learning path:** H3 · [Guide home](../README.md)
+**← Previous:** [Node type ids](node-type-ids.md) · **Next:** [Testing](../contribute/testing.md) →
+
+
 | Term | Meaning |
 |------|---------|
 | **Agent** | Named YAML graph + registered node types |
@@ -23,4 +27,9 @@
 | **RetrievalProvider** | Pluggable search backend: `none` \| `memory` \| `faiss` \| `azure_ai_search` \| `databricks_vector` |
 | **Corpus** | Logical knowledge collection (e.g. `spark-runbooks`) mapped via `corpora.yaml` |
 | **R1** | Release 1 framework baseline (packages at `1.0.0`) |
-| **SDBX / DEV / PROD** | Phase 0 environments (UAT / INTG documented for later) |
+| **SDBX / DEV / PROD** | Current environments (UAT / INTG documented for later) |
+
+<!-- edim-learning-nav -->
+---
+
+← [Node type ids](node-type-ids.md) · [Guide home](../README.md) · [Testing](../contribute/testing.md) →

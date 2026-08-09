@@ -1,4 +1,7 @@
-# Design: Sources + Generic SQL Collect Nodes
+# Design: Sources + Generic SQL Collect Nodes (E2)
+
+**Learning path:** E2 · [Guide home](README.md)  
+**← Previous:** [Sources and SQL](domain/sources-and-sql.md) · **Next:** [Bundled agents](domain/bundled-agents.md) →
 
 **Status:** Implemented (Phases A–D)  
 **Scope:** `edim-dde-domain` (+ thin use from `edim-dde-api`)  
@@ -359,3 +362,7 @@ environment      → DATABRICKS_HOST / HTTP_PATH
 - MCP server exposure of the same tools (later, Option B).  
 - Moving SQL into `edim-dde-ai` builtins.  
 - User-authored SQL from the UI/API.
+
+---
+
+← [Sources and SQL](domain/sources-and-sql.md) · [Guide home](README.md) · [Bundled agents](domain/bundled-agents.md) →

@@ -1,5 +1,9 @@
 # Testing
 
+**Learning path:** H4 · [Guide home](../README.md)
+**← Previous:** [Glossary](../reference/glossary.md) · **Next:** [Live smoke](live-smoke-test.md) →
+
+
 ## Packages
 
 ```bash
@@ -19,3 +23,14 @@ cd edim-dde-api && pytest -q
 | **`reset_bootstrap()`** | Allow re-register in fixtures |
 
 Do **not** put production SQL/LLM stubs in main packages.
+
+## Live / dry smoke (beyond pytest)
+
+For a shared engineer runbook (what info to gather, where to configure, dry vs live vs remote):
+
+→ **[Live & dry smoke test](live-smoke-test.md)** · **[Windows checklist](windows-smoke-checklist.md)**
+
+<!-- edim-learning-nav -->
+---
+
+← [Glossary](../reference/glossary.md) · [Guide home](../README.md) · [Live smoke](live-smoke-test.md) →

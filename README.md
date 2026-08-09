@@ -45,9 +45,9 @@ AZURE_OPENAI_ENDPOINT=https://….openai.azure.com
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 # Local Foundry auth: az login
 # Prod SP (inject from Key Vault into env):
-# AZURE_TENANT_ID=…
-# AZURE_CLIENT_ID=…
-# AZURE_CLIENT_SECRET=…
+# EDIM_FOUNDRY_TENANT_ID=…
+# EDIM_FOUNDRY_CLIENT_ID=…
+# EDIM_FOUNDRY_CLIENT_SECRET=…
 ```
 
 ### Auth
@@ -55,7 +55,7 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 | Target | Local | Databricks Apps / prod |
 |--------|-------|------------------------|
 | **SQL warehouse** | `az login` | `X-Forwarded-Access-Token` → API middleware |
-| **Foundry LLM** | `az login` | `AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET` (from Key Vault → env) |
+| **Foundry LLM** | `az login` | `EDIM_FOUNDRY_*` (from Key Vault → env) |
 
 No offline SQL stubs in production code — tests inject `metrics` / `evidence_pack` overrides and a fake LLM (`edim_dde_domain.testing.DomainStubLLM`).
 
@@ -98,7 +98,7 @@ def register() -> None:
 ## Setup / test
 
 ```bash
-cd /Users/sabbineni/projects/edim/edim-dde-domain
+cd edim-dde-domain
 pip install -r requirements.txt && pip install -e ".[dev]"
 pytest -q
 ```

@@ -1,5 +1,9 @@
 # Conditional edges
 
+**Learning path:** D4 · [Guide home](../README.md)
+**← Previous:** [Nodes and routers](nodes-and-routers.md) · **Next:** [Content and LLM](content-and-llm.md) →
+
+
 After a node, a **router** returns a label; LangGraph picks the next node from `mapping`.
 
 ## Explicit form
@@ -32,3 +36,8 @@ routes:
 Also supports `equals` / `in` / `compare` and multi-way `switch` / `cases`.
 
 Examples in `edim-dde-ai/examples/agents/conditional_agent.agent.yaml` and `routes_sugar_agent.agent.yaml`.
+
+<!-- edim-learning-nav -->
+---
+
+← [Nodes and routers](nodes-and-routers.md) · [Guide home](../README.md) · [Content and LLM](content-and-llm.md) →

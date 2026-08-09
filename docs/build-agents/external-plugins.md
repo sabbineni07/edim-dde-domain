@@ -1,5 +1,9 @@
 # External agent plugins
 
+**Learning path:** F3 · [Guide home](../README.md)
+**← Previous:** [Step-by-step](step-by-step.md) · **Next:** [API configuration](../api/configuration.md) →
+
+
 Bundled agents ship inside the `edim-dde-domain` wheel. Additional agents register **into the same registries** without forking the package.
 
 ## Directory plugins (`EDIM_AGENT_DIRS`)
@@ -45,3 +49,8 @@ Install the plugin into the same environment as the API; bootstrap loads the ent
 - Namespace node type ids (`acme.*`) — don’t collide with `domain.*`
 - Reuse `domain.sql.query` and domain sources when talking to Databricks
 - No secrets in YAML
+
+<!-- edim-learning-nav -->
+---
+
+← [Step-by-step](step-by-step.md) · [Guide home](../README.md) · [API configuration](../api/configuration.md) →

@@ -1,27 +1,34 @@
 """Azure Key Vault secret bootstrap (BL-013).
 
-Loads mapped secrets into ``os.environ`` without overwriting values already set
-(so local ``.env`` wins). Uses ``DefaultAzureCredential``.
+Loads mapped secrets into ``os.environ``. Credential used to *open* the vault
+is chosen separately from Foundry ``EDIM_FOUNDRY_*`` values written *from* the
+vault (see ``_vault_credential``) so Apps SP / MI, Foundry SP, and SQL auth
+do not collide via ``AZURE_CLIENT_*``.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from typing import Mapping
+from typing import Any, Mapping
 
 logger = logging.getLogger(__name__)
 
+# Env var → vault secret name. Foundry SP goes to EDIM_FOUNDRY_* (not AZURE_CLIENT_*)
+# so DefaultAzureCredential for SQL does not pick up the Foundry workload SP.
 _DEFAULT_SECRET_MAP: dict[str, str] = {
-    "azure-client-id": "AZURE_CLIENT_ID",
-    "azure-client-secret": "AZURE_CLIENT_SECRET",
-    "azure-tenant-id": "AZURE_TENANT_ID",
-    "langchain-api-key": "LANGCHAIN_API_KEY",
+    "EDIM_FOUNDRY_CLIENT_ID": "azure-client-id",
+    "EDIM_FOUNDRY_CLIENT_SECRET": "azure-client-secret",
+    "EDIM_FOUNDRY_TENANT_ID": "azure-tenant-id",
+    "LANGCHAIN_API_KEY": "langchain-api-key",
 }
 
 
 def parse_secret_map(raw: str | None) -> dict[str, str]:
-    """Parse ``vaultSecret:ENV_VAR,vaultSecret2:ENV_VAR2`` pairs."""
+    """Parse ``ENV_VAR:vaultSecret,OTHER_ENV:otherSecret`` pairs.
+
+    Returns ``{env_name: vault_secret_name}``.
+    """
     if not raw or not raw.strip():
         return dict(_DEFAULT_SECRET_MAP)
     out: dict[str, str] = {}
@@ -31,14 +38,75 @@ def parse_secret_map(raw: str | None) -> dict[str, str]:
             continue
         if ":" not in part:
             raise ValueError(
-                f"Invalid EDIM_KV_SECRET_MAP entry {part!r}; expected secret:ENV_VAR"
+                f"Invalid EDIM_KV_SECRET_MAP entry {part!r}; "
+                "expected ENV_VAR:vaultSecretName"
             )
-        secret_name, env_name = part.split(":", 1)
-        secret_name, env_name = secret_name.strip(), env_name.strip()
-        if not secret_name or not env_name:
+        env_name, secret_name = part.split(":", 1)
+        env_name, secret_name = env_name.strip(), secret_name.strip()
+        if not env_name or not secret_name:
             raise ValueError(f"Invalid EDIM_KV_SECRET_MAP entry {part!r}")
-        out[secret_name] = env_name
+        out[env_name] = secret_name
     return out
+
+
+def _truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _vault_credential() -> tuple[Any, str]:
+    """Return (credential, source_label) for talking to Key Vault.
+
+    Order:
+    1. Explicit vault-reader SP: ``EDIM_KV_CLIENT_ID`` + ``EDIM_KV_CLIENT_SECRET``
+       + tenant (``EDIM_KV_TENANT_ID`` or ``AZURE_TENANT_ID``)
+    2. Databricks Apps SP: ``DATABRICKS_CLIENT_ID`` + ``DATABRICKS_CLIENT_SECRET``
+       + ``AZURE_TENANT_ID`` (tenant is not secret; required for client-credentials)
+    3. ``DefaultAzureCredential`` (local ``az login``, ACA managed identity, …)
+    """
+    from azure.identity import ClientSecretCredential, DefaultAzureCredential
+
+    kv_id = (os.environ.get("EDIM_KV_CLIENT_ID") or "").strip()
+    kv_secret = (os.environ.get("EDIM_KV_CLIENT_SECRET") or "").strip()
+    kv_tenant = (
+        os.environ.get("EDIM_KV_TENANT_ID") or os.environ.get("AZURE_TENANT_ID") or ""
+    ).strip()
+    if kv_id and kv_secret and kv_tenant:
+        return (
+            ClientSecretCredential(
+                tenant_id=kv_tenant, client_id=kv_id, client_secret=kv_secret
+            ),
+            "EDIM_KV_CLIENT_*",
+        )
+
+    dbx_id = (os.environ.get("DATABRICKS_CLIENT_ID") or "").strip()
+    dbx_secret = (os.environ.get("DATABRICKS_CLIENT_SECRET") or "").strip()
+    tenant = (os.environ.get("AZURE_TENANT_ID") or "").strip()
+    if dbx_id and dbx_secret and tenant:
+        return (
+            ClientSecretCredential(
+                tenant_id=tenant, client_id=dbx_id, client_secret=dbx_secret
+            ),
+            "DATABRICKS_CLIENT_* (Apps SP)",
+        )
+    if dbx_id and dbx_secret and not tenant:
+        logger.warning(
+            "DATABRICKS_CLIENT_ID/SECRET present but AZURE_TENANT_ID unset; "
+            "cannot use Apps SP for Key Vault — falling back to DefaultAzureCredential"
+        )
+
+    return DefaultAzureCredential(), "DefaultAzureCredential"
+
+
+def _should_set_env(env_name: str) -> bool:
+    """Whether to write ``env_name`` from a vault secret."""
+    existing = (os.environ.get(env_name) or "").strip()
+    if not existing:
+        return True
+    if _truthy("EDIM_KV_FORCE"):
+        return True
+    # Local .env / explicit inject wins by default
+    logger.debug("Env %s already set; not overwriting from Key Vault", env_name)
+    return False
 
 
 def load_key_vault_secrets(
@@ -46,7 +114,11 @@ def load_key_vault_secrets(
     vault_url: str | None = None,
     secret_map: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """Fetch secrets and set missing env vars. Returns env names that were set."""
+    """Fetch secrets and set env vars.
+
+    ``secret_map`` / ``EDIM_KV_SECRET_MAP`` use ``{env_name: vault_secret_name}``.
+    Returns ``{env_name: vault_secret_name}`` for secrets actually loaded.
+    """
     url = (vault_url or os.environ.get("AZURE_KEY_VAULT_URL") or "").strip()
     if not url:
         logger.debug("AZURE_KEY_VAULT_URL not set; skipping Key Vault bootstrap")
@@ -61,7 +133,6 @@ def load_key_vault_secrets(
         return {}
 
     try:
-        from azure.identity import DefaultAzureCredential
         from azure.keyvault.secrets import SecretClient
     except ImportError as exc:
         raise RuntimeError(
@@ -69,11 +140,13 @@ def load_key_vault_secrets(
             "Install: pip install 'edim-dde-domain[azure,keyvault]'"
         ) from exc
 
-    client = SecretClient(vault_url=url, credential=DefaultAzureCredential())
+    credential, source = _vault_credential()
+    logger.info("Key Vault auth via %s → %s", source, url)
+    client = SecretClient(vault_url=url, credential=credential)
+
     loaded: dict[str, str] = {}
-    for secret_name, env_name in mapping.items():
-        if os.environ.get(env_name):
-            logger.debug("Env %s already set; not overwriting from Key Vault", env_name)
+    for env_name, secret_name in mapping.items():
+        if not _should_set_env(env_name):
             continue
         secret = client.get_secret(secret_name)
         if secret.value is None:

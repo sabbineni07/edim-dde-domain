@@ -1,12 +1,12 @@
 # Changelog — edim-dde-domain
 
-## 1.0.0 — 2026-07-31 (Release 1 / Phase 0)
+## 1.0.0 — 2026-07-31 (Release 1)
 
 ### Added
 - Azure Key Vault secret bootstrap (`security.keyvault`)
 - Expandable PII redaction patterns (`security.pii`) — SSN, credit card, account number, member id
 - Optional extra `[keyvault]`
-- Phase 0 engineer docs: reference architecture + PPT deck, environments, security, PII, LangSmith setup, **pluggable observability**, **control-plane state store**, **retrieval & RAG** (`spark_rca` runbook pilot), YAML schema, orchestration topology
+- R1 engineer docs: reference architecture + PPT deck, environments, security, PII, LangSmith setup, **pluggable observability**, **control-plane state store**, **retrieval & RAG** (`spark_rca` runbook pilot), YAML schema, orchestration topology
 - Sample knowledge corpus: `knowledge/spark-runbooks/` + `config/corpora.yaml`
 
 ### Notes
