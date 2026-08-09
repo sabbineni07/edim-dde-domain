@@ -1,5 +1,8 @@
 # Live & dry smoke test guide
 
+**Learning path:** H5 · [Guide home](../README.md)  
+**← Previous:** [Testing](testing.md) · **Next:** [Windows smoke checklist](windows-smoke-checklist.md) →
+
 **Audience:** any engineer validating EDIM DDE on a laptop or against a shared non-prod stack  
 **Related:** [Quickstart](../getting-started/quickstart.md) · [Configuration](../api/configuration.md) · [Env vars](../reference/env-vars.md) · [Testing](testing.md)
 
@@ -28,7 +31,7 @@ make e2e-local
 # equivalent: make compose-up && make e2e-dry
 ```
 
-This starts **Postgres** (StateStore) + **API**, then runs health + dry tuning + dry RCA (`deploy/scripts/e2e_smoke.sh`). See [Deploy §6.1](../api/deploy-and-hosting.md#61-docker-compose-api--postgres--recommended-locally).
+This starts **Postgres** (StateStore) + **API**, then runs health + dry tuning + dry RCA (`deploy/scripts/e2e_smoke.sh`). See [Deploy §6.1](../api/deploy-and-hosting.md#61-docker-compose-api-postgres-recommended-locally).
 
 **Startup env validation** (runs on API lifespan) only checks that env **strings are present**. It does **not** open Databricks or Foundry connections. Default = log warnings. `EDIM_STRICT_STARTUP=1` fails process start if Foundry endpoint is missing (optional `EDIM_REQUIRE_SQL=1` also requires warehouse host/path).
 
@@ -406,6 +409,11 @@ When sharing UC/Foundry details for a joint live smoke, prefer a **private** cha
 
 ## Next
 
-- [Configuration](../api/configuration.md) · [Env vars](../reference/env-vars.md)  
-- [Sources and SQL](../domain/sources-and-sql.md) — overrides vs live collect  
-- Product P0 in [BACKLOG.md](../../../BACKLOG.md)
+Continue the learning path: [Windows smoke checklist](windows-smoke-checklist.md) · or jump to [Configuration](../api/configuration.md) · [Env vars](../reference/env-vars.md).  
+For SQL overrides vs live collect: [Sources and SQL](../domain/sources-and-sql.md).  
+Open product work: workspace root `BACKLOG.md` (Git; not in this site).
+
+<!-- edim-learning-nav -->
+---
+
+← [Testing](testing.md) · [Guide home](../README.md) · [Windows smoke](windows-smoke-checklist.md) →

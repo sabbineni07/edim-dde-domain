@@ -1,7 +1,7 @@
 # Testing
 
 **Learning path:** H4 · [Guide home](../README.md)
-**← Previous:** [Glossary](../reference/glossary.md) · **Next:** [Guide home](../README.md) →
+**← Previous:** [Glossary](../reference/glossary.md) · **Next:** [Live smoke](live-smoke-test.md) →
 
 
 ## Packages

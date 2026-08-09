@@ -38,7 +38,7 @@ graph:
 
 Compiled agents are **cached** after first `create_agent`; re-registering YAML invalidates that id.
 
-More detail: [edim-dde-ai USAGE](../../../edim-dde-ai/docs/USAGE.md) · [DESIGN](../../../edim-dde-ai/docs/DESIGN.md)
+More detail: `edim-dde-ai/docs/USAGE.md` · `edim-dde-ai/docs/DESIGN.md`
 
 <!-- edim-learning-nav -->
 ---

@@ -60,7 +60,7 @@ edim-dde-ai  (v1.0.0)
 
 ## Presentation
 
-- [Reference architecture](reference-architecture.md) · [HTML deck](diagrams/r1-architecture-deck.html)
+- [Reference architecture](reference-architecture.md) · [Architecture deck](architecture-deck.md)
 - SVGs: [context](diagrams/r1-system-context.svg) · [sequence](diagrams/r1-request-sequence.svg) · [envs](diagrams/r1-environments.svg)
 
 ---

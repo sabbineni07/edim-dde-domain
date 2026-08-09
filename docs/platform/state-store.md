@@ -198,7 +198,7 @@ make e2e-local    # compose-up (api+postgres) + dry smoke
 # or: make compose-up && make e2e-dry && make compose-down
 ```
 
-See [`edim-dde-api/docker-compose.yml`](../../edim-dde-api/docker-compose.yml) and [Deploy & hosting §6.1](../api/deploy-and-hosting.md#61-docker-compose-api--postgres--recommended-locally).
+See `edim-dde-api/docker-compose.yml` (sibling package) and [Deploy & hosting §6.1](../api/deploy-and-hosting.md#61-docker-compose-api-postgres-recommended-locally).
 
 **Option B — Postgres only (API via host uvicorn):**
 

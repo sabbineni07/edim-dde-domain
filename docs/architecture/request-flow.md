@@ -1,7 +1,7 @@
 # Request flow
 
 **Learning path:** B6 · [Guide home](../README.md)
-**← Previous:** [Reference architecture](reference-architecture.md) · **Next:** [Auth and SQL](auth-and-sql.md) →
+**← Previous:** [Architecture deck](architecture-deck.md) · **Next:** [Auth and SQL](auth-and-sql.md) →
 
 
 Lifecycle of a typical `POST /api/v1/recommendations` call (similar idea to documenting job state machines such as [EMR Serverless job states](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/job-states.html)):
@@ -54,4 +54,4 @@ See also [config → observability](config-to-observability.md), [state store](.
 <!-- edim-learning-nav -->
 ---
 
-← [Reference architecture](reference-architecture.md) · [Guide home](../README.md) · [Auth and SQL](auth-and-sql.md) →
+← [Architecture deck](architecture-deck.md) · [Guide home](../README.md) · [Auth and SQL](auth-and-sql.md) →

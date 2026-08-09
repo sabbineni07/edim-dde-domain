@@ -98,7 +98,7 @@ def register() -> None:
 ## Setup / test
 
 ```bash
-cd /Users/sabbineni/projects/edim/edim-dde-domain
+cd edim-dde-domain
 pip install -r requirements.txt && pip install -e ".[dev]"
 pytest -q
 ```

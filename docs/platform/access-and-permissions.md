@@ -11,7 +11,7 @@
 |-------|--------|
 | Key Vault load order, `EDIM_KV_SECRET_MAP`, examples | [Key Vault bootstrap](key-vault-bootstrap.md) |
 | Packaging Apps / Docker / ACA | [Deploy & hosting](../api/deploy-and-hosting.md) |
-| Step-by-step: grant ACA MI warehouse + UC | [Deploy & hosting — ACA SQL MI](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| Step-by-step: grant ACA MI warehouse + UC | [Deploy & hosting — ACA SQL MI](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
 | Token resolution code paths | [Auth and SQL](../architecture/auth-and-sql.md) |
 | Env var catalog | [Environment variables](../reference/env-vars.md) |
 
@@ -102,7 +102,7 @@ Creating an Entra SP and storing its client id/secret in KV for Foundry = **Iden
                └─ LLM → B
 ```
 
-How to grant the MI warehouse + UC: [Deploy & hosting §6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc).
+How to grant the MI warehouse + UC: [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc).
 
 ### 3.4 Notebook `dbutils` (not Apps)
 
@@ -114,7 +114,7 @@ How to grant the MI warehouse + UC: [Deploy & hosting §6.3](../api/deploy-and-h
 
 | Host | Where to look | Grant on Key Vault |
 |------|---------------|--------------------|
-| **Databricks Apps** | **Apps → your app → Authorization** → copy **Application (client) ID** of the **app service principal** | That SP → **Key Vault Secrets User** — full UI + CLI: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user) |
+| **Databricks Apps** | **Apps → your app → Authorization** → copy **Application (client) ID** of the **app service principal** | That SP → **Key Vault Secrets User** — full UI + CLI: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user) |
 | **Azure Container Apps** | ACA → Identity → system/user-assigned MI | That MI → **Key Vault Secrets User** |
 | **Local** | Your user after `az login` | Your user (or skip KV; use `.env`) |
 | **Explicit reader** | Entra app for `EDIM_KV_CLIENT_*` | That SP → **Key Vault Secrets User** |
@@ -134,7 +134,7 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 - [ ] Warehouse host/path + table FQNs (live SQL)  
 - [ ] If KV: follow [Key Vault bootstrap](key-vault-bootstrap.md) (URL, secrets, Identity A = Secrets User)  
 - [ ] Apps: Authorization SP + tenant; users can query UC  
-- [ ] ACA: [grant MI warehouse + UC](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc)  
+- [ ] ACA: [grant MI warehouse + UC](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc)  
 - [ ] Local: `az login`  
 - [ ] Foundry SP only in `EDIM_FOUNDRY_*`  
 
@@ -144,11 +144,11 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 
 | Symptom | Likely cause |
 |---------|----------------|
-| Foundry 503 / `DefaultAzureCredential failed` on Apps after SQL works | Identity **B** not in env — App SP (A) cannot read KV, or secret map wrong. Find App SP + grant: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user) |
+| Foundry 503 / `DefaultAzureCredential failed` on Apps after SQL works | Identity **B** not in env — App SP (A) cannot read KV, or secret map wrong. Find App SP + grant: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user) |
 | SQL OK local, fail Apps | Need forwarded **user** token (Identity U) |
 | Apps `RequestError` / OpenSession fails | User authorization missing scope **`sql`** (App SP warehouse CAN MANAGE alone is not enough); or no `X-Forwarded-Access-Token`; or user lacks CAN USE / UC SELECT. Check `GET /api/v1/debug/sql-auth` |
 | Do we need a UI to pass the token? | **No.** Swagger at `https://<app-url>/docs` is enough; the Apps gateway injects the header. You never set `X-Forwarded-Access-Token` yourself. |
-| SQL fail ACA | MI not granted warehouse/UC — [§6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| SQL fail ACA | MI not granted warehouse/UC — [§6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
 | KV / map errors | [Key Vault bootstrap](key-vault-bootstrap.md) |
 | `dbutils` on Apps | Not available |
 

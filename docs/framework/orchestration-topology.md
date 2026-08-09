@@ -61,11 +61,11 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 
 ---
 
-## 5. Not in Phase 0
+## 5. Not in current scope
 
 - Cross-app remote invoke (see [Agent deployment & composition](../architecture/agent-deployment-and-composition.md))  
 - Cross-agent long-term memory  
-- Capability-based router across a marketplace of agents (Phase 4+)  
+- Capability-based router across a marketplace of agents (later)  
 - HITL interrupt nodes  
 
 ---

@@ -8,12 +8,12 @@
 
 ---
 
-## Default patterns (Phase 0)
+## Default patterns (current)
 
 | Label | Detects | Redaction |
 |-------|---------|-----------|
 | `ssn` | US SSN-like `###-##-####` / 9-digit groups | `[REDACTED:ssn]` |
-| `credit_card` | 13–19 digit PAN-like sequences (Luhn not required for Phase 0) | `[REDACTED:credit_card]` |
+| `credit_card` | 13–19 digit PAN-like sequences (Luhn not required yet) | `[REDACTED:credit_card]` |
 | `account_number` | Phrases like `account number` / `acct` followed by digits | `[REDACTED:account_number]` |
 | `member_id` | `member id` / `memberid` / `member#` followed by alphanumerics | `[REDACTED:member_id]` |
 

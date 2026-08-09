@@ -1,9 +1,11 @@
 # Quickstart (A1)
 
 **Learning path:** A1 · [Guide home](../README.md)  
-**Next:** [Core concepts](concepts.md) →
+**← Previous:** [Guide home](../README.md) · **Next:** [Core concepts](concepts.md) →
 
 Get a working stack on your laptop in two paths: offline tests, or live HTTP with Foundry.
+
+After Compose is up, browse the full guide at `http://127.0.0.1:8080/guide/` (`make guide-site` then `make compose-up` from `edim-dde-api`).
 
 ---
 
@@ -28,7 +30,7 @@ Get a working stack on your laptop in two paths: offline tests, or live HTTP wit
 ## 1. Install (editable siblings)
 
 ```bash
-cd /Users/sabbineni/projects/edim/edim-dde-api
+cd edim-dde-api
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e ".[dev]"
@@ -48,9 +50,9 @@ cd ../edim-dde-ai && pip install -e ".[dev]"
 Tests install `edim_dde_domain.testing.DomainStubLLM` and pass SQL overrides. **This is the supported no-Foundry path.**
 
 ```bash
-cd /Users/sabbineni/projects/edim/edim-dde-domain && pytest -q
-cd /Users/sabbineni/projects/edim/edim-dde-api && pytest -q
-cd /Users/sabbineni/projects/edim/edim-dde-ai && pytest -q
+cd edim-dde-domain && pytest -q
+cd ../edim-dde-api && pytest -q
+cd ../edim-dde-ai && pytest -q
 ```
 
 Plain `uvicorn` does **not** use the stub; its lifespan installs Foundry (see Path B).
@@ -95,7 +97,7 @@ export LANGCHAIN_PROJECT=edim-dde-dev
 ### Start API
 
 ```bash
-cd /Users/sabbineni/projects/edim/edim-dde-api
+cd edim-dde-api
 source .venv/bin/activate
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```

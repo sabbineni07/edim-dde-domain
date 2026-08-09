@@ -1,5 +1,8 @@
 # Windows laptop — dry & live smoke checklist
 
+**Learning path:** H5b · [Guide home](../README.md)  
+**← Previous:** [Live smoke](live-smoke-test.md) · **Next:** [Guide home](../README.md) →
+
 **Audience:** engineers validating EDIM DDE from a **Windows** machine  
 **Full reference:** [live-smoke-test.md](live-smoke-test.md)  
 **Time:** dry ~20–40 min · live +30–60 min  
@@ -8,7 +11,7 @@ Use PowerShell (recommended) or Windows Terminal. Adjust drive letters/paths to 
 
 ---
 
-## Phase 0 — Collect configuration (before installing)
+## Step 1 — Collect configuration (before installing)
 
 Fill this table offline (Teams/OneNote/password manager). **Do not commit secrets to Git.**
 
@@ -32,11 +35,11 @@ Fill this table offline (Teams/OneNote/password manager). **Do not commit secret
 | 9 | Real `job_id` + `cluster_id` | Jobs UI or `SELECT … LIMIT 5` on metrics table | Live tuning JSON body |
 | 10 | Real `job_run_id` (+ date) | Failed/slow job run | Live RCA JSON body |
 
-If you only have Foundry today → do **Dry smoke** (§Phase 3). Add B later for **Live**.
+If you only have Foundry today → do **Dry smoke** (Step 4+). Add B later for **Live**.
 
 ---
 
-## Phase 1 — Tools on Windows
+## Step 2 — Tools on Windows
 
 1. Install **Python 3.10+** from python.org (check “Add python.exe to PATH”).
 2. Install **Git for Windows**.
@@ -62,7 +65,7 @@ C:\work\edim\
 
 ---
 
-## Phase 2 — Create venv and install
+## Step 3 — Create venv and install
 
 ```powershell
 cd C:\work\edim\edim-dde-api
@@ -97,7 +100,7 @@ cd C:\work\edim\edim-dde-api; pytest -q
 
 ---
 
-## Phase 3 — Configure env (this is where you paste values)
+## Step 4 — Configure env (this is where you paste values)
 
 ### Option A — `.env` file (recommended)
 
@@ -152,12 +155,12 @@ $env:EDIM_STRICT_STARTUP = "1"
 
 ---
 
-## Phase 4 — Start API
+## Step 5 — Start API
 
 ```powershell
 cd C:\work\edim\edim-dde-api
 .\.venv\Scripts\Activate.ps1
-# env already loaded from Phase 3
+# env already loaded from Step 4
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```
 
@@ -165,7 +168,7 @@ Leave this window open. Open a **second** PowerShell for curls.
 
 ---
 
-## Phase 5 — Validate (dry smoke)
+## Step 6 — Validate (dry smoke)
 
 ### 5.1 Health
 
@@ -244,7 +247,7 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/rca/analyze `
 
 ---
 
-## Phase 6 — Live smoke (after §B filled)
+## Step 7 — Live smoke (after §B filled)
 
 1. Ensure warehouse is **running** and your AAD user can `SELECT` the tables.
 2. In Databricks SQL editor, run:
@@ -255,7 +258,7 @@ SELECT * FROM <your_job_cluster_metrics_table> LIMIT 5;
 
 Copy a real `job_id` / `cluster_id`.
 
-3. Set Databricks env vars (§Phase 3), restart uvicorn.
+3. Set Databricks env vars (Step 4), restart uvicorn.
 4. Call **without** `metrics`:
 
 ```powershell
@@ -278,7 +281,7 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/recommendations `
 
 ---
 
-## Phase 7 — Tick list (send to team when done)
+## Step 8 — Tick list (send to team when done)
 
 - [ ] `az login` OK on this laptop  
 - [ ] `.env` / env vars set (Foundry at minimum)  
@@ -306,4 +309,4 @@ If blocked, send: mode, `/health` JSON, HTTP status, `error_code`, request id �
 
 ---
 
-← [Live smoke (full)](live-smoke-test.md) · [Guide home](../README.md) · [Configuration](../api/configuration.md) →
+← [Live smoke (full)](live-smoke-test.md) · [Guide home](../README.md) →

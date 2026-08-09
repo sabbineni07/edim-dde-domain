@@ -22,8 +22,8 @@
   </defs>
   <rect class="bg" width="1280" height="720"/>
   <rect width="1280" height="6" fill="url(#topbar)"/>
-  <text x="48" y="44" class="title">EDIM DDE R1 - Environments (Phase 0 focus)</text>
-  <text x="48" y="68" class="sub">Full set: SDBX / DEV / UAT / INTG / PROD - Phase 0 implements SDBX, DEV, PROD</text>
+  <text x="48" y="44" class="title">EDIM DDE R1 - Environments (current focus)</text>
+  <text x="48" y="68" class="sub">Full set: SDBX / DEV / UAT / INTG / PROD - R1 implements SDBX, DEV, PROD</text>
 
   <g filter="url(#shadow)">
     <rect x="48" y="100" width="370" height="460" rx="14" fill="#fff" stroke="#D5DEE8"/>
@@ -82,7 +82,7 @@
     <text x="882" y="480" class="note">Change control + rollback playbooks</text>
   </g>
 
-  <text x="48" y="600" class="b">Deferred in Phase 0 (documented for later): UAT (user acceptance) / INTG (integration)</text>
+  <text x="48" y="600" class="b">Deferred for now (documented for later): UAT (user acceptance) / INTG (integration)</text>
   <text x="48" y="630" class="sub">Apps: edim-dde-api-* (+ future edim-dde-ui-*) · one LangSmith project + KV per env · never share PROD secrets</text>
   <text x="48" y="690" class="foot">EDIM DDE · R1 · refreshed 2026-08-08 · Import SVG into PowerPoint</text>
 </svg>

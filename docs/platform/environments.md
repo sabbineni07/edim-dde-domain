@@ -4,14 +4,14 @@
 **← Previous:** [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · **Next:** [Security baseline](security-baseline.md) →
 
 
-**Phase 0 focus:** `SDBX`, `DEV`, `PROD`  
+**Current focus:** `SDBX`, `DEV`, `PROD`  
 **Documented for later:** `UAT`, `INTG`
 
 Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 
 ---
 
-## Matrix (Phase 0)
+## Matrix (current)
 
 | Concern | SDBX | DEV | PROD |
 |---------|------|-----|------|
@@ -46,14 +46,14 @@ Do not invent ad-hoc env names. Extend this matrix when UAT/INTG are stood up.
 
 ---
 
-## Promotion path (Phase 0 simplified)
+## Promotion path (simplified)
 
 ```text
 SDBX  →  DEV  →  PROD
                  (UAT / INTG inserted later)
 ```
 
-Promotion checklist (manual for Phase 0):
+Promotion checklist (manual for now):
 
 1. YAML validates (`edim-dde-ai` schema)
 2. Unit / e2e tests green
@@ -67,7 +67,7 @@ Promotion checklist (manual for Phase 0):
 
 ## Required env vars by environment
 
-See [Environment variables](../reference/env-vars.md) and [.env.example](../../.env.example).
+See [Environment variables](../reference/env-vars.md) and [.env.example — see domain package `.env.example`.
 
 Minimum for agent invoke:
 

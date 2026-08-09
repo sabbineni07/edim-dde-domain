@@ -4,7 +4,7 @@
 **← Previous:** [Environments](environments.md) · **Next:** [Access & permissions](access-and-permissions.md) →
 
 
-**Phase 0 decision:** Keep the **current identity model**. Add **Azure Key Vault SDK** bootstrap for secrets. Document a **role matrix** for later enforcement.
+**Current decision:** Keep the **current identity model**. Add **Azure Key Vault SDK** bootstrap for secrets. Document a **role matrix** for later enforcement.
 
 **Where to read next (do not mix topics here):**
 
@@ -12,8 +12,8 @@
 |-------|-----|
 | Identities U / A / B, host matrix | [Access & permissions](access-and-permissions.md) |
 | Key Vault load + `EDIM_KV_SECRET_MAP` | [Key Vault bootstrap](key-vault-bootstrap.md) |
-| ACA MI warehouse / UC grants | [Deploy & hosting §6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
-| Long-term end-user SSO / app permissions | Platform backlog **BL-056** (not Phase 0) |
+| ACA MI warehouse / UC grants | [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
+| Long-term end-user SSO / app permissions | Platform backlog **BL-056** (later) |
 
 ---
 
@@ -21,10 +21,10 @@
 
 | Approach | Meaning |
 |----------|---------|
-| **Docs / matrix only (Phase 0)** | We **name** roles (`invoke`, `operate`, `administer`, `approve_tools`) and describe who should have them. The API does **not** yet check JWT role claims or reject callers by role. |
+| **Docs / matrix only (now)** | We **name** roles (`invoke`, `operate`, `administer`, `approve_tools`) and describe who should have them. The API does **not** yet check JWT role claims or reject callers by role. |
 | **Enforcement (later)** | Middleware or gateway would require a role claim before invoke / admin / tool-approve actions — see platform **BL-056** (SSO + end-user entitlements). |
 
-Phase 0 still **enforces identity** for SQL and Foundry (user token / Azure AD / SP). It does **not** yet enforce fine-grained application roles.
+R1 still **enforces identity** for SQL and Foundry (user token / Azure AD / SP). It does **not** yet enforce fine-grained application roles.
 
 ---
 
@@ -39,9 +39,9 @@ YAML **cannot** dynamically import Python. Node and router type ids must already
 
 ---
 
-## Role matrix (documented for Phase 0)
+## Role matrix (documented for now)
 
-| Role | Intent | Typical holders | Enforced in Phase 0? |
+| Role | Intent | Typical holders | Enforced now? |
 |------|--------|-----------------|----------------------|
 | `invoke` | Call agent HTTP APIs | App users, service callers | No (network / Apps auth only) |
 | `operate` | View LangSmith, triage failures | Support / SRE | No |

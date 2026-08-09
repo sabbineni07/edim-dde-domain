@@ -6,8 +6,8 @@
 
 You asked for help getting productive with LangSmith. This guide is written for that — from zero to first traced EDIM agent run.
 
-**Phase 0:** enable tracing + projects per environment.  
-**Later (Phase 2+):** datasets, evaluators, CI quality gates.
+**R1:** enable tracing + projects per environment.  
+**Later:** datasets, evaluators, CI quality gates.
 
 ---
 
@@ -183,7 +183,7 @@ Traces may include prompt text. EDIM applies **basic PII redaction** (SSN, PAN, 
 
 ---
 
-## 10. Next (not Phase 0)
+## 10. Next (later)
 
 - Upload golden datasets for `cluster_tuning` / `spark_rca`
 - Add evaluators and CI gates (backlog BL-033–035)

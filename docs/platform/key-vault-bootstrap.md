@@ -10,7 +10,7 @@
 | Topic | Go to |
 |-------|--------|
 | Identities U / A / B and host matrix | [Access & permissions](access-and-permissions.md) |
-| ACA managed identity warehouse/UC grants | [Deploy & hosting §6.3](../api/deploy-and-hosting.md#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| ACA managed identity warehouse/UC grants | [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
 | Full env catalog | [Environment variables](../reference/env-vars.md) |
 
 Code: `edim_dde_domain.security.keyvault.load_key_vault_secrets`  
@@ -231,7 +231,7 @@ Redeploy or **Start** the App with `AZURE_KEY_VAULT_URL` + `AZURE_TENANT_ID` set
 
 **Quick prove-out without KV:** Apps → Environment / secrets → set `EDIM_FOUNDRY_CLIENT_ID`, `EDIM_FOUNDRY_CLIENT_SECRET`, `EDIM_FOUNDRY_TENANT_ID` directly; temporarily unset `AZURE_KEY_VAULT_URL` if you only want to validate Foundry.
 
-Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-deploy--databricks-apps-default).
+Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-deploy-databricks-apps-default).
 
 <!-- edim-learning-nav -->
 ---

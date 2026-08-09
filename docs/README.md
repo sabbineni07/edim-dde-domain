@@ -1,10 +1,10 @@
 # EDIM DDE — Engineer & developer guide
 
-**Release:** R1 / `1.0.0` (Phase 0 foundation)  
+**Release:** R1 / `1.0.0`  
 **Audience:** platform engineers, agent authors, API operators  
 **Browse:** local Docker serves this hub as **MkDocs Material** at `http://127.0.0.1:8080/guide/` (`make -C ../edim-dde-api guide-site && make -C ../edim-dde-api compose-up`). Sidebar + Previous / Next follow the learning path below. **Not** deployed to Databricks Apps.
 
-> Temporary home: docs live under `edim-dde-domain/docs/` until a parent `edim` monorepo exists.
+> Temporary docs hub under `edim-dde-domain/docs/` (ownership / ADO Wiki / publish path still open — see `BACKLOG.md` revisit item). Markdown here is the source; MkDocs builds the `/guide` reader.
 
 ---
 
@@ -12,11 +12,11 @@
 
 | Package | Role |
 |---------|------|
-| [`edim-dde-ai`](../../edim-dde-ai/) | Framework: YAML → LangGraph, registries, builtins, observability, state store, retrieval |
-| [`edim-dde-domain`](../) | Platform + product agents: sources, SQL, auth, Foundry, Key Vault, PII, RCA/tuning, corpora |
-| [`edim-dde-api`](../../edim-dde-api/) | HTTP host: CORS, Apps token middleware, lifespan wiring, `/api/v1/*` |
+| `edim-dde-ai` | Framework: YAML → LangGraph, registries, builtins, observability, state store, retrieval |
+| `edim-dde-domain` | Platform + product agents: sources, SQL, auth, Foundry, Key Vault, PII, RCA/tuning, corpora |
+| `edim-dde-api` | HTTP host: CORS, Apps token middleware, lifespan wiring, `/api/v1/*` |
 
-Dependency direction: **`api` → `domain` → `ai`**.
+Dependency direction: **`api` → `domain` → `ai`**. (Sibling checkouts next to each other under your workspace.)
 
 ---
 
@@ -37,7 +37,7 @@ Dependency direction: **`api` → `domain` → `ai`**.
 | **B2** | [Architecture overview](architecture/overview.md) | Compact system sketch |
 | **B3** | [Packages](architecture/packages.md) | Who owns what |
 | **B4** | [Reference architecture (sign-off + PPT)](architecture/reference-architecture.md) | Review / deck / non-goals |
-| **B5** | [HTML architecture deck](architecture/diagrams/r1-architecture-deck.html) | Slides for presentation |
+| **B5** | [Architecture deck](architecture/architecture-deck.md) | HTML slides + SVG assets for presentation |
 | **B6** | [Request flow](architecture/request-flow.md) | One HTTP call, step by step |
 | **B7** | [Auth and SQL](architecture/auth-and-sql.md) | Identity paths into the warehouse |
 | **B8** | [Config → observability](architecture/config-to-observability.md) | YAML → registries → traces + store + retrieval |
@@ -79,7 +79,7 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | **D5** | [Content and LLM](framework/content-and-llm.md) | Prompts, skills, Foundry |
 | **D6** | [Orchestration (`invoke_agent`)](framework/orchestration-topology.md) | Nested agents |
 
-Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md) · [USAGE](../../edim-dde-ai/docs/USAGE.md)
+Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 
 ### Part E — Domain agents & SQL
 
@@ -115,8 +115,8 @@ Deep dive (package-owned): [edim-dde-ai DESIGN](../../edim-dde-ai/docs/DESIGN.md
 | **H4** | [Testing](contribute/testing.md) | How we test |
 | **H5** | [Live & dry smoke test](contribute/live-smoke-test.md) | Engineer runbook: env checklist, local + remote |
 | **H5b** | [Windows smoke checklist](contribute/windows-smoke-checklist.md) | Same smoke, PowerShell / Windows steps |
-| — | [Product backlog](../../BACKLOG.md) | Day-to-day EDIM |
-| — | [Platform capability backlog](../../AI_Framework_Platform_Capability_Backlog.md) | Enterprise roadmap |
+| — | Workspace root `BACKLOG.md` | Day-to-day EDIM (Git; not in this site) |
+| — | Workspace root `AI_Framework_Platform_Capability_Backlog.md` | Enterprise roadmap (Git; not in this site) |
 
 ---
 
@@ -145,10 +145,6 @@ Start at **[B1 — End-to-end design](architecture/end-to-end-design.md)** after
 
 ## Navigation convention
 
-Every major page includes a footer:
+**Primary (MkDocs Material):** sidebar sections A–H and footer **Previous / Next** follow `mkdocs.yml` `nav` (same order as the learning path above).
 
-```text
-← Previous · Guide home · Next →
-```
-
-Follow **Next** to stay on the learning path without jumping topics randomly.
+**In-page labels:** each major page also shows `Learning path: …` plus Previous/Next links at the top (and often a matching footer). Those should match the Material order — if they ever disagree, treat **`mkdocs.yml` as source of truth** and fix the page header.

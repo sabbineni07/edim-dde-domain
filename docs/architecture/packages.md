@@ -53,7 +53,7 @@ edim_dde_ai/
 ```
 
 Domain deep dive: [Sources & SQL design](../DESIGN_SOURCES_AND_SQL_NODES.md).  
-Framework deep dive: [edim-dde-ai DESIGN](../../../edim-dde-ai/docs/DESIGN.md).
+Framework deep dive: `edim-dde-ai/docs/DESIGN.md`.
 
 ---
 

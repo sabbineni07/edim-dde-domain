@@ -41,9 +41,9 @@ The same framework must support both:
 
 ---
 
-## 1b. Capability status matrix (Phase 0) — source of truth
+## 1b. Capability status matrix (current) — source of truth
 
-Track what the **runtime supports today** vs what is **design-only**. Expand rows here (and mirror open work in [BACKLOG.md](../../BACKLOG.md) / platform BL-025 / BL-027) when capabilities land — do not rely on chat history.
+Track what the **runtime supports today** vs what is **design-only**. Expand rows here (and mirror open work in workspace root `BACKLOG.md` / platform BL-025 / BL-027) when capabilities land — do not rely on chat history.
 
 | Capability | Status | Notes |
 |------------|--------|--------|
@@ -53,8 +53,8 @@ Track what the **runtime supports today** vs what is **design-only**. Expand row
 | **Option B — multiple apps by domain** | **Partial (ops only)** | Multiple Apps/ACA deploys with different packs are possible; **no** first-class cross-app YAML wiring |
 | **Option C — hub + location catalog** | **Not supported** | No `local` / `remote` location map; StateStore catalog is metadata sync, not routing |
 | **Cross-app `remote_invoke_agent`** | **Not supported** | Manual HTTP to another app’s API only |
-| **Full DE SDLC orchestrator suite** | **Not shipped** | Documented target (§4); Phase 0 ships operate-style agents (`cluster_tuning`, `spark_rca`) |
-| **Shared SDLC run state / HITL resume** | **Partial / later** | StateStore has session-shaped models; HITL interrupt/resume not a Phase 0 product flow |
+| **Full DE SDLC orchestrator suite** | **Not shipped** | Documented target (§4); R1 ships operate-style agents (`cluster_tuning`, `spark_rca`) |
+| **Shared SDLC run state / HITL resume** | **Partial / later** | StateStore has session-shaped models; HITL interrupt/resume not a current product flow |
 | **Parallel fan-out across agents** | **Same-app only** | Via graph design / multiple `invoke_agent` nodes in one process — not a distributed orchestrator |
 
 **Expand later without losing intent:** when implementing Option B/C or remote invoke, update this table’s Status/Notes first, then tick the matching backlog items (§8 Related + product/platform backlogs).
@@ -106,7 +106,7 @@ flowchart TB
 | **Typical use cases** | Full DE SDLC in one trust boundary; SDBX/DEV; single-agent BUs that still share one shared platform app; teams that want cheapest agent-to-agent calls |
 | **Pros** | Simplest ops; in-process `invoke_agent`; one env/KV/LangSmith project; shared StateStore session for the whole SDLC run; easy sequential + parallel within one graph |
 | **Cons** | Larger blast radius on release; harder if domains need **different** UC/IAM or release trains; one noisy neighbor can affect all agents |
-| **Recommendation** | **Default** for Phase 0–1 and for most single-BU packs hosted on a shared platform runtime |
+| **Recommendation** | **Default** for R1–early and for most single-BU packs hosted on a shared platform runtime |
 
 ---
 
@@ -240,7 +240,7 @@ flowchart TB
 | Same-app children | `invoke_agent` today |
 | Cross-app children | Remote invoke / events (below) |
 
-Phase 0 shipped examples (`cluster_tuning`, `spark_rca`) sit in the **operate** slice of this picture; the SDLC suite grows as additional packs.
+R1 shipped examples (`cluster_tuning`, `spark_rca`) sit in the **operate** slice of this picture; the SDLC suite grows as additional packs.
 
 ---
 
@@ -320,12 +320,12 @@ spark_rca:
   # timeout_sec: 120
 ```
 
-| Today (Phase 0) | Later |
+| Today (R1) | Later |
 |-----------------|--------|
 | All targets must be **registered in the same process** for `invoke_agent` | Location catalog + `remote_invoke_agent` (or standard HTTP tool) |
 | Multi-app = separate deploys + manual HTTP integration | First-class remote node + discovery |
 
-Canonical checklist: **[§1b Capability status matrix](#1b-capability-status-matrix-phase-0--source-of-truth)**.
+Canonical checklist: **[§1b Capability status matrix](#1b-capability-status-matrix-current-source-of-truth)**.
 
 ### 5.4 Auth & observability across apps
 
@@ -376,7 +376,7 @@ Same authoring path: [Agent package layout](../build-agents/agent-package-layout
 | [State store](../platform/state-store.md) | Catalog / sessions |
 | [External plugins](../build-agents/external-plugins.md) | `EDIM_AGENT_DIRS` packs |
 | [End-to-end design](end-to-end-design.md) | Planes and patterns |
-| Product [BACKLOG](../../BACKLOG.md) · Platform [capability backlog](../../AI_Framework_Platform_Capability_Backlog.md) | HITL, remote invoke, routing |
+| Workspace root `BACKLOG.md` · `AI_Framework_Platform_Capability_Backlog.md` | HITL, remote invoke, routing |
 
 <!-- edim-learning-nav -->
 ---

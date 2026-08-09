@@ -109,7 +109,7 @@ Detail: [packages.md](packages.md).
 
 ## 4. GoF and related patterns (with examples)
 
-We deliberately use a **small** pattern set (see also package [DESIGN.md](../../../edim-dde-ai/docs/DESIGN.md)).
+We deliberately use a **small** pattern set (see also package `edim-dde-ai/docs/DESIGN.md`).
 
 ### 4.1 Registry (catalog) + Singleton scope
 
@@ -331,7 +331,7 @@ Do **not** put embeddings in Cosmos/Postgres StateStore, or agent YAML in the ve
 
 ---
 
-## 10. Environment matrix (Phase 0)
+## 10. Environment matrix (current)
 
 | Concern | SDBX / local | DEV | PROD |
 |---------|--------------|-----|------|

@@ -5,7 +5,7 @@
 
 How to package and run the EDIM stack on **Databricks Apps** (default first cut), and how the same artifact moves to **Azure Container Apps** or other container hosts with little rework.
 
-**Deploy artifacts (code):** [`edim-dde-api/deploy/`](../../../edim-dde-api/deploy/)
+**Deploy artifacts (code):** `edim-dde-api/deploy/`
 
 ---
 
@@ -130,7 +130,7 @@ For live RCA on the host, also set spark metrics/logs table FQNs.
 |------|---------------|-------------|-----------------|
 | **Local machine** | `az login` → `DefaultAzureCredential` | `az login` or `EDIM_FOUNDRY_*` | Optional MI/user via `DefaultAzureCredential` |
 | **Databricks Apps** | **User** `X-Forwarded-Access-Token` | Foundry SP → `EDIM_FOUNDRY_*` (KV or Apps secrets) | App SP `DATABRICKS_CLIENT_*` |
-| **Azure Container Apps / Docker** | MI — [§6.3 grant steps](#63-aca-sql--grant-managed-identity-warehouse--uc) | Foundry SP → `EDIM_FOUNDRY_*` | ACA **managed identity** |
+| **Azure Container Apps / Docker** | MI — [§6.4 grant steps](#64-aca-sql-grant-managed-identity-warehouse-uc) | Foundry SP → `EDIM_FOUNDRY_*` | ACA **managed identity** |
 | **AKS / App Service** (later) | Same pattern as ACA | Same | Workload MI |
 
 Identities U / A / B: [Access & permissions](../platform/access-and-permissions.md)  
@@ -269,7 +269,7 @@ Helps IAM, observability filters, and incident ownership.
 1. Workspace → app switcher → **Databricks Apps** (or **Compute → Apps**).  
 2. **Create app** → name **`edim-dde-api-dev`** → description e.g. `EDIM DDE FastAPI (DEV)` → create.  
 3. Open the app → **Authorization** → note the **service principal** application (client) ID.  
-4. Grant that SP **Key Vault Secrets User** — [Key Vault bootstrap §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user).  
+4. Grant that SP **Key Vault Secrets User** — [Key Vault bootstrap §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user).  
 5. Fill non-secret env in `app.yaml` (or Apps → Environment). Never commit Foundry client secrets.  
 6. Continue with [§5.5 Deploy](#55-deploy-the-app).
 
@@ -285,7 +285,7 @@ cd /path/to/edim/edim-dde-api
 make apps-create APP_NAME=edim-dde-api-dev
 ```
 
-Then Apps console → **Authorization** → copy App SP client ID → [KV grant](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user).
+Then Apps console → **Authorization** → copy App SP client ID → [KV grant](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user).
 
 ```bash
 databricks apps list
@@ -428,8 +428,8 @@ Platform docs: [Configure authorization in a Databricks app](https://docs.databr
 1. [ ] `make vendor-wheels`  
 2. [ ] Fill `app.yaml` REPLACE_* (no secrets in git)  
 3. [ ] Create app **`edim-dde-api-dev`** — [§5.4](#54-create-a-new-databricks-app)  
-4. [ ] Grant App SP → Key Vault Secrets User — [KV §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp--key-vault-secrets-user)  
-5. [ ] Sync + deploy Option A — [§5.3b](#53b-packaging--deploy-options) / [§5.5](#55-deploy-the-app)  
+4. [ ] Grant App SP → Key Vault Secrets User — [KV §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user)  
+5. [ ] Sync + deploy Option A — [§5.3b](#53b-packaging-deploy-options) / [§5.5](#55-deploy-the-app)  
 6. [ ] `GET /health` then live recommendations — [§5.7](#57-validate-on-apps-closes-p0-apps-token-check)  
 
 Official platform docs: [Configure app.yaml](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime) · [Deploy an app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy) · [CLI apps](https://docs.databricks.com/aws/en/dev-tools/cli/reference/apps-commands).
@@ -483,7 +483,7 @@ make compose-down
 | `make e2e-dry` | Dry E2E script (`deploy/scripts/e2e_smoke.sh`) |
 | `make e2e-local` | `compose-up` then `e2e-dry` |
 
-Compose file: [`edim-dde-api/docker-compose.yml`](../../../edim-dde-api/docker-compose.yml)
+Compose file: `edim-dde-api/docker-compose.yml`
 
 | Service | Port | Role |
 |---------|------|------|
@@ -493,7 +493,7 @@ Compose file: [`edim-dde-api/docker-compose.yml`](../../../edim-dde-api/docker-c
 
 **Dry E2E** needs Foundry in `.env` (warehouse optional). **Live SQL** against the same containers: set `DATABRICKS_*` in `.env`, recreate `api`, then run live curls from [Live smoke §5](../contribute/live-smoke-test.md) with `BASE=http://127.0.0.1:8080` (and `az login` on the **host** does not inject into the container — use `EDIM_FOUNDRY_*` and, for SQL from the container, a path that works inside Docker, or run live SQL smoke on Apps/host uvicorn).
 
-**Postgres-only** (API on the host via uvicorn): workspace root [`docker-compose.state-store.yml`](../../../docker-compose.state-store.yml).
+**Postgres-only** (API on the host via uvicorn): workspace root `docker-compose.state-store.yml`.
 
 ### 6.2 Build image (without Compose)
 
@@ -552,9 +552,9 @@ Identities overview: [Access & permissions](../platform/access-and-permissions.m
 |---------|---------|
 | Image | Push `edim-dde-api:<version>` to ACR |
 | Ingress | External or internal; target port **8080** (or set `PORT`) |
-| Env | Same as [§4](#4-configuration--environment) |
+| Env | Same as [§4](#4-configuration-environment) |
 | Secrets | Prefer `AZURE_KEY_VAULT_URL` + MI as vault reader — [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
-| SQL auth | Container MI — complete [§6.3](#63-aca-sql--grant-managed-identity-warehouse--uc) |
+| SQL auth | Container MI — complete [§6.4](#64-aca-sql-grant-managed-identity-warehouse-uc) |
 | Foundry | Foundry SP from KV into `EDIM_FOUNDRY_*` |
 | Scaling | HTTP scale rules on `/health` or request rate |
 

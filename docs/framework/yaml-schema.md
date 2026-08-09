@@ -6,7 +6,7 @@
 
 Canonical config contract for EDIM agents. Machine-readable schema:
 
-[`edim-dde-ai/schemas/agent.schema.json`](../../../edim-dde-ai/schemas/agent.schema.json)
+`edim-dde-ai/schemas/agent.schema.json`
 
 Validation runs during `parse_agent_definition` (structural) and optional JSON Schema checks for extended blocks.
 

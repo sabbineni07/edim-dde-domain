@@ -1,10 +1,10 @@
 # EDIM DDE — Release 1 reference architecture
 
 **Learning path:** B4 · [Guide home](../README.md)
-**← Previous:** [Packages](packages.md) · **Next:** [HTML deck (open)](diagrams/r1-architecture-deck.html) →
+**← Previous:** [Packages](packages.md) · **Next:** [Architecture deck](architecture-deck.md) →
 
 
-**Status:** Phase 0 / BL-001 — **signed off 2026-08-05**  
+**Status:** BL-001 — **signed off 2026-08-05**  
 **Audience:** Architecture review and PowerPoint export  
 **Version:** R1 (`1.0.0` package baseline)
 
@@ -16,7 +16,7 @@ This document is the **approved reference map** for the EDIM AI agent stack: pac
 
 | Role | Name | Date | Decision |
 |------|------|------|----------|
-| First sign-off | Stakeholder (product/architecture owner) | 2026-08-05 | **Approved** — R1 architecture for Phase 0 |
+| First sign-off | Stakeholder (product/architecture owner) | 2026-08-05 | **Approved** — R1 architecture |
 
 ---
 
@@ -95,7 +95,7 @@ Dependency direction: `api` → `domain` → `ai`.
 
 ## 3. R1 non-goals (explicit)
 
-Deferred past Release 1 / Phase 0:
+Deferred past Release 1:
 
 - Full MCP connector mesh (ADO / ServiceNow / JIRA)
 - Enterprise RAG / Azure AI Search platform (framework **RetrievalProvider spike** + `spark_rca` pilot exist; full knowledge platform / retention still later)- HITL review UI
@@ -138,10 +138,10 @@ Client + LangSmith (trace retained per project retention)
 
 ---
 
-## 5. Environments (Phase 0 focus)
+## 5. Environments (current focus)
 
 Full set later: **SDBX, DEV, UAT, INTG, PROD**.  
-**Phase 0 focus:** SDBX, DEV, PROD — see [environments.md](../platform/environments.md).
+**Current focus:** SDBX, DEV, PROD — see [environments.md](../platform/environments.md).
 
 | Env | Purpose | LangSmith project (convention) |
 |-----|---------|--------------------------------|
@@ -161,7 +161,7 @@ Full set later: **SDBX, DEV, UAT, INTG, PROD**.
 | Vault opener (**A**) | Apps SP (`DATABRICKS_CLIENT_*` + `AZURE_TENANT_ID`) → Key Vault |
 | Secrets | Azure Key Vault SDK; map `ENV_VAR:vaultSecret` into process env |
 | PII | Expandable redaction patterns (SSN, PAN, account, member id) before logs/traces |
-| Roles | Documented matrix; **not enforced** in Phase 0 beyond identity above |
+| Roles | Documented matrix; **not enforced** yet beyond identity above |
 
 Details: [security-baseline.md](../platform/security-baseline.md), [pii-guardrails.md](../platform/pii-guardrails.md).
 
@@ -169,7 +169,7 @@ Details: [security-baseline.md](../platform/security-baseline.md), [pii-guardrai
 
 ## 7. Observability (LangSmith)
 
-Phase 0 documents setup and wires optional tracing. Full eval/CI is Phase 2+.
+R1 documents setup and wires optional tracing. Full eval/CI comes later.
 
 Guide: [langsmith-setup.md](../platform/langsmith-setup.md) · [observability.md](../platform/observability.md).
 
@@ -221,4 +221,4 @@ Full guide: [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 <!-- edim-learning-nav -->
 ---
 
-← [Packages](packages.md) · [Guide home](../README.md) · [HTML deck (open)](diagrams/r1-architecture-deck.html) →
+← [Packages](packages.md) · [Guide home](../README.md) · [Architecture deck](architecture-deck.md) →
