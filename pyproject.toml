@@ -29,13 +29,16 @@ dev = [
 ]
 [tool.hatch.build.targets.wheel]
 packages = ["src/edim_dde_domain"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/edim_dde_domain/config/sources.yaml" = "edim_dde_domain/config/sources.yaml"
-"src/edim_dde_domain/agents/cluster_tuning/content" = "edim_dde_domain/agents/cluster_tuning/content"
-"src/edim_dde_domain/agents/spark_rca/content" = "edim_dde_domain/agents/spark_rca/content"
-"src/edim_dde_domain/agents/cluster_tuning/cluster_tuning.agent.yaml" = "edim_dde_domain/agents/cluster_tuning/cluster_tuning.agent.yaml"
-"src/edim_dde_domain/agents/spark_rca/spark_rca.agent.yaml" = "edim_dde_domain/agents/spark_rca/spark_rca.agent.yaml"
+# Include agent YAML + prompt/content assets (not only .py). Do not also
+# force-include the same paths — hatchling rejects duplicate archive members.
+include = [
+  "edim_dde_domain/**/*.py",
+  "edim_dde_domain/**/*.yaml",
+  "edim_dde_domain/**/*.yml",
+  "edim_dde_domain/**/*.md",
+  "edim_dde_domain/**/*.json",
+  "edim_dde_domain/**/*.txt",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

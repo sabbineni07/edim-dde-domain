@@ -200,6 +200,8 @@ Apps installs from the **`deploy/databricks-app/`** folder. It does **not** uplo
 
 `vendor/` is **gitignored** — rebuild with `make vendor-wheels` before each deploy (unless you use Option C below).
 
+**Engineer guide (`/guide`):** local **Docker / laptop only** — MkDocs Material site built by `make guide-site` (also via `make vendor-wheels`) into `deploy/docker/guide-site` → `http://127.0.0.1:8080/guide/`. **Not** included in the Databricks Apps sync bundle.
+
 ### 5.3b Packaging / deploy options
 
 #### Option A — Source bundle upload/sync (**recommended now**)

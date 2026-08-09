@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="EDIM DDE R1 request sequence">
   <defs>
     <linearGradient id="topbar" x1="0" y1="0" x2="1" y2="0">
@@ -19,10 +20,9 @@
   </defs>
   <rect class="bg" width="1280" height="720"/>
   <rect width="1280" height="6" fill="url(#topbar)"/>
-  <text x="40" y="42" class="title">EDIM DDE R1 — Request sequence (recommendations)</text>
-  <text x="40" y="64" class="sub">POST /api/v1/recommendations · same pattern for spark_rca · dashed = LangSmith side-channel</text>
+  <text x="40" y="42" class="title">EDIM DDE R1 - Request sequence (recommendations)</text>
+  <text x="40" y="64" class="sub">POST /api/v1/recommendations Â· Apps: X-Forwarded-Access-Token (U) + scope sql Â· dashed = LangSmith</text>
 
-  <!-- lane headers -->
   <text x="70" y="100" class="lane">Client</text>
   <text x="250" y="100" class="lane">API</text>
   <text x="460" y="100" class="lane">edim-dde-ai</text>
@@ -36,20 +36,19 @@
   <line x1="840" y1="110" x2="840" y2="620" stroke="#E2E8F0"/>
   <line x1="1040" y1="110" x2="1040" y2="620" stroke="#E2E8F0"/>
 
-  <!-- steps -->
   <rect x="40" y="130" width="140" height="50" rx="10" fill="#0078D4"/>
   <text x="52" y="150" class="step">1. POST /api/v1/</text>
   <text x="52" y="166" class="step">recommendations</text>
   <line x1="180" y1="155" x2="240" y2="155" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="220" y="130" width="160" height="50" rx="10" fill="#0D9488"/>
-  <text x="232" y="150" class="step">2. Middleware</text>
-  <text x="232" y="166" class="step">token + request_id</text>
+  <text x="232" y="150" class="step">2. Bind Identity U</text>
+  <text x="232" y="166" class="step">+ request_id</text>
   <line x1="300" y1="180" x2="300" y2="220" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="220" y="220" width="160" height="50" rx="10" fill="#0D9488"/>
   <text x="232" y="240" class="step">3. Validate body</text>
-  <text x="232" y="256" class="step">? invoke (thread)</text>
+  <text x="232" y="256" class="step">invoke (thread)</text>
   <line x1="380" y1="245" x2="450" y2="245" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="430" y="220" width="170" height="50" rx="10" fill="#334155"/>
@@ -60,8 +59,8 @@
   <line x1="600" y1="245" x2="1100" y2="245" stroke="#64748B" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
 
   <rect x="650" y="295" width="170" height="50" rx="10" fill="#FF3621"/>
-  <text x="662" y="315" class="step">5. domain.sql.query</text>
-  <text x="662" y="331" class="step">UC telemetry tables</text>
+  <text x="662" y="315" class="step">5. SQL as user (U)</text>
+  <text x="662" y="331" class="step">UC telemetry</text>
   <line x1="735" y1="345" x2="735" y2="385" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="650" y1="395" x2="515" y2="395" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
@@ -71,13 +70,13 @@
   <line x1="600" y1="400" x2="880" y2="400" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="860" y="375" width="160" height="50" rx="10" fill="#0078D4"/>
-  <text x="872" y="395" class="step">7. llm_chain</text>
-  <text x="872" y="411" class="step">Azure OpenAI</text>
+  <text x="872" y="395" class="step">7. Foundry (B)</text>
+  <text x="872" y="411" class="step">EDIM_FOUNDRY_*</text>
   <line x1="940" y1="375" x2="1100" y2="300" stroke="#64748B" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
 
   <rect x="1060" y="220" width="180" height="70" rx="10" fill="#334155"/>
   <text x="1072" y="245" class="step">8. Trace run</text>
-  <text x="1072" y="262" class="step">tokens · latency</text>
+  <text x="1072" y="262" class="step">tokens / latency</text>
   <text x="1072" y="278" class="step">tags + request_id</text>
 
   <line x1="860" y1="425" x2="515" y2="490" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
@@ -96,6 +95,6 @@
   <text x="52" y="550" class="step">11. JSON 200</text>
   <text x="52" y="566" class="step">to client</text>
 
-  <text x="40" y="640" class="foot">Never return the full agent state bag · SQL skipped when metrics/evidence_pack override is present</text>
-  <text x="40" y="690" class="foot">EDIM DDE · Release 1 · Phase 0 · Import SVG into PowerPoint</text>
+  <text x="40" y="640" class="foot">Never dump full agent state Â· Apps SQL needs scope sql Â· KV at startup loads B via App SP (A)</text>
+  <text x="40" y="690" class="foot">EDIM DDE Â· R1 Â· refreshed 2026-08-08 Â· Import SVG into PowerPoint</text>
 </svg>

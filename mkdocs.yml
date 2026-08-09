@@ -1,0 +1,108 @@
+# EDIM DDE engineer guide — local Docker / laptop (MkDocs Material)
+# Build: from edim-dde-domain → make -C ../edim-dde-api guide-site
+#        or: ./deploy/scripts/build_guide_site.sh (from edim-dde-api)
+#
+# Served at http://127.0.0.1:8080/guide/ (not deployed to Databricks Apps)
+
+site_name: EDIM DDE Engineer Guide
+site_description: Platform engineers, agent authors, and API operators
+# Relative asset/nav links (served under FastAPI at /guide/)
+use_directory_urls: true
+
+docs_dir: docs
+site_dir: site  # overridden by build script → edim-dde-api/deploy/docker/guide-site
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+extra:
+  generator: false
+
+# Learning path = Previous / Next order (Material footer)
+nav:
+  - Home: README.md
+  - A — Start here:
+      - Quickstart: getting-started/quickstart.md
+      - Core concepts: getting-started/concepts.md
+  - B — Architecture:
+      - End-to-end design: architecture/end-to-end-design.md
+      - Overview: architecture/overview.md
+      - Packages: architecture/packages.md
+      - Reference architecture: architecture/reference-architecture.md
+      - Request flow: architecture/request-flow.md
+      - Auth and SQL: architecture/auth-and-sql.md
+      - Config to observability: architecture/config-to-observability.md
+      - Agent deployment: architecture/agent-deployment-and-composition.md
+  - C — Platform:
+      - Environments: platform/environments.md
+      - Security baseline: platform/security-baseline.md
+      - Access and permissions: platform/access-and-permissions.md
+      - Key Vault bootstrap: platform/key-vault-bootstrap.md
+      - PII guardrails: platform/pii-guardrails.md
+      - Observability: platform/observability.md
+      - LangSmith setup: platform/langsmith-setup.md
+      - State store: platform/state-store.md
+      - Retrieval and RAG: platform/retrieval-and-rag.md
+  - D — Framework:
+      - YAML schema: framework/yaml-schema.md
+      - YAML agents: framework/yaml-agents.md
+      - Nodes and routers: framework/nodes-and-routers.md
+      - Conditional edges: framework/conditional-edges.md
+      - Content and LLM: framework/content-and-llm.md
+      - Orchestration: framework/orchestration-topology.md
+  - E — Domain:
+      - Sources and SQL: domain/sources-and-sql.md
+      - Sources design (deep): DESIGN_SOURCES_AND_SQL_NODES.md
+      - Bundled agents: domain/bundled-agents.md
+  - F — Build agents:
+      - Package layout: build-agents/agent-package-layout.md
+      - Step-by-step: build-agents/step-by-step.md
+      - External plugins: build-agents/external-plugins.md
+  - G — API host:
+      - Configuration: api/configuration.md
+      - HTTP endpoints: api/endpoints.md
+      - Deploy and hosting: api/deploy-and-hosting.md
+  - H — Reference:
+      - Environment variables: reference/env-vars.md
+      - Node type ids: reference/node-type-ids.md
+      - Glossary: reference/glossary.md
+      - Testing: contribute/testing.md
+      - Live smoke: contribute/live-smoke-test.md
+      - Windows smoke: contribute/windows-smoke-checklist.md

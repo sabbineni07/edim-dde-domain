@@ -320,9 +320,10 @@ Do **not** put embeddings in Cosmos/Postgres StateStore, or agent YAML in the ve
 | Control | Behavior |
 |---------|----------|
 | YAML code execution | **Denied** — pre-registered types only |
-| SQL identity | Apps OAuth token or local `az login` |
-| LLM identity | Azure AD / SP (Key Vault in PROD) |
-| Secrets | Key Vault bootstrap into env (no overwrite) |
+| SQL identity (**U**) | Apps OAuth + scope `sql`, or local `az login` |
+| LLM identity (**B**) | `EDIM_FOUNDRY_*` from Key Vault (Apps/PROD) or `az login` |
+| Vault opener (**A**) | App SP / MI / `az login` opens Key Vault |
+| Secrets | Key Vault map `ENV:vaultSecret` into env (no overwrite) |
 | PII | Expandable redaction before logs/traces |
 | Roles | Documented matrix; enforcement later |
 

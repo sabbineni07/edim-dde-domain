@@ -2,7 +2,7 @@
 
 **Release:** R1 / `1.0.0` (Phase 0 foundation)  
 **Audience:** platform engineers, agent authors, API operators  
-**How to use this hub:** follow the **numbered path** below in order the first time. Later, use the same numbers as a map — each page ends with **Previous / Next** links so you stay in sequence.
+**Browse:** local Docker serves this hub as **MkDocs Material** at `http://127.0.0.1:8080/guide/` (`make -C ../edim-dde-api guide-site && make -C ../edim-dde-api compose-up`). Sidebar + Previous / Next follow the learning path below. **Not** deployed to Databricks Apps.
 
 > Temporary home: docs live under `edim-dde-domain/docs/` until a parent `edim` monorepo exists.
 
