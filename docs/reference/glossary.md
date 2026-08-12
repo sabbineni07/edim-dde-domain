@@ -28,6 +28,8 @@
 | **Corpus** | Logical knowledge collection (e.g. `spark-runbooks`) mapped via `corpora.yaml` |
 | **R1** | Release 1 framework baseline (packages at `1.0.0`) |
 | **SDBX / DEV / PROD** | Current environments (UAT / INTG documented for later) |
+| **`request_id`** | Per-HTTP-call correlation id (`X-Request-Id` or generated); echoed on responses; appears on stdlib logs as `[request_id=…]` and LangSmith tags |
+| **`cluster_tuning/recommend`** | HTTP path for the cluster sizing agent (`POST /api/v1/cluster_tuning/recommend`); replaces legacy `/api/v1/recommendations` |
 
 <!-- edim-learning-nav -->
 ---

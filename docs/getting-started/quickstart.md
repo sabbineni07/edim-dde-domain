@@ -114,7 +114,7 @@ Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED
 ### Cluster tuning (`metrics` override — skip SQL)
 
 ```bash
-curl -s localhost:8080/api/v1/recommendations \
+curl -s localhost:8080/api/v1/cluster_tuning/recommend \
   -H 'content-type: application/json' \
   -H 'X-Request-Id: demo-tuning-1' \
   -d '{
@@ -161,6 +161,7 @@ With `EDIM_RETRIEVAL=faiss` and an indexed corpus, RCA also runs `rag.retrieve` 
 ```text
 curl → FastAPI → create_agent().invoke → LangGraph YAML nodes → DTO response
                       │
+                      ├─ X-Request-Id echoed; logs show [request_id=…]
                       ├─ ObservabilityProvider (optional traces)
                       ├─ StateStore (catalog already synced at startup)
                       └─ RetrievalProvider (spark_rca only, if enabled)

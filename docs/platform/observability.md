@@ -113,10 +113,12 @@ Built-in registry = **one** active provider. A composite provider can be added l
 
 | Field | Source |
 |-------|--------|
-| `request_id` | `X-Request-Id` or generated UUID |
+| `request_id` | `X-Request-Id` or generated UUID (also echoed on the HTTP response; stdlib logs show `[request_id=…]`) |
 | `edim_env` | `EDIM_ENV` |
 | `agent_id` | Agent definition |
 | `observability` | Backend name in metadata |
+
+**Ops tip:** when an agent call fails, grab `X-Request-Id` from the response (or the header you sent) and search API logs for that id. Failure stacks are logged once at the FastAPI boundary with secrets/PII redacted — they are not returned in the JSON body.
 
 ---
 

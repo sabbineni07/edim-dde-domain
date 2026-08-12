@@ -20,8 +20,8 @@
   </defs>
   <rect class="bg" width="1280" height="720"/>
   <rect width="1280" height="6" fill="url(#topbar)"/>
-  <text x="40" y="42" class="title">EDIM DDE R1 - Request sequence (recommendations)</text>
-  <text x="40" y="64" class="sub">POST /api/v1/recommendations · Apps: X-Forwarded-Access-Token (U) + scope sql · dashed = LangSmith</text>
+  <text x="40" y="42" class="title">EDIM DDE R1 - Request sequence (cluster_tuning)</text>
+  <text x="40" y="64" class="sub">POST /api/v1/cluster_tuning/recommend · Apps: X-Forwarded-Access-Token (U) + scope sql · dashed = LangSmith</text>
 
   <text x="70" y="100" class="lane">Client</text>
   <text x="250" y="100" class="lane">API</text>
@@ -38,7 +38,7 @@
 
   <rect x="40" y="130" width="140" height="50" rx="10" fill="#0078D4"/>
   <text x="52" y="150" class="step">1. POST /api/v1/</text>
-  <text x="52" y="166" class="step">recommendations</text>
+  <text x="52" y="166" class="step">cluster_tuning</text>
   <line x1="180" y1="155" x2="240" y2="155" stroke="#64748B" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="220" y="130" width="160" height="50" rx="10" fill="#0D9488"/>

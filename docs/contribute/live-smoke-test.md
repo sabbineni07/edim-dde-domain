@@ -184,7 +184,7 @@ OpenAPI: http://127.0.0.1:8080/docs
 ### 4.3 Dry cluster tuning
 
 ```bash
-curl -sS http://127.0.0.1:8080/api/v1/recommendations \
+curl -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend \
   -H 'content-type: application/json' \
   -H 'X-Request-Id: dry-tuning-001' \
   -d '{
@@ -294,7 +294,7 @@ Restart uvicorn (§4.1).
 ### 5.3 Live cluster tuning (no metrics override)
 
 ```bash
-curl -sS http://127.0.0.1:8080/api/v1/recommendations \
+curl -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend \
   -H 'content-type: application/json' \
   -H 'X-Request-Id: live-tuning-001' \
   -d '{
@@ -345,7 +345,7 @@ Use the same curls against a **deployed** base URL instead of `localhost`.
 | 1 | Get base URL from team (e.g. Databricks App) — `https://…` |
 | 2 | Confirm network (VPN / private link) if required |
 | 3 | `curl -sS "$BASE/health"` |
-| 4 | Dry or live POSTs to `$BASE/api/v1/recommendations` and `/rca/analyze` |
+| 4 | Dry or live POSTs to `$BASE/api/v1/cluster_tuning/recommend` and `/rca/analyze` |
 | 5 | **Apps SQL auth:** browser/gateway must send `X-Forwarded-Access-Token`; local `az login` does **not** apply on the server for user-scoped SQL |
 | 6 | **Foundry on server:** SP secrets from Key Vault / env — not your laptop `az login` |
 
@@ -398,8 +398,8 @@ Print and tick:
 
 1. Mode: dry / live / remote  
 2. `curl /health` JSON  
-3. Request id (`X-Request-Id`)  
-4. HTTP status + truncated error body (`error_code` if any)  
+3. Request id (`X-Request-Id` request **and** response header — search API logs for `[request_id=…]`)  
+4. HTTP status + truncated error body (`error_code` if any) — stacks stay in **server logs**, not JSON  
 5. Whether `metrics` / `evidence_pack` were used  
 6. **Redact** secrets; share endpoint **host** only if needed  
 

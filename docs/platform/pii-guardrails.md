@@ -23,9 +23,11 @@ Patterns live in code as a **registry list** so new labels can be appended witho
 
 ## Where redaction applies
 
-1. Strings prepared for **logging**
+1. Strings prepared for **logging** (including API `safe_logging` stacks at the HTTP boundary)
 2. Payloads / metadata sent to **LangSmith** (when tracing is enabled)
 3. Optional helper for domain code that serializes evidence packs
+
+API exceptions are logged **once** with secrets (Bearer/JWT, `client_secret`, …) and PII redacted; HTTP response bodies do not include stacks. See [endpoints](../api/endpoints.md) and [request flow](../architecture/request-flow.md).
 
 Redaction is **best-effort regex**. It is not a substitute for data-classification reviews or column-level controls in Unity Catalog.
 
