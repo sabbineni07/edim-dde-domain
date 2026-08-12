@@ -33,6 +33,26 @@ def _parse_attributes(raw: Any) -> Dict[str, Any]:
     return {"raw": str(raw)}
 
 
+def rank_stage_pressure(
+    rows: List[Dict[str, Any]], *, limit: int = 40
+) -> List[Dict[str, Any]]:
+    """Prefer failed / failed-task rows (legacy SparkTelemetryCollector parity)."""
+    prioritized: List[Dict[str, Any]] = []
+    other: List[Dict[str, Any]] = []
+    for row in rows or []:
+        attrs = _parse_attributes(row.get("attributes"))
+        status = str(attrs.get("status") or row.get("status") or "").lower()
+        try:
+            failed_n = int(attrs.get("num_failed_tasks") or 0)
+        except (TypeError, ValueError):
+            failed_n = 0
+        if "fail" in status or failed_n > 0 or row.get("successful") is False:
+            prioritized.append(row)
+        else:
+            other.append(row)
+    return (prioritized + other)[:limit]
+
+
 def _truncate(text: Optional[str], max_len: int = 800) -> str:
     if not text:
         return ""
@@ -106,7 +126,7 @@ def build_evidence_pack(
     sql_plans: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     anchors = list(failure_anchors or [])
-    stages = stage_pressure or []
+    stages = rank_stage_pressure(list(stage_pressure or []), limit=40)
     logs = error_logs or []
     events = timeline or []
     plans = list(sql_plans or [])
@@ -248,7 +268,7 @@ def build_evidence_pack(
             "sql_errors": sql_errors,
             "sql_observed_count": len(sql_observed),
             "top_exceptions": top_exceptions[:10],
-            "stage_pressure_count": len(stages),
+            "stage_pressure_count": len(list(stage_pressure or [])),
             "failure_reason": (pipeline_end or {}).get("failure_reason")
             if pipeline_end
             else None,

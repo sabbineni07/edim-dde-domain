@@ -375,13 +375,13 @@ Databricks substitutes `$DATABRICKS_APP_PORT`. Env for warehouse / Foundry / KV:
 
 ### 5.7 Validate on Apps (closes P0 Apps token check)
 
-#### SQL user-auth prerequisites (before recommendations)
+#### SQL user-auth prerequisites (before cluster_tuning)
 
 This API uses **user SQL** (Identity U): the Apps gateway injects `X-Forwarded-Access-Token`; code passes that token to the warehouse. You do **not** need a separate UI app, and you do **not** manually set that header.
 
 **Swagger / OpenAPI is fine** if you open it on the **App URL** (Apps → your app → Open → `/docs`). Browser calls from `/docs` to `/api/v1/*` still go through the Apps reverse proxy, which adds the forwarded user token. Opening `/docs` on localhost does **not**.
 
-Warehouse **CAN MANAGE** for the **App service principal** only helps the **app-identity** SQL path. Our code does **not** use `DATABRICKS_CLIENT_*` for SQL, so App SP warehouse grants alone will not fix recommendations.
+Warehouse **CAN MANAGE** for the **App service principal** only helps the **app-identity** SQL path. Our code does **not** use `DATABRICKS_CLIENT_*` for SQL, so App SP warehouse grants alone will not fix `cluster_tuning` SQL.
 
 Confirm all of:
 
@@ -411,7 +411,7 @@ curl -sS "$BASE/health" | python3 -m json.tool
 Then live tuning:
 
 ```bash
-curl -sS "$BASE/api/v1/recommendations" \
+curl -sS "$BASE/api/v1/cluster_tuning/recommend" \
   -H "content-type: application/json" \
   -H "X-Request-Id: apps-live-tuning-001" \
   -d '{"job_id":"<real>","cluster_id":"<real>","include_explanation":false}'
@@ -430,7 +430,7 @@ Platform docs: [Configure authorization in a Databricks app](https://docs.databr
 3. [ ] Create app **`edim-dde-api-dev`** — [§5.4](#54-create-a-new-databricks-app)  
 4. [ ] Grant App SP → Key Vault Secrets User — [KV §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user)  
 5. [ ] Sync + deploy Option A — [§5.3b](#53b-packaging-deploy-options) / [§5.5](#55-deploy-the-app)  
-6. [ ] `GET /health` then live recommendations — [§5.7](#57-validate-on-apps-closes-p0-apps-token-check)  
+6. [ ] `GET /health` then live `cluster_tuning/recommend` — [§5.7](#57-validate-on-apps-closes-p0-apps-token-check)  
 
 Official platform docs: [Configure app.yaml](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime) · [Deploy an app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy) · [CLI apps](https://docs.databricks.com/aws/en/dev-tools/cli/reference/apps-commands).
 

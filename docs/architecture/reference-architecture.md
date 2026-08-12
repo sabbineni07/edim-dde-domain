@@ -87,7 +87,7 @@ Domain package (`edim-dde-domain`) still owns sources, SQL nodes, PII, and bundl
 |---------|---------|----------------|
 | **edim-dde-ai** | 1.0.0 | YAML schema, LangGraph builder, registries, `llm_chain`, `invoke_agent`, ObservabilityProvider, **StateStore** (memory/postgres/cosmos/redis) |
 | **edim-dde-domain** | 1.0.0 | Named SQL sources, auth, Foundry adapter, Key Vault load, bundled agents, domain PII patterns |
-| **edim-dde-api** | 1.0.0 | HTTP surface, CORS, token middleware, lifespan (KV + observability + state store + catalog sync), `/api/v1/*` |
+| **edim-dde-api** | 1.0.0 | HTTP surface, CORS, Apps token + `RequestId` middleware, lifespan (KV + observability + state store + catalog sync), `/api/v1/*`, safe boundary logging |
 
 Dependency direction: `api` → `domain` → `ai`.
 
@@ -110,15 +110,16 @@ See also [request-flow.md](request-flow.md) and the sequence SVG.
 
 ```text
 Client
-  │  POST /api/v1/recommendations  (+ X-Request-Id optional)
+  │  POST /api/v1/cluster_tuning/recommend  (+ X-Request-Id optional)
   ▼
 API middleware
   │  Bind Databricks user token (Apps)
-  │  Ensure request_id
+  │  Bind request_id (X-Request-Id or UUID); echo on response; logs [request_id=…]
   ▼
 Route handler
   │  Validate body (Pydantic)
   │  asyncio.to_thread(create_agent("cluster_tuning").invoke, state, config=…)
+  │  On failure: log redacted stack once → safe HTTP detail
   ▼
 edim-dde-ai MetadataAgent
   │  Wrap flat state → LangGraph data bag

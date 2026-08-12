@@ -443,7 +443,7 @@
             <tr>
               <td><strong>edim-dde-api</strong></td>
               <td class="mono">1.0.0</td>
-              <td>CORS, Apps token middleware, lifespan bootstrap, /api/v1 DTOs, request_id</td>
+              <td>CORS, Apps token + RequestId middleware, lifespan bootstrap, /api/v1 DTOs, safe boundary logging</td>
               <td>Agent business logic, SQL collectors</td>
             </tr>
           </tbody>
@@ -472,23 +472,23 @@
       <div class="slide-header">
         <div>
           <div class="eyebrow">Runtime path</div>
-          <h1>Request sequence — recommendations</h1>
-          <p class="subtitle"><span class="mono">POST /api/v1/recommendations</span> · RCA uses the same pattern with <span class="mono">spark_rca</span></p>
+          <h1>Request sequence — cluster_tuning</h1>
+          <p class="subtitle"><span class="mono">POST /api/v1/cluster_tuning/recommend</span> · RCA uses the same pattern with <span class="mono">spark_rca</span></p>
         </div>
       </div>
       <div class="body">
         <div class="grid grid-2">
           <div class="seq">
-            <div class="n">1</div><div class="box"><strong>HTTP in</strong><span>Client → FastAPI · Pydantic body · optional X-Request-Id</span></div>
-            <div class="n">2</div><div class="box"><strong>Identity U</strong><span>Bind <span class="mono">X-Forwarded-Access-Token</span> · scope <span class="mono">sql</span> · KV (A→B) already at startup</span></div>
+            <div class="n">1</div><div class="box"><strong>HTTP in</strong><span>Client → FastAPI · Pydantic body · optional X-Request-Id (else UUID)</span></div>
+            <div class="n">2</div><div class="box"><strong>Middleware</strong><span>Bind request_id for logs · echo X-Request-Id · Apps token scope <span class="mono">sql</span></span></div>
             <div class="n">3</div><div class="box"><strong>Invoke</strong><span>create_agent(...).invoke in thread with LangSmith tags (agent_id, env, request_id)</span></div>
             <div class="n">4</div><div class="box"><strong>Collect</strong><span>domain.sql.query as user (U) → SQL Warehouse → UC telemetry</span></div>
           </div>
           <div class="seq">
             <div class="n">5</div><div class="box"><strong>Decide</strong><span>domain.tuning.* · sizing · guardrails · SKU · capacity risk</span></div>
             <div class="n">6</div><div class="box"><strong>Generate (B)</strong><span>llm_chain + ContentHub → Foundry via <span class="mono">EDIM_FOUNDRY_*</span></span></div>
-            <div class="n">7</div><div class="box"><strong>Observe</strong><span>LangSmith trace (tokens, latency, spans) · PII patterns applied where used</span></div>
-            <div class="n">8</div><div class="box"><strong>Respond</strong><span>Project TuningResponse DTO — never return full agent state bag</span></div>
+            <div class="n">7</div><div class="box"><strong>Observe</strong><span>Stdlib <span class="mono">[request_id=…]</span> · LangSmith spans · fail → log stack once (redacted)</span></div>
+            <div class="n">8</div><div class="box"><strong>Respond</strong><span>Project TuningResponse DTO · safe HTTP detail (no stacks in JSON)</span></div>
           </div>
         </div>
       </div>
@@ -649,11 +649,12 @@
           </div>
         </div>
         <div class="card" style="margin-top:14px;min-height:auto">
-          <h3>Correlation fields</h3>
+          <h3>Correlation &amp; logging</h3>
           <ul>
-            <li><span class="mono">request_id</span> — from X-Request-Id or generated UUID</li>
+            <li><span class="mono">request_id</span> — from X-Request-Id or generated UUID; echoed on response; stdlib logs show <span class="mono">[request_id=…]</span></li>
             <li><span class="mono">EDIM_ENV</span> — sdbx | dev | prod</li>
             <li><span class="mono">agent_id</span> — cluster_tuning / spark_rca / plugins</li>
+            <li>API failures: original stack logged <strong>once</strong> at the boundary (secrets/PII redacted); HTTP body stays short</li>
           </ul>
         </div>
       </div>

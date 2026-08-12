@@ -251,12 +251,14 @@ Client
   ▼
 Middleware
   │  Bind Databricks user token (Apps)
-  │  Ensure request_id
+  │  Bind request_id (X-Request-Id or generated); echo on response
+  │  Stdlib logs carry [request_id=…]
   ▼
 Route
   │  Pydantic RcaRequest
   │  build_run_config(agent_id, request_id)  → observability tags
   │  asyncio.to_thread(create_agent("spark_rca").invoke, …)
+  │  On mapped failure: log redacted stack once → safe HTTP detail
   ▼
 MetadataAgent (Template Method)
   │  Wrap flat state → LangGraph data bag
@@ -275,7 +277,7 @@ RcaResponse projection        (never dump full state bag)
   + LangSmith/MLflow trace    (side channel)
 ```
 
-Tuning (`/api/v1/recommendations`) is the same host pattern without the retrieval pilot.
+Tuning (`/api/v1/cluster_tuning/recommend`) is the same host pattern without the retrieval pilot.
 
 Sequence SVG: [r1-request-sequence.svg](diagrams/r1-request-sequence.svg) · Narrative: [request-flow.md](request-flow.md).
 

@@ -22,7 +22,7 @@ edim-dde-api  (v1.0.0)
   • RetrievalProvider (faiss / azure / databricks / …) ← knowledge
   • lifespan: bootstrap_agents() + sync catalog + Foundry lazy
   • GET  /health
-  • POST /api/v1/recommendations  → cluster_tuning
+  • POST /api/v1/cluster_tuning/recommend  → cluster_tuning
   • POST /api/v1/rca/analyze      → spark_rca (+ runbook RAG)
   • POST /api/v1/knowledge/ingest → curated upsert (Acceptance-gated)
         │

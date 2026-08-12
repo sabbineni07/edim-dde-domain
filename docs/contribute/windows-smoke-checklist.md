@@ -209,14 +209,15 @@ Save body to a file to avoid PowerShell quoting pain:
 }
 '@ | Set-Content -Encoding utf8 C:\temp\edim-tuning-dry.json
 
-curl.exe -sS http://127.0.0.1:8080/api/v1/recommendations `
+curl.exe -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend `
   -H "content-type: application/json" `
   -H "X-Request-Id: win-dry-tuning-001" `
   --data-binary "@C:\temp\edim-tuning-dry.json"
 ```
 
 **Pass:** HTTP 200, JSON has `recommendation`, `risk_assessment` / `reason_codes`.  
-**Fail 503 `FOUNDRY_LLM_NOT_CONFIGURED`:** fix endpoint / `az login` / deployment name.
+**Fail 503 `FOUNDRY_LLM_NOT_CONFIGURED`:** fix endpoint / `az login` / deployment name.  
+**Tip:** response header `X-Request-Id` matches log lines `[request_id=…]` if you need to debug.
 
 ### 5.3 Dry Spark RCA
 
@@ -243,7 +244,8 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/rca/analyze `
   --data-binary "@C:\temp\edim-rca-dry.json"
 ```
 
-**Pass:** HTTP 200 with `root_cause` and `recommended_actions`.
+**Pass:** HTTP 200 with `root_cause` and `recommended_actions`.  
+**Tip:** response `X-Request-Id` ↔ log lines `[request_id=…]`.
 
 ---
 
@@ -270,7 +272,7 @@ Copy a real `job_id` / `cluster_id`.
 }
 '@ | Set-Content -Encoding utf8 C:\temp\edim-tuning-live.json
 
-curl.exe -sS http://127.0.0.1:8080/api/v1/recommendations `
+curl.exe -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend `
   -H "content-type: application/json" `
   -H "X-Request-Id: win-live-tuning-001" `
   --data-binary "@C:\temp\edim-tuning-live.json"

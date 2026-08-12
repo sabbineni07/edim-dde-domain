@@ -52,9 +52,13 @@ See [observability providers](../platform/observability.md).
 
 | Field | Source | Purpose |
 |-------|--------|---------|
-| `request_id` | `X-Request-Id` header or generated UUID | Tie API call ↔ backend run |
+| `request_id` | `X-Request-Id` header or generated UUID | Tie API call ↔ logs ↔ LangSmith; **echoed** on the HTTP response header; stdlib log lines include `[request_id=…]` |
 | `EDIM_ENV` | Environment variable | Tag runs per SDBX/DEV/PROD |
 | `agent_id` | Agent definition | Filter traces by agent |
+
+**Logging (API boundary):** when a route or exception handler maps a failure to HTTP, it logs the **original exception + stack once**, with tokens / KV secrets / PII redacted (`edim_dde_api.safe_logging`). Nested helpers should not re-log the same failure. Prefer `request_id` (not a separate `correlation_id`) until multi-hop cross-service tracing is required.
+
+**Primary agent HTTP paths:** `POST /api/v1/cluster_tuning/recommend` · `POST /api/v1/rca/analyze`.
 
 ## Operator steps
 

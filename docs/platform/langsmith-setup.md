@@ -138,7 +138,7 @@ pip install langsmith
 # from repo with .env loaded for DEV
 uvicorn edim_dde_api.main:app --port 8080
 
-curl -s localhost:8080/api/v1/recommendations \
+curl -s localhost:8080/api/v1/cluster_tuning/recommend \
   -H 'content-type: application/json' \
   -H 'x-request-id: demo-001' \
   -d '{"job_id":"<id>","cluster_id":"<id>","include_explanation":false}'
@@ -160,7 +160,7 @@ Then in LangSmith UI:
 | Which model / deployment? | LLM run metadata |
 | How many tokens? | LLM run metrics |
 | What prompt was sent? | LLM run inputs (after PII redaction) |
-| Correlate to an API call? | Metadata `request_id`, tag `env:dev` |
+| Correlate to an API call? | Metadata `request_id`, tag `env:dev` (same id on `X-Request-Id` response header and stdlib logs `[request_id=…]`) |
 
 ---
 
