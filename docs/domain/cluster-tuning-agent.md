@@ -67,27 +67,49 @@ UC column meanings: [UC telemetry tables](uc-telemetry-tables.md#job-cluster-met
 
 ---
 
-## 3. End-to-end graph (all nodes)
+## 3. End-to-end graph (DFD-style)
+
+Circles = graph processes · orange boxes = data stores / side systems · blue = client · teal = API response. Arrow labels = data exchanged.
 
 ```mermaid
 flowchart TB
-  START([START]) --> collect_metrics
-  collect_metrics["collect_metrics<br/>domain.sql.query"]
-  collect_metrics --> normalize_metrics
-  normalize_metrics --> prepare_sizing_payload
-  prepare_sizing_payload --> run_sizing
-  run_sizing["run_sizing<br/>llm_chain sizing"]
-  run_sizing --> parse_sizing
-  parse_sizing{"parse_sizing<br/>clamp + SKU map"}
-  parse_sizing -->|sizing_needs_retry = true<br/>attempts &lt; 2| prepare_sizing_payload
-  parse_sizing -->|else| validate_performance
-  validate_performance --> assess_risks
-  assess_risks --> generate_recommendation
-  generate_recommendation -->|include_explanation| prepare_explanation_payload
-  generate_recommendation -->|else| END1([END])
-  prepare_explanation_payload --> generate_explanation
-  generate_explanation["generate_explanation<br/>llm_chain explanation"]
-  generate_explanation --> END2([END])
+  classDef external fill:#5B8DEF,stroke:#2F5BB7,color:#fff
+  classDef store fill:#F4A261,stroke:#C47A3A,color:#1a1a1a
+  classDef process fill:#E9C46A,stroke:#B08900,color:#1a1a1a
+  classDef decide fill:#E76F51,stroke:#B54A32,color:#fff
+  classDef out fill:#2A9D8F,stroke:#1F7A6E,color:#fff
+
+  Client[Client]:::external
+  UC[(DATABRICKS_JOB_<br/>CLUSTER_METRICS_TABLE)]:::store
+  Foundry[Azure AI Foundry]:::external
+  DTO[TuningResponse]:::out
+
+  CM((collect_metrics<br/>sql.query)):::process
+  NM((normalize_metrics)):::process
+  Prep((prepare_sizing_payload)):::process
+  Run((run_sizing<br/>llm_chain)):::process
+  Parse{{parse_sizing<br/>clamp + SKU}}:::decide
+  Perf((validate_performance)):::process
+  Risk((assess_risks)):::process
+  Gen((generate_recommendation)):::process
+  PrepE((prepare_explanation)):::process
+  Expl((generate_explanation<br/>llm_chain)):::process
+
+  Client -->|TuningRequest| CM
+  UC -->|metrics row| CM
+  CM -->|metrics| NM --> Prep
+  Prep -->|prompt + guardrail_feedback| Run
+  Foundry -->|sizing_raw| Run
+  Run --> Parse
+  Parse -->|retry: feedback<br/>attempts &lt; 2| Prep
+  Parse -->|sizing + adjustments| Perf
+  Perf -->|performance_validation| Risk
+  Risk -->|risk_assessment| Gen
+  Gen -->|include_explanation=true| PrepE --> Expl
+  Foundry -.-> Expl
+  Gen -->|fields| DTO
+  Expl -->|explanation| DTO
+  DTO -->|JSON| Client
 ```
 
 **Legend**

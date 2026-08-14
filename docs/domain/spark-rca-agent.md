@@ -59,24 +59,50 @@ UC attributes: [UC telemetry tables](uc-telemetry-tables.md#spark-metrics-logs).
 
 ---
 
-## 3. End-to-end graph (all nodes)
+## 3. End-to-end graph (DFD-style)
+
+Circles = processes · orange = UC / index stores · blue = client & Foundry · teal = response.
 
 ```mermaid
 flowchart TB
-  START([START]) --> A[collect_failure_anchors]
-  A --> B[collect_sql_plans]
-  B --> C[collect_error_logs]
-  C --> D[collect_timeline]
-  D --> E[collect_stage_pressure]
-  E --> F[assemble_evidence]
-  F --> G[rule_classify]
-  G --> H[build_retrieval_query]
-  H --> I["retrieve_runbooks<br/>rag.retrieve"]
-  I --> J[prepare_llm_payload]
-  J --> K["synthesize<br/>llm_chain rca"]
-  K --> L[parse_llm_json]
-  L --> M[validate_output]
-  M --> END([END → RcaResponse])
+  classDef external fill:#5B8DEF,stroke:#2F5BB7,color:#fff
+  classDef store fill:#F4A261,stroke:#C47A3A,color:#1a1a1a
+  classDef process fill:#E9C46A,stroke:#B08900,color:#1a1a1a
+  classDef out fill:#2A9D8F,stroke:#1F7A6E,color:#fff
+
+  Client[Client]:::external
+  M[(SPARK_METRICS_TABLE)]:::store
+  L[(SPARK_LOGS_TABLE)]:::store
+  Idx[(spark-runbooks index)]:::store
+  Foundry[Azure AI Foundry]:::external
+  DTO[RcaResponse]:::out
+
+  A((collect_failure_anchors)):::process
+  B((collect_sql_plans)):::process
+  C((collect_error_logs)):::process
+  D((collect_timeline)):::process
+  E((collect_stage_pressure)):::process
+  F((assemble_evidence)):::process
+  G((rule_classify)):::process
+  H((build_retrieval_query)):::process
+  I((retrieve_runbooks<br/>rag.retrieve)):::process
+  J((prepare_llm_payload)):::process
+  K((synthesize<br/>llm_chain rca)):::process
+  N((parse_llm_json)):::process
+  O((validate_output)):::process
+
+  Client -->|RcaRequest| A
+  M --> A & B & D & E
+  L --> C
+  A --> B --> C --> D --> E --> F
+  F -->|evidence_pack| G
+  G -->|classification_hint| H
+  H -->|retrieval_query| I
+  Idx -->|hits / context| I
+  I --> J --> K
+  Foundry -->|llm_raw| K
+  K --> N --> O --> DTO
+  DTO -->|JSON| Client
 ```
 
 Each `collect_*` node uses `skip_if_key: evidence_pack` — if the client supplied a pack, SQL is skipped but the rest of the graph still runs.

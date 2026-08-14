@@ -22,28 +22,88 @@ Shipped inside `edim-dde-domain` under `agents/`. Both follow [agent package lay
 
 ---
 
-## Quick flow sketches
+## Quick flow diagrams (DFD-style)
+
+Legend: **blue** = external actor / system · **orange rectangle** = data store · **gold circle** = process step · arrows are labeled with what moves.
 
 ### `cluster_tuning`
 
-```text
-domain.sql.query (metrics)
-  → prepare_sizing_payload → llm_chain(sizing) → parse_sizing (+ clamp)
-  → if retryable clamps and attempts < 2: set guardrail_feedback → loop
-  → validate_performance → assess_risks → generate_recommendation
-  → optional explanation LLM
-  → TuningResponse
+```mermaid
+flowchart TB
+  classDef external fill:#5B8DEF,stroke:#2F5BB7,color:#fff
+  classDef store fill:#F4A261,stroke:#C47A3A,color:#1a1a1a
+  classDef process fill:#E9C46A,stroke:#B08900,color:#1a1a1a
+  classDef out fill:#2A9D8F,stroke:#1F7A6E,color:#fff
+
+  Client[Client / API]:::external
+  UC[(UC job cluster metrics)]:::store
+  Foundry[Azure AI Foundry]:::external
+  Resp[TuningResponse]:::out
+
+  Collect((collect metrics)):::process
+  Prep((prepare sizing)):::process
+  Size((sizing LLM)):::process
+  Parse((parse + guardrails)):::process
+  Perf((validate performance)):::process
+  Risk((assess risks)):::process
+  Gen((generate recommendation)):::process
+  Expl((explanation LLM)):::process
+
+  Client -->|job_id, cluster_id<br/>or metrics override| Collect
+  UC -->|metrics row| Collect
+  Collect --> Prep
+  Prep -->|prompt fields| Size
+  Foundry -->|completion| Size
+  Size -->|sizing_raw| Parse
+  Parse -->|retryable clamp<br/>attempts &lt; 2| Prep
+  Parse -->|clamped sizing| Perf
+  Perf --> Risk
+  Risk --> Gen
+  Gen -->|include_explanation| Expl
+  Foundry -.->|optional| Expl
+  Gen -->|DTO fields| Resp
+  Expl --> Resp
+  Resp -->|JSON + X-Request-Id| Client
 ```
 
 ### `spark_rca`
 
-```text
-domain.sql.query × 5 (anchors, plans, logs, timeline, stages)
-  → assemble_evidence → classify → build_retrieval_query
-  → rag.retrieve (spark-runbooks)
-  → prepare_llm_payload → llm_chain(rca) → parse → validate
-  → RcaResponse
+```mermaid
+flowchart TB
+  classDef external fill:#5B8DEF,stroke:#2F5BB7,color:#fff
+  classDef store fill:#F4A261,stroke:#C47A3A,color:#1a1a1a
+  classDef process fill:#E9C46A,stroke:#B08900,color:#1a1a1a
+  classDef out fill:#2A9D8F,stroke:#1F7A6E,color:#fff
+
+  Client[Client / API]:::external
+  Metrics[(UC spark metrics)]:::store
+  Logs[(UC spark logs)]:::store
+  Index[(Runbook index<br/>FAISS / Azure / DBX)]:::store
+  Foundry[Azure AI Foundry]:::external
+  Resp[RcaResponse]:::out
+
+  Collect((collect ×5 SQL)):::process
+  Assemble((assemble evidence)):::process
+  Classify((rule classify)):::process
+  Query((build retrieval query)):::process
+  Retrieve((rag.retrieve)):::process
+  Prep((prepare LLM payload)):::process
+  Synth((RCA LLM)):::process
+  Validate((parse + validate)):::process
+
+  Client -->|job_run_id<br/>or evidence_pack| Collect
+  Metrics -->|anchors, plans,<br/>timeline, stages| Collect
+  Logs -->|errors / exceptions| Collect
+  Collect --> Assemble --> Classify --> Query
+  Query -->|retrieval_query| Retrieve
+  Index -->|runbook hits| Retrieve
+  Retrieve --> Prep --> Synth
+  Foundry -->|completion| Synth
+  Synth --> Validate --> Resp
+  Resp -->|JSON + X-Request-Id| Client
 ```
+
+Detail with every YAML node id: [Cluster tuning](cluster-tuning-agent.md) · [Spark RCA](spark-rca-agent.md).
 
 ---
 
