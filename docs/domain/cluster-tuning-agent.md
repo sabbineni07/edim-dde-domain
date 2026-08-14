@@ -212,9 +212,11 @@ If `include_explanation` is truthy: `prepare_explanation_payload` → `generate_
 | `job_cluster_metrics` | Metrics used (SQL or override) |
 | `pattern_analysis` | From sizing LLM |
 | `explanation` | Optional narrative |
+| `recommendation_id` / `recommendation_status` | Set when history store persists the row |
 | `request_id` | Correlation |
 
-OpenAPI: `/docs` when the API is up. Contract notes: [HTTP endpoints](../api/endpoints.md).
+OpenAPI: `/docs` when the API is up. Contract notes: [HTTP endpoints](../api/endpoints.md).  
+History backends: [Recommendation store](../platform/recommendation-store.md).
 
 ---
 
@@ -247,6 +249,7 @@ sequenceDiagram
 | SQL warehouse + grants | Collect |
 | Azure AI Foundry | Sizing / explanation LLM |
 | LangSmith (optional) | Trace spans tagged with `agent_id`, `request_id` |
+| RecommendationStore | Persist / list / status (Postgres local · Cosmos deploy) |
 | Knowledge / RAG | **Not used** |
 
 See [External add-ons](external-addons.md).

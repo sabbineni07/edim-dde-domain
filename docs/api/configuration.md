@@ -37,6 +37,10 @@ export EDIM_AGENT_DIRS=/opt/edim-agents/acme
 export EDIM_STATE_STORE=postgres
 export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 # Deployed: EDIM_STATE_STORE=cosmos + EDIM_COSMOS_* (see state-store.md)
+
+# Recommendation history (default inherits EDIM_STATE_STORE)
+# export EDIM_RECOMMENDATION_STORE=none   # disable persist
+# Full guide: platform/recommendation-store.md
 ```
 
 ## Run

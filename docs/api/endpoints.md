@@ -8,8 +8,11 @@ Base app: `edim_dde_api.main:app`
 
 | Method | Path | Request | Response |
 |--------|------|---------|----------|
-| GET | `/health` | — | `{status, agents, version, observability, state_store, retrieval}` |
+| GET | `/health` | — | `{status, agents, version, observability, state_store, recommendation_store, retrieval}` |
 | POST | `/api/v1/cluster_tuning/recommend` | `TuningRequest` | `TuningResponse` |
+| GET | `/api/v1/cluster_tuning/recommendations` | query filters | `list[RecommendationHistoryItem]` |
+| GET | `/api/v1/cluster_tuning/recommendations/{id}` | — | `RecommendationHistoryItem` |
+| PATCH | `/api/v1/cluster_tuning/recommendations/{id}` | `RecommendationStatusUpdate` | `RecommendationHistoryItem` |
 | POST | `/api/v1/rca/analyze` | `RcaRequest` | `RcaResponse` |
 | POST | `/api/v1/knowledge/ingest` | `KnowledgeIngestRequest` | `KnowledgeIngestResponse` |
 | GET | `/api/v1/debug/sql-auth` | — | Booleans only (Apps SQL auth diagnostics; no tokens) |
@@ -40,6 +43,16 @@ After sizing settles, a **rule-based** `validate_performance` node checks whethe
 | `estimated_impact` | `maintained` or `degradation_risk` |
 | `reduction_pct` | Capacity cut vs current |
 | `reasons` | Which checks failed (if any) |
+
+### Cluster tuning — recommendation history
+
+Successful recommends are **best-effort** persisted via pluggable `RecommendationStore` (default inherits `EDIM_STATE_STORE`). See [recommendation-store.md](../platform/recommendation-store.md).
+
+| Field / route | Meaning |
+|---------------|---------|
+| `recommendation_id` / `recommendation_status` | Set on `TuningResponse` when persist succeeds |
+| `GET …/cluster_tuning/recommendations` | List newest-first (`job_id`, `cluster_id`, `status`, `limit`) |
+| `PATCH …/recommendations/{id}` | Lifecycle: `proposed` \| `accepted` \| `rejected` \| `applied` \| `superseded` |
 
 ### Request id / logging
 

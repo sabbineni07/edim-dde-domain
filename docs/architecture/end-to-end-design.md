@@ -225,16 +225,17 @@ Matches **Part C** of the guide — configure planes before serving traffic:
 1. Key Vault bootstrap          (optional secrets → env)
 2. configure_observability_from_env()   # EDIM_OBSERVABILITY
 3. configure_state_store_from_env()     # EDIM_STATE_STORE
-4. configure_retrieval_from_env()       # EDIM_RETRIEVAL
-5. bootstrap_agents()
+4. configure_recommendation_store_from_env()  # EDIM_RECOMMENDATION_STORE (inherits StateStore)
+5. configure_retrieval_from_env()       # EDIM_RETRIEVAL
+6. bootstrap_agents()
       · load sources.yaml
       · load corpora.yaml
       · import agents/*/nodes.py
       · register *.agent.yaml
       · external plugins (EDIM_AGENT_DIRS)
-6. sync_registered_agents_to_store()    # catalog metadata upsert + audit
-7. set_llm_provider(lazy Foundry)
-8. ready — GET /health reports observability, state_store, retrieval
+7. sync_registered_agents_to_store()    # catalog metadata upsert + audit
+8. set_llm_provider(lazy Foundry)
+9. ready — GET /health reports observability, state_store, recommendation_store, retrieval
 ```
 
 Failures configuring store/retrieval/observability **log and continue** with safe defaults (`memory` / `none`) so `/health` remains available.

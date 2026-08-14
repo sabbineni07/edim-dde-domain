@@ -11,13 +11,15 @@
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
 | `EDIM_STATE_STORE` | API lifespan / AI | Control plane: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`) |
-| `EDIM_DATABASE_URL` | Postgres store | e.g. `postgresql://edim:edim@localhost:5432/edim` |
+| `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | Recommendation history: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`) |
+| `EDIM_DATABASE_URL` | Postgres store | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore) |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |
 | `EDIM_COSMOS_KEY` | Cosmos store | Account key (prefer Key Vault in PROD) |
 | `EDIM_COSMOS_DATABASE` | Cosmos store | Database id (default `edim`) |
 | `EDIM_COSMOS_AGENTS_CONTAINER` | Cosmos store | Container id (default `agents`) |
 | `EDIM_COSMOS_SESSIONS_CONTAINER` | Cosmos store | Container id (default `sessions`) |
 | `EDIM_COSMOS_AUDIT_CONTAINER` | Cosmos store | Container id (default `audit`) |
+| `EDIM_COSMOS_RECOMMENDATIONS_CONTAINER` | Cosmos recommendation store | Container id (default `recommendations`) |
 | `EDIM_REDIS_URL` | Redis store | e.g. `redis://localhost:6379/0` |
 | `EDIM_GIT_SHA` | Catalog sync | Optional git SHA stamped on agent records |
 | `EDIM_RETRIEVAL` | API lifespan / AI | Retrieval: `none` \| `memory` \| `faiss` \| `azure_ai_search` \| `databricks_vector` |

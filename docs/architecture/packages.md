@@ -47,7 +47,8 @@ edim_dde_ai/
   nodes/           builtins including rag.retrieve
   content/         prompts, skills, LLMProvider
   observability/   ObservabilityProvider
-  store/           StateStore
+  store/           StateStore (+ connection_env shared with recommendations)
+  recommendations/ RecommendationStore (product history)
   retrieval/       RetrievalProvider
   api/             register_from_*
 ```

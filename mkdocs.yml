@@ -85,6 +85,7 @@ nav:
       - Observability: platform/observability.md
       - LangSmith setup: platform/langsmith-setup.md
       - State store: platform/state-store.md
+      - Recommendation store: platform/recommendation-store.md
       - Retrieval and RAG: platform/retrieval-and-rag.md
   - D — Framework:
       - YAML schema: framework/yaml-schema.md

@@ -1,7 +1,7 @@
 # Control-plane state store (Postgres · Cosmos · Redis · memory)
 
 **Learning path:** C6 · [Guide home](../README.md)
-**← Previous:** [LangSmith setup](langsmith-setup.md) · **Next:** [Retrieval & RAG](retrieval-and-rag.md) →
+**← Previous:** [LangSmith setup](langsmith-setup.md) · **Next:** [Recommendation store](recommendation-store.md) →
 
 
 This guide explains **what the control plane is**, **why EDIM has a pluggable state store**, how **Postgres (local)** and **Cosmos DB (deployed)** fit, and how this relates to **`*.agent.yaml` in Azure DevOps**.
@@ -200,18 +200,32 @@ make e2e-local    # compose-up (api+postgres) + dry smoke
 
 See `edim-dde-api/docker-compose.yml` (sibling package) and [Deploy & hosting §6.1](../api/deploy-and-hosting.md#61-docker-compose-api-postgres-recommended-locally).
 
-**Option B — Postgres only (API via host uvicorn):**
+**Option B — Postgres only (API via host uvicorn)** — use when `az login` must stay on the laptop (Docker proxy/kernel limits):
 
 ```bash
-# from edim/ workspace root
+cd edim-dde-api
+az login
+# Foundry/Databricks vars in ../edim-dde-domain/.env
+make host-run          # starts Postgres in Docker + uvicorn on the host
+# API: http://127.0.0.1:8080/health
+# Ctrl+C stops uvicorn; Postgres keeps running → make pg-down
+```
+
+Or split the steps:
+
+```bash
+make pg-up             # Docker Postgres only
+make host-run          # (pg-up is implied) uvicorn with EDIM_STATE_STORE=postgres → localhost:5432
+```
+
+Manual equivalent (workspace root):
+
+```bash
 docker compose -f docker-compose.state-store.yml up -d
-
 pip install 'edim-dde-ai[postgres]'
-
 export EDIM_STATE_STORE=postgres
 export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 export EDIM_ENV=sdbx
-
 uvicorn edim_dde_api.main:app --port 8080
 curl -s localhost:8080/health
 ```
@@ -279,6 +293,8 @@ store.upsert_session(
 ```
 
 Custom backends: implement `StateStore` and call `set_state_store(...)`.
+
+**Related:** product recommendation history is a **separate** pluggable store (`RecommendationStore`) that reuses the same connection env helpers — see [recommendation-store.md](recommendation-store.md).
 
 ---
 
@@ -362,9 +378,10 @@ Failures configuring the store log a warning and fall back to in-memory so `/hea
 - [Observability providers](observability.md)
 - [Security baseline](security-baseline.md)
 - [Environments](environments.md)
+- [Recommendation lifecycle store](recommendation-store.md)
 - [Environment variables](../reference/env-vars.md)
 
 <!-- edim-learning-nav -->
 ---
 
-← [LangSmith setup](langsmith-setup.md) · [Guide home](../README.md) · [Retrieval & RAG](retrieval-and-rag.md) →
+← [LangSmith setup](langsmith-setup.md) · [Guide home](../README.md) · [Recommendation store](recommendation-store.md) →

@@ -21,6 +21,7 @@
 | **Control plane** | Catalog, sessions, audit — managed via `StateStore`, not SQL/LLM work |
 | **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |
 | **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
+| **RecommendationStore** | Pluggable product-history backend for tuning (and future) recommendations: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Agent catalog** | Metadata rows (`AgentRecord`) synced from registered YAML agents at bootstrap |
 | **Similarity search** | Ranked document/chunk retrieval without an LLM |
 | **RAG** | Retrieve → inject context → LLM answer (pattern built on RetrievalProvider) |

@@ -445,7 +445,8 @@ Official platform docs: [Configure app.yaml](https://docs.databricks.com/aws/en/
 | `make apps-deploy` | Deploy app from `$(WS_SOURCE)` |
 | `make docker-build` | Build API image only |
 | `make docker-run` | Run API image alone (no Postgres) |
-| `make compose-up` / `compose-down` / `compose-ps` | API + **Postgres** StateStore |
+| `make compose-up` / `compose-down` / `compose-ps` | API + **Postgres** StateStore (both in Docker) |
+| `make pg-up` / `pg-down` / `host-run` | **Postgres in Docker** + **API on laptop** (`az login` works) |
 | `make e2e-dry` / `e2e-local` | Local container dry E2E (health + tuning + RCA) |
 | `make compose-logs` | Tail API + Postgres |
 
@@ -493,7 +494,16 @@ Compose file: `edim-dde-api/docker-compose.yml`
 
 **Dry E2E** needs Foundry in `.env` (warehouse optional). **Live SQL** against the same containers: set `DATABRICKS_*` in `.env`, recreate `api`, then run live curls from [Live smoke §5](../contribute/live-smoke-test.md) with `BASE=http://127.0.0.1:8080` (and `az login` on the **host** does not inject into the container — use `EDIM_FOUNDRY_*` and, for SQL from the container, a path that works inside Docker, or run live SQL smoke on Apps/host uvicorn).
 
-**Postgres-only** (API on the host via uvicorn): workspace root `docker-compose.state-store.yml`.
+**Postgres-only** (API on the host via uvicorn — preferred when Docker cannot do `az login`):
+
+```bash
+cd edim-dde-api
+az login
+make host-run    # pg-up + uvicorn; loads ../edim-dde-domain/.env
+# make pg-down when finished
+```
+
+Underlying compose file: workspace root `docker-compose.state-store.yml`. Do **not** run `compose-up` and `host-run` together (same `edim-postgres` / port 5432).
 
 ### 6.2 Build image (without Compose)
 

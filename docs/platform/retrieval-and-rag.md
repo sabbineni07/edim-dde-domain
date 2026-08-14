@@ -1,7 +1,7 @@
 # Retrieval, similarity search, and RAG (C7)
 
 **Learning path:** C7 · [Guide home](../README.md)  
-**← Previous:** [Control-plane state store](state-store.md) · **Next:** [YAML schema](../framework/yaml-schema.md) →
+**← Previous:** [Recommendation store](recommendation-store.md) · **Next:** [YAML schema](../framework/yaml-schema.md) →
 
 This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProvider`** backends (FAISS · Azure AI Search · Databricks Vector Search), how **`spark_rca`** uses runbook grounding, design patterns, and how engineers operate local vs deployed indexes.
 
@@ -291,4 +291,4 @@ Also listed in [Environment variables](../reference/env-vars.md).
 
 ---
 
-← [State store](state-store.md) · [Guide home](../README.md) · [YAML schema](../framework/yaml-schema.md) →
+← [Recommendation store](recommendation-store.md) · [Guide home](../README.md) · [YAML schema](../framework/yaml-schema.md) →

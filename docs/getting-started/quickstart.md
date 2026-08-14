@@ -102,11 +102,11 @@ source .venv/bin/activate
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```
 
-**Lifespan (in order):** Key Vault → observability → state store → retrieval → `bootstrap_agents()` → catalog sync → lazy Foundry.
+**Lifespan (in order):** Key Vault → observability → state store → recommendation store → retrieval → `bootstrap_agents()` → catalog sync → lazy Foundry.
 
 ```bash
 curl -s localhost:8080/health
-# includes: agents, version, observability, state_store, retrieval
+# includes: agents, version, observability, state_store, recommendation_store, retrieval
 ```
 
 Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.

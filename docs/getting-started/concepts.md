@@ -94,9 +94,10 @@ Hosts also:
 
 1. `configure_observability_from_env()`
 2. `configure_state_store_from_env()`
-3. `configure_retrieval_from_env()`
-4. `sync_registered_agents_to_store()`
-5. `set_llm_provider(...)` (API: lazy Foundry)
+3. `configure_recommendation_store_from_env()`
+4. `configure_retrieval_from_env()`
+5. `sync_registered_agents_to_store()`
+6. `set_llm_provider(...)` (API: lazy Foundry)
 
 ---
 

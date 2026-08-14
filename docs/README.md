@@ -67,6 +67,7 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |
 | **C5** | [LangSmith setup](platform/langsmith-setup.md) | Projects, keys, local vs SaaS |
 | **C6** | [Control-plane state store](platform/state-store.md) | Postgres / Cosmos / Redis / memory |
+| **C6b** | [Recommendation lifecycle store](platform/recommendation-store.md) | Persist tuning history beyond one HTTP response |
 | **C7** | [Retrieval & RAG](platform/retrieval-and-rag.md) | FAISS / Azure AI Search / Databricks; spark_rca pilot |
 
 ### Part D — Framework (`edim-dde-ai`)
