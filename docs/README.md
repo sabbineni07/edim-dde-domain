@@ -61,6 +61,7 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | **C1** | [Environments](platform/environments.md) | SDBX / DEV / PROD matrix |
 | **C2** | [Security baseline](platform/security-baseline.md) | Trust boundaries, app role matrix (docs) |
 | **C2b** | [**Access & permissions**](platform/access-and-permissions.md) | Identities U/A/B — who runs SQL / Foundry / KV per host |
+| **C2b-flow** | [**Authentication flows**](platform/authentication-flows.md) | Visual auth: User → Apps → API → UC / RAG / Foundry / stores / LangSmith |
 | **C2c** | [**Key Vault bootstrap**](platform/key-vault-bootstrap.md) | Vault auth order, `EDIM_KV_SECRET_MAP`, examples |
 | **C3** | [PII guardrails](platform/pii-guardrails.md) | Redaction before logs/traces |
 | **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |

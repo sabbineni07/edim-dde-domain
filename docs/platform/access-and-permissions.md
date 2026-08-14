@@ -1,7 +1,7 @@
 # Access & permissions (identities by host)
 
 **Learning path:** C2b · [Guide home](../README.md)  
-**← Previous:** [Security baseline](security-baseline.md) · **Next:** [Key Vault bootstrap](key-vault-bootstrap.md) →
+**← Previous:** [Security baseline](security-baseline.md) · **Next:** [Authentication flows](authentication-flows.md) →
 
 **This page covers:** who is Identity **U / A / B**, and which identity runs SQL vs Foundry vs Key Vault on each host.
 
@@ -74,7 +74,10 @@ Creating an Entra SP and storing its client id/secret in KV for Foundry = **Iden
 
 ## 3. End-to-end flows by host
 
-### 3.1 Databricks Apps + Key Vault
+**Full DFD-style diagrams (local · Apps · ACA · per-service matrix):**  
+→ **[Authentication flows](authentication-flows.md)**
+
+### 3.1 Databricks Apps + Key Vault (sketch)
 
 ```text
   User → Apps gateway → X-Forwarded-Access-Token (U)
@@ -158,6 +161,7 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 
 | Doc | Topic |
 |-----|--------|
+| [Authentication flows](authentication-flows.md) | **Visual** local / Apps / ACA auth diagrams + per-service matrix |
 | [Key Vault bootstrap](key-vault-bootstrap.md) | Vault auth order + `EDIM_KV_SECRET_MAP` |
 | [Deploy & hosting](../api/deploy-and-hosting.md) | Apps / Docker / ACA packaging + ACA MI grants |
 | [Security baseline](security-baseline.md) | App role matrix |
@@ -168,4 +172,4 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 <!-- edim-learning-nav -->
 ---
 
-← [Security baseline](security-baseline.md) · [Guide home](../README.md) · [Key Vault bootstrap](key-vault-bootstrap.md) →
+← [Security baseline](security-baseline.md) · [Guide home](../README.md) · [Authentication flows](authentication-flows.md) →

@@ -1,7 +1,7 @@
 # Key Vault bootstrap
 
 **Learning path:** C2c · [Guide home](../README.md)  
-**← Previous:** [Access & permissions](access-and-permissions.md) · **Next:** [PII guardrails](pii-guardrails.md) →
+**← Previous:** [Authentication flows](authentication-flows.md) · **Next:** [PII guardrails](pii-guardrails.md) →
 
 **This page covers:** how the API loads secrets from Azure Key Vault at startup — who opens the vault, default secret→env mapping, and `EDIM_KV_SECRET_MAP`.
 
@@ -10,6 +10,7 @@
 | Topic | Go to |
 |-------|--------|
 | Identities U / A / B and host matrix | [Access & permissions](access-and-permissions.md) |
+| Visual auth flows (local / Apps / ACA) | [Authentication flows](authentication-flows.md) |
 | ACA managed identity warehouse/UC grants | [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
 | Full env catalog | [Environment variables](../reference/env-vars.md) |
 
@@ -236,4 +237,4 @@ Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-d
 <!-- edim-learning-nav -->
 ---
 
-← [Access & permissions](access-and-permissions.md) · [Guide home](../README.md) · [PII guardrails](pii-guardrails.md) →
+← [Authentication flows](authentication-flows.md) · [Guide home](../README.md) · [PII guardrails](pii-guardrails.md) →

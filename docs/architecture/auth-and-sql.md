@@ -10,6 +10,7 @@
 | Topic | Go to |
 |-------|--------|
 | Identities U / A / B by host | [Access & permissions](../platform/access-and-permissions.md) |
+| Visual auth flows (all services) | [Authentication flows](../platform/authentication-flows.md) |
 | Key Vault / `EDIM_KV_SECRET_MAP` | [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
 | ACA MI warehouse + UC grant steps | [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
 

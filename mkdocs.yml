@@ -79,6 +79,7 @@ nav:
       - Environments: platform/environments.md
       - Security baseline: platform/security-baseline.md
       - Access and permissions: platform/access-and-permissions.md
+      - Authentication flows: platform/authentication-flows.md
       - Key Vault bootstrap: platform/key-vault-bootstrap.md
       - PII guardrails: platform/pii-guardrails.md
       - Observability: platform/observability.md
