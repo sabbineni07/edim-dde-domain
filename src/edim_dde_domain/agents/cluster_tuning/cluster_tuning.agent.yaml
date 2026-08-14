@@ -75,6 +75,8 @@ graph:
       attach_skills: true
     - id: parse_sizing
       type: domain.tuning.parse_sizing
+    - id: validate_performance
+      type: domain.tuning.validate_performance
     - id: assess_risks
       type: domain.tuning.assess_risks
     - id: generate_recommendation
@@ -92,11 +94,18 @@ graph:
     - [normalize_metrics, prepare_sizing_payload]
     - [prepare_sizing_payload, run_sizing]
     - [run_sizing, parse_sizing]
-    - [parse_sizing, assess_risks]
+    - [validate_performance, assess_risks]
     - [assess_risks, generate_recommendation]
     - [prepare_explanation_payload, generate_explanation]
     - [generate_explanation, END]
   routes:
+    # Re-prompt sizing when retryable guardrail clamps remain (max 2 attempts).
+    - after: parse_sizing
+      when:
+        field: sizing_needs_retry
+        op: truthy
+      then: prepare_sizing_payload
+      else: validate_performance
     - after: generate_recommendation
       when:
         field: include_explanation

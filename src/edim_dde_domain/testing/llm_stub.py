@@ -28,6 +28,15 @@ def _sizing_from_text(text: str) -> str:
     util = max(peak_cpu, peak_mem)
     floor_max = int(hints_max.group(1)) if hints_max else max(2, current_max // 2)
 
+    # On guardrail retry feedback, prefer policy-compliant workers / auto_term.
+    retrying = bool(
+        re.search(
+            r"Previous recommendation violated policy|required_applied=",
+            text,
+            re.I,
+        )
+    )
+
     if util < 40:
         rec_max = max(floor_max, max(2, current_max // 2))
         family, vcpus = "E", 4
@@ -60,6 +69,9 @@ def _sizing_from_text(text: str) -> str:
             "### 3. Performance characteristics\nIn band.\n\n"
             "### 4. Optimization opportunities\nKeep current sizing."
         )
+
+    if retrying:
+        rec_max = max(rec_max, floor_max)
 
     return json.dumps(
         {

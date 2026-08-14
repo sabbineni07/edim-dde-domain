@@ -87,7 +87,12 @@ Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 |------|------|----------------|
 | **E1** | [Sources and SQL](domain/sources-and-sql.md) | Named sources + `domain.sql.query` |
 | **E2** | [Sources & SQL design (deep)](DESIGN_SOURCES_AND_SQL_NODES.md) | Why one SQL node |
-| **E3** | [Bundled agents](domain/bundled-agents.md) | `cluster_tuning`, `spark_rca` |
+| **E3** | [Bundled agents](domain/bundled-agents.md) | Map of `cluster_tuning`, `spark_rca` |
+| **E3a** | [**Agents deep dive**](domain/agents-guide.md) | Section hub — shared deps |
+| **E3b** | [Cluster tuning walkthrough](domain/cluster-tuning-agent.md) | Input → every node → TuningResponse + diagrams |
+| **E3c** | [Spark RCA walkthrough](domain/spark-rca-agent.md) | Multi-SQL → RAG → RcaResponse + diagrams |
+| **E3d** | [UC telemetry tables](domain/uc-telemetry-tables.md) | Table FQNs + attribute meanings |
+| **E3e** | [External add-ons](domain/external-addons.md) | Knowledge/RAG, ingest, Foundry, Knowledge Assistant |
 
 ### Part F — Build your own agent
 

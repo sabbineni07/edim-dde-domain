@@ -1,9 +1,11 @@
 # Bundled agents (E3)
 
 **Learning path:** E3 · [Guide home](../README.md)  
-**← Previous:** [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · **Next:** [Agent package layout](../build-agents/agent-package-layout.md) →
+**← Previous:** [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · **Next:** [Agents deep dive](agents-guide.md) →
 
 Shipped inside `edim-dde-domain` under `agents/`. Both follow [agent package layout](../build-agents/agent-package-layout.md) (`helpers/`, `content/`).
+
+> **Full walkthroughs** (input → every graph node → outputs, Mermaid diagrams, UC attributes, knowledge add-ons): start at **[Agents deep dive](agents-guide.md)**.
 
 ---
 
@@ -11,47 +13,37 @@ Shipped inside `edim-dde-domain` under `agents/`. Both follow [agent package lay
 
 | `agent_id` | Purpose | Highlights |
 |------------|---------|------------|
-| `cluster_tuning` | Job cluster sizing recommendations | SQL metrics → sizing LLM → guardrails → resource optimization % |
+| `cluster_tuning` | Job cluster sizing recommendations | SQL metrics → sizing LLM → guardrails → **optional 1 re-prompt** → performance validation → risk → recommendation |
 | `spark_rca` | Spark job root-cause analysis | SQL telemetry → evidence → classify → **runbook retrieve (RAG)** → RCA LLM |
+
+| Walkthrough | UC catalog | Add-ons |
+|-------------|------------|---------|
+| [Cluster tuning](cluster-tuning-agent.md) · [Spark RCA](spark-rca-agent.md) | [UC telemetry tables](uc-telemetry-tables.md) | [External add-ons](external-addons.md) |
 
 ---
 
-## `cluster_tuning` flow
+## Quick flow sketches
+
+### `cluster_tuning`
 
 ```text
 domain.sql.query (metrics)
-  → domain.tuning.* (feature / sizing / guardrails / risk)
-  → llm_chain (sizing, optional explanation)
-  → API projects TuningResponse
+  → prepare_sizing_payload → llm_chain(sizing) → parse_sizing (+ clamp)
+  → if retryable clamps and attempts < 2: set guardrail_feedback → loop
+  → validate_performance → assess_risks → generate_recommendation
+  → optional explanation LLM
+  → TuningResponse
 ```
 
-- **Override:** pass `metrics` in the request to skip SQL.
-- **No retrieval plane** in R1 (structured UC metrics dominate).
-
----
-
-## `spark_rca` flow (RAG pilot)
+### `spark_rca`
 
 ```text
-domain.sql.query × N (anchors, plans, logs, timeline, stages)
-  → domain.rca.assemble_evidence
-  → domain.rca.classify_failure
-  → domain.rca.build_retrieval_query
-  → rag.retrieve                 # Knowledge plane (optional)
-  → domain.rca.prepare_llm_payload   # injects runbook_context
-  → llm_chain (rca)
-  → parse / validate
-  → API projects RcaResponse
+domain.sql.query × 5 (anchors, plans, logs, timeline, stages)
+  → assemble_evidence → classify → build_retrieval_query
+  → rag.retrieve (spark-runbooks)
+  → prepare_llm_payload → llm_chain(rca) → parse → validate
+  → RcaResponse
 ```
-
-| Concern | Detail |
-|---------|--------|
-| Corpus | `spark-runbooks` (`config/corpora.yaml`) |
-| Sample docs | `knowledge/spark-runbooks/*.md` |
-| Backend | `EDIM_RETRIEVAL` — FAISS local / Azure deployed |
-| Empty index | RCA still works; prompt notes no hits |
-
-Full retrieval design: [Retrieval & RAG](../platform/retrieval-and-rag.md).
 
 ---
 
@@ -68,4 +60,4 @@ HTTP contracts: [endpoints](../api/endpoints.md).
 
 ---
 
-← [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · [Guide home](../README.md) · [Agent package layout](../build-agents/agent-package-layout.md) →
+← [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · [Guide home](../README.md) · [Agents deep dive](agents-guide.md) →

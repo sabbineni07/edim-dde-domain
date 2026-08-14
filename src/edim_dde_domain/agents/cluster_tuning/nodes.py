@@ -33,6 +33,14 @@ def parse_sizing_factory(_config: dict[str, Any]):
     return _node
 
 
+@register_node("domain.tuning.validate_performance")
+def validate_performance_factory(_config: dict[str, Any]):
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.validate_performance(state)
+
+    return _node
+
+
 @register_node("domain.tuning.assess_risks")
 def assess_risks_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:

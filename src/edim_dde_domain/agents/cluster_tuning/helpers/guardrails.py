@@ -17,6 +17,66 @@ MAX_WORKERS_MIN, MAX_WORKERS_MAX = 1, 64
 RATIONALE_MAX_LENGTH = 2000
 DEFAULT_AUTO_TERMINATION_MINUTES = 0
 
+# Max sizing LLM calls per request (1 initial + 1 re-prompt on clamp violations).
+MAX_SIZING_ATTEMPTS = 2
+
+# Adjustments the model can correct on retry. ``sku_mapped`` is deterministic
+# post-processing (LLM schema has no azure_node_type) — do not burn a retry on it.
+RETRYABLE_ADJUSTMENT_REASONS = frozenset(
+    {
+        "invalid_recommendation_object",
+        "invalid_node_family",
+        "vcpus_out_of_range",
+        "min_workers_out_of_range",
+        "max_workers_out_of_range",
+        "min_workers_above_max_workers",
+        "sizing_floor",
+        "sizing_ceiling",
+        "auto_termination_policy",
+    }
+)
+
+
+def retryable_adjustments(
+    adjustments: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return adjustments worth a sizing LLM re-prompt."""
+    return [
+        a
+        for a in adjustments
+        if isinstance(a, dict) and str(a.get("reason") or "") in RETRYABLE_ADJUSTMENT_REASONS
+    ]
+
+
+def format_guardrail_feedback(adjustments: list[dict[str, Any]]) -> str:
+    """Human-readable violation list for the sizing prompt ``guardrail_feedback`` slot."""
+    lines: list[str] = []
+    for a in retryable_adjustments(adjustments):
+        field = a.get("field", "?")
+        lines.append(
+            f"- {field}: llm_value={a.get('llm_value')!r} → "
+            f"required_applied={a.get('applied_value')!r} "
+            f"(reason={a.get('reason')})"
+        )
+    if not lines:
+        return "None"
+    return (
+        "Previous recommendation violated policy. Fix these fields and re-output "
+        "one valid JSON object:\n" + "\n".join(lines)
+    )
+
+
+def should_retry_sizing(
+    adjustments: list[dict[str, Any]],
+    *,
+    sizing_attempts: int,
+    max_attempts: int = MAX_SIZING_ATTEMPTS,
+) -> bool:
+    """True when retryable clamps remain and another LLM attempt is allowed."""
+    if sizing_attempts >= max_attempts:
+        return False
+    return bool(retryable_adjustments(adjustments))
+
 
 def _record_adjustment(
     adjustments: list[dict[str, Any]],

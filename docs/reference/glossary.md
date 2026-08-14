@@ -29,6 +29,8 @@
 | **R1** | Release 1 framework baseline (packages at `1.0.0`) |
 | **SDBX / DEV / PROD** | Current environments (UAT / INTG documented for later) |
 | **`request_id`** | Per-HTTP-call correlation id (`X-Request-Id` or generated); echoed on responses; appears on stdlib logs as `[request_id=…]` and LangSmith tags |
+| **`sizing_attempts` / `guardrail_retries`** | Cluster tuning: count of sizing LLM calls and how many were re-prompts after clamp violations (max 2 attempts) |
+| **`performance_validation`** | Cluster tuning: rule-based check that recommended capacity likely meets peak load (`meets_peak_requirements`, `estimated_impact`, …) |
 | **`cluster_tuning/recommend`** | HTTP path for the cluster sizing agent (`POST /api/v1/cluster_tuning/recommend`); replaces legacy `/api/v1/recommendations` |
 
 <!-- edim-learning-nav -->

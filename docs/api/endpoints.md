@@ -20,6 +20,27 @@ OpenAPI: `http://localhost:8080/docs` when uvicorn is running.
 
 Response models project agent state explicitly (RCA requires `result`; no full-state fallback). RCA responses may include richer fields (`job_status`, `evidence_analysis`, structured `recommendations`, cited `evidence`, `request_id`, …).
 
+### Cluster tuning — guardrail retries
+
+When the sizing LLM output violates policy (workers, vCPUs, auto-termination, …), the agent **re-prompts once** with `guardrail_feedback` (max **2** sizing LLM calls). Deterministic SKU mapping alone does not trigger a retry.
+
+| Response field | Meaning |
+|----------------|---------|
+| `sizing_attempts` | How many sizing LLM calls ran (1 or 2) |
+| `guardrail_retries` | Re-prompts after the first call (`sizing_attempts - 1`) |
+| `guardrail_adjustments` | Final clamps still applied after the last attempt (may be empty or SKU-only) |
+
+### Cluster tuning — performance validation
+
+After sizing settles, a **rule-based** `validate_performance` node checks whether recommended capacity (vCPU × max workers) is likely to meet peak load (legacy parity; no LLM). Result is projected as `performance_validation` and folded into `risk_assessment` / reason codes when it fails.
+
+| Field | Meaning |
+|-------|---------|
+| `meets_peak_requirements` | Pass/fail fitness |
+| `estimated_impact` | `maintained` or `degradation_risk` |
+| `reduction_pct` | Capacity cut vs current |
+| `reasons` | Which checks failed (if any) |
+
 ### Request id / logging
 
 | Behavior | Detail |

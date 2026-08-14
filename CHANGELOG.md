@@ -1,5 +1,11 @@
 # Changelog — edim-dde-domain
 
+## Unreleased
+
+### Added
+- Cluster tuning **guardrail retry**: one re-prompt when retryable clamps remain (`sizing_needs_retry`); max 2 sizing LLM calls; state exposes `sizing_attempts` / `guardrail_retries`
+- Cluster tuning **`validate_performance`** graph node (rule-based peak fitness) → `performance_validation` on agent state / API
+
 ## 1.0.0 — 2026-07-31 (Release 1)
 
 ### Added

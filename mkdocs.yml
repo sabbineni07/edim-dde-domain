@@ -43,7 +43,11 @@ plugins:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - tables
@@ -92,6 +96,11 @@ nav:
       - Sources and SQL: domain/sources-and-sql.md
       - Sources design (deep): DESIGN_SOURCES_AND_SQL_NODES.md
       - Bundled agents: domain/bundled-agents.md
+      - Agents deep dive: domain/agents-guide.md
+      - Cluster tuning walkthrough: domain/cluster-tuning-agent.md
+      - Spark RCA walkthrough: domain/spark-rca-agent.md
+      - UC telemetry tables: domain/uc-telemetry-tables.md
+      - External add-ons: domain/external-addons.md
   - F — Build agents:
       - Package layout: build-agents/agent-package-layout.md
       - Step-by-step: build-agents/step-by-step.md

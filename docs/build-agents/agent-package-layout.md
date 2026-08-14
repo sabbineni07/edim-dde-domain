@@ -1,7 +1,7 @@
 # Agent package layout
 
 **Learning path:** F1 · [Guide home](../README.md)
-**← Previous:** [Bundled agents](../domain/bundled-agents.md) · **Next:** [New agent step-by-step](step-by-step.md) →
+**← Previous:** [External add-ons](../domain/external-addons.md) · **Next:** [New agent step-by-step](step-by-step.md) →
 
 
 Convention for every product or plugin agent:
@@ -41,4 +41,4 @@ agents/<agent_id>/
 <!-- edim-learning-nav -->
 ---
 
-← [Bundled agents](../domain/bundled-agents.md) · [Guide home](../README.md) · [New agent step-by-step](step-by-step.md) →
+← [External add-ons](../domain/external-addons.md) · [Guide home](../README.md) · [New agent step-by-step](step-by-step.md) →
