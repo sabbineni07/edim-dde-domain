@@ -61,6 +61,42 @@ C:\work\edim\
   edim-dde-ai\
   edim-dde-domain\
   edim-dde-api\
+  docker-compose.state-store.yml   # workspace root (Postgres-only)
+```
+
+5. **Docker Desktop** (for Postgres StateStore on the host-API path). Confirm:
+
+```powershell
+docker version
+docker compose version
+```
+
+### Corporate package index / trusted host (optional but common)
+
+If your laptop installs Python packages through Artifactory, set these in the same shell before `pip install`:
+
+```powershell
+$env:PIP_INDEX_URL = "https://prod.artifactory.nfcu.net/artifactory/api/pypi/pypi/simple"
+$env:PIP_TRUSTED_HOST = "prod.artifactory.nfcu.net"
+```
+
+This setting is typically **install-time only** (pip). It is not a framework runtime requirement.
+
+### Corporate HTTP proxy (environment-dependent)
+
+If your network requires outbound proxy routing:
+
+```powershell
+$env:HTTP_PROXY = "http://binnacle.nfcu.net:8080"
+$env:HTTPS_PROXY = "http://binnacle.nfcu.net:8080"
+$env:NO_PROXY = "127.0.0.1,localhost"
+```
+
+Observed in real smoke runs: this proxy may return `407 Proxy Authentication Required` for Databricks/Azure SDK paths unless proxy auth is fully configured for Python runtime traffic. If you see 407, clear proxy vars for the smoke shell and use a direct path approved by your network team.
+
+```powershell
+Remove-Item Env:HTTP_PROXY -ErrorAction SilentlyContinue
+Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
 ```
 
 ---
@@ -76,7 +112,7 @@ python -m pip install -U pip
 pip install -r requirements.txt
 pip install -e ".[dev]"
 pip install -e "..\edim-dde-domain[azure,databricks,llm,dev]"
-pip install -e "..\edim-dde-ai[dev,schema]"
+pip install -e "..\edim-dde-ai[dev,schema,postgres]"
 ```
 
 If PowerShell blocks scripts:
@@ -124,6 +160,20 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 # DATABRICKS_SPARK_LOGS_TABLE=catalog.schema.spark_logs
 ```
 
+If using Key Vault bootstrap, verify secret-map order is:
+
+```text
+EDIM_KV_SECRET_MAP=ENV_VAR_NAME:vaultSecretName
+```
+
+Example:
+
+```text
+EDIM_KV_SECRET_MAP=EDIM_FOUNDRY_CLIENT_ID:DLABS-DIM-ADB-APP-AIF-APPID,EDIM_FOUNDRY_CLIENT_SECRET:DLABS-DIM-ADB-APP-AIF-APPKEY
+```
+
+Do not reverse this order.
+
 Load into the **same** PowerShell that will run uvicorn:
 
 ```powershell
@@ -157,6 +207,53 @@ $env:EDIM_STRICT_STARTUP = "1"
 
 ## Step 5 — Start API
 
+### 5a — Recommended: Postgres in Docker + API on laptop (`az login` works)
+
+This is the path when Docker cannot run `az login` (proxy/kernel). Postgres runs in a container; uvicorn runs in PowerShell and uses your host Azure CLI.
+
+**Terminal 1 — Postgres:**
+
+```powershell
+cd C:\work\edim
+docker compose -f docker-compose.state-store.yml up -d
+docker compose -f docker-compose.state-store.yml ps
+# wait until postgres is healthy / pg_isready
+```
+
+**Terminal 2 — API (after Steps 3–4 + `az login`):**
+
+```powershell
+cd C:\work\edim\edim-dde-api
+.\.venv\Scripts\Activate.ps1
+# env already loaded from Step 4
+$env:EDIM_STATE_STORE = "postgres"
+$env:EDIM_DATABASE_URL = "postgresql://edim:edim@127.0.0.1:5432/edim"
+# optional — inherits state store if unset:
+# $env:EDIM_RECOMMENDATION_STORE = "postgres"
+
+uvicorn edim_dde_api.main:app --reload --port 8080
+```
+
+**Git Bash alternative** (if you have `make`):
+
+```bash
+cd /c/work/edim/edim-dde-api
+source .venv/Scripts/activate
+az login
+make host-run
+```
+
+Leave the API window open. Open a **third** PowerShell for curls (Step 6).
+
+When finished: `Ctrl+C` in the API window, then:
+
+```powershell
+cd C:\work\edim
+docker compose -f docker-compose.state-store.yml down
+```
+
+### 5b — API only (in-memory store — no Docker)
+
 ```powershell
 cd C:\work\edim\edim-dde-api
 .\.venv\Scripts\Activate.ps1
@@ -170,10 +267,17 @@ Leave this window open. Open a **second** PowerShell for curls.
 
 ## Step 6 — Validate (dry smoke)
 
-### 5.1 Health
+### 6.1 Health
 
 ```powershell
 curl.exe -sS http://127.0.0.1:8080/health
+```
+
+Expect JSON with `"status":"ok"`. If you used Step 5a (Postgres):
+
+```text
+"state_store": "postgres"
+"recommendation_store": "postgres"
 ```
 
 Or:
@@ -185,7 +289,7 @@ Invoke-RestMethod http://127.0.0.1:8080/health | ConvertTo-Json -Depth 5
 **Pass:** `"status": "ok"` and agents list includes `cluster_tuning`, `spark_rca`.  
 Browser OpenAPI: http://127.0.0.1:8080/docs
 
-### 5.2 Dry cluster tuning (Foundry yes, SQL skipped via `metrics`)
+### 6.2 Dry cluster tuning (Foundry yes, SQL skipped via `metrics`)
 
 Save body to a file to avoid PowerShell quoting pain:
 
@@ -216,10 +320,16 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend `
 ```
 
 **Pass:** HTTP 200, JSON has `recommendation`, `risk_assessment` / `reason_codes`.  
+With Step 5a Postgres: also expect `recommendation_id` + `recommendation_status` = `proposed`, then:
+
+```powershell
+curl.exe -sS "http://127.0.0.1:8080/api/v1/cluster_tuning/recommendations?job_id=dry-job-1"
+```
+
 **Fail 503 `FOUNDRY_LLM_NOT_CONFIGURED`:** fix endpoint / `az login` / deployment name.  
 **Tip:** response header `X-Request-Id` matches log lines `[request_id=…]` if you need to debug.
 
-### 5.3 Dry Spark RCA
+### 6.3 Dry Spark RCA
 
 ```powershell
 @'
@@ -287,8 +397,9 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend `
 
 - [ ] `az login` OK on this laptop  
 - [ ] `.env` / env vars set (Foundry at minimum)  
+- [ ] *(recommended)* Docker Postgres up; `/health` shows `state_store`/`recommendation_store` = `postgres`  
 - [ ] `/health` OK  
-- [ ] Dry tuning 200  
+- [ ] Dry tuning 200 (+ `recommendation_id` if Postgres)  
 - [ ] Dry RCA 200  
 - [ ] *(optional)* Live tuning 200  
 - [ ] *(optional)* Live RCA 200  
@@ -307,6 +418,8 @@ If blocked, send: mode, `/health` JSON, HTTP status, `error_code`, request id �
 | JSON quoting hell | Use `--data-binary "@file.json"` as above |
 | uvicorn not found | Activate venv; `pip install uvicorn` via api requirements |
 | Port 8080 in use | `--port 8081` and change URLs |
+| Docker / Postgres fail | Start Docker Desktop; `docker compose -f ..\docker-compose.state-store.yml ps`; free port 5432 |
+| `psycopg` missing | `pip install -e "..\edim-dde-ai[postgres]"` |
 | Foundry 503 | Re-check endpoint (no trailing path mistakes), deployment **name**, `az account show` |
 
 ---

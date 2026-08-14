@@ -73,6 +73,10 @@ Copy this table and fill values with your team / Azure / Databricks admins. **Do
 | Key Vault URL | Azure Portal → Key Vault | `AZURE_KEY_VAULT_URL` + `EDIM_KV_SECRET_MAP` |
 | Apps forwarded token | Only when calling a **deployed** Databricks App | Header `X-Forwarded-Access-Token` (gateway sets this; you don’t invent it locally) |
 
+`EDIM_KV_SECRET_MAP` pair order is `ENV_VAR_NAME:vaultSecretName`.
+Example: `EDIM_FOUNDRY_CLIENT_ID:DLABS-DIM-ADB-APP-AIF-APPID`.
+Do not reverse it.
+
 ---
 
 ## 3. Local machine setup
@@ -129,6 +133,33 @@ set -a && source ../edim-dde-domain/.env && set +a
 ```
 
 **Option B — export manually** (see checklist §2).
+
+### 3.4a Corporate pip index / trusted host (optional)
+
+If your org routes package installs through Artifactory, set these before `pip install`:
+
+```bash
+export PIP_INDEX_URL='https://prod.artifactory.nfcu.net/artifactory/api/pypi/pypi/simple'
+export PIP_TRUSTED_HOST='prod.artifactory.nfcu.net'
+```
+
+This is usually install-time only (pip), not a framework runtime requirement.
+
+### 3.4b Corporate HTTP proxy (optional, environment-dependent)
+
+If outbound traffic must go through a corporate proxy:
+
+```bash
+export HTTP_PROXY='http://binnacle.nfcu.net:8080'
+export HTTPS_PROXY='http://binnacle.nfcu.net:8080'
+export NO_PROXY='127.0.0.1,localhost'
+```
+
+Observed during live smoke validation: proxy routing can fail with `407 Proxy Authentication Required` for Databricks/Azure SDK token-exchange paths unless proxy auth is fully configured for Python runtime traffic. If you hit 407, run the smoke shell without proxy vars (or use a network-approved direct route):
+
+```bash
+unset HTTP_PROXY HTTPS_PROXY
+```
 
 **Auth:**
 

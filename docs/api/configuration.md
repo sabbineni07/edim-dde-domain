@@ -23,6 +23,36 @@ export AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 
 Template: `edim-dde-domain/.env.example`.
 
+## Corporate network quick profile (optional)
+
+Use this profile when your laptop is behind a corporate package mirror and outbound proxy.
+
+```bash
+# Install-time (pip)
+export PIP_INDEX_URL='https://prod.artifactory.nfcu.net/artifactory/api/pypi/pypi/simple'
+export PIP_TRUSTED_HOST='prod.artifactory.nfcu.net'
+
+# Runtime (only when required by your network)
+export HTTP_PROXY='http://binnacle.nfcu.net:8080'
+export HTTPS_PROXY='http://binnacle.nfcu.net:8080'
+export NO_PROXY='127.0.0.1,localhost'
+```
+
+Observed during live smoke: runtime proxy paths can return `407 Proxy Authentication Required` for Databricks/Azure SDK token-exchange calls unless proxy auth is fully configured for Python runtime traffic. If this occurs, run smoke from a shell without proxy vars (or use your network-approved direct route).
+
+```bash
+unset HTTP_PROXY HTTPS_PROXY
+```
+
+If using Key Vault bootstrap, keep `EDIM_KV_SECRET_MAP` in `ENV_VAR_NAME:vaultSecretName` order.
+Example:
+
+```text
+EDIM_KV_SECRET_MAP=EDIM_FOUNDRY_CLIENT_ID:DLABS-DIM-ADB-APP-AIF-APPID,EDIM_FOUNDRY_CLIENT_SECRET:DLABS-DIM-ADB-APP-AIF-APPKEY
+```
+
+Do not reverse the pair order.
+
 ## API-specific
 
 ```bash

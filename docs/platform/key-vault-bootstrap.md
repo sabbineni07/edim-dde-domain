@@ -49,12 +49,19 @@ Maps **process environment variable names** ← **Key Vault secret names** at AP
 ENV_VAR_NAME:vaultSecretName,OTHER_ENV:otherSecret
 ```
 
+Common mistake to avoid:
+
+```text
+vaultSecretName:ENV_VAR_NAME   # wrong
+```
+
 **Rules:**
 
 - Only applies when `AZURE_KEY_VAULT_URL` is set (otherwise bootstrap is skipped).
 - Existing env values are **not** overwritten unless `EDIM_KV_FORCE=1`.
 - Vault secret **names** are whatever you created in the vault.
 - Env names must match what EDIM reads (`EDIM_FOUNDRY_*`, `LANGCHAIN_API_KEY`, …).
+- Pair direction is always `ENV_VAR_NAME:vaultSecretName`.
 
 ---
 
