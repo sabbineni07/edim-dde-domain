@@ -307,6 +307,24 @@ def sizing_hints_for_llm(hints: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Utilization / capacity / SKU fields that count as evidence for reason codes.
+# Request-level job_id / cluster_id alone are identifiers, not sizing evidence.
+_REASON_CODE_SIGNAL_KEYS = (
+    "azure_worker_vm_size",
+    "max_worker_nodes_provisioned",
+    "avg_worker_nodes_consumed",
+    "p99_worker_nodes_consumed",
+    "peak_worker_cpu_utilization_pct",
+    "peak_worker_memory_utilization_pct",
+    "avg_worker_cpu_utilization_pct",
+    "avg_worker_memory_utilization_pct",
+)
+
+
+def _has_sizing_signal(ingest: dict[str, Any]) -> bool:
+    return any(ingest.get(key) not in (None, "") for key in _REASON_CODE_SIGNAL_KEYS)
+
+
 def infer_reason_codes(
     ingest: dict[str, Any],
     recommendation: dict[str, Any],
@@ -314,13 +332,19 @@ def infer_reason_codes(
     change_required: bool = True,
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> list[str]:
+    """Derive machine-readable reason codes from metrics + recommendation.
+
+    ``INSUFFICIENT_EVIDENCE`` means the metrics row has no usable utilization,
+    capacity, or SKU signal — not that ``job_id`` / ``cluster_id`` were missing.
+    Identifiers may live on the request while ``metrics`` is an override blob.
+    """
+    if not _has_sizing_signal(ingest):
+        return ["INSUFFICIENT_EVIDENCE"]
+
     hints = compute_sizing_hints(
         ingest, resource_pressure_config=resource_pressure_config
     )
     codes: list[str] = []
-
-    if not ingest.get("cluster_id") and not ingest.get("job_id"):
-        return ["INSUFFICIENT_EVIDENCE"]
 
     pressure = hints.get("resource_pressure") or {}
     for name, details in (pressure.get("dimensions") or {}).items():

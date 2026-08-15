@@ -181,6 +181,37 @@ YAML block once at bootstrap (`bootstrap._cluster_tuning_pressure_config()`) and
 passes it to those registrations. That keeps offline indexing and scoring aligned
 with the agent's live policy while the framework contract stays generic.
 
+??? note "In depth (optional) — agent authors — register a domain node end-to-end"
+
+    §5–6 above are the contract. This recipe is the checklist when adding a new
+    `domain.*` type.
+
+    1. **Choose a type id** under your pack (`domain.tuning.*`, `domain.rca.*`,
+       or a new prefix). Unregistered ids fail at graph build — that is intentional.
+    2. **Write a factory** in `agents/<pack>/nodes.py`:
+
+        ```python
+        @register_node("domain.my.step")
+        def my_step_factory(config: dict):
+            knob = config.get("my_knob", "default")
+            def _node(state: dict) -> dict:
+                return {"my_out": f"{knob}:{state.get('in')}"}
+            return _node
+        ```
+
+    3. **Reference it from YAML** with only the knobs *this* factory reads. Extra
+       keys are silently ignored by the framework.
+    4. **Put shared policy on state** when later nodes or offline tools need it
+       (see the `resource_pressure_config` pattern). Do not expect other factories
+       to read this node's YAML.
+    5. **Import the nodes module** from domain bootstrap (`_import_packaged_agent_nodes`
+       already loads `agents/*/nodes.py`).
+    6. **Test** the factory in isolation (config → closed-over behavior) and with a
+       small graph invoke if routing depends on the new state keys.
+
+    Prefer extending an existing node's config over inventing a new type when the
+    topology does not change.
+
 ---
 
 ← [YAML agents](yaml-agents.md) · [Guide home](../README.md) · [Conditional edges](conditional-edges.md) →

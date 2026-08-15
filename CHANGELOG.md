@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+- Cluster tuning **reason codes on metrics override**: `INSUFFICIENT_EVIDENCE` now means
+  no usable utilization/SKU/capacity signal (not missing `job_id`/`cluster_id` in the
+  metrics blob); `generate_recommendation` also merges request-level IDs into the local
+  metrics view so override paths keep full pressure reason codes
+
 ### Added
 - Cluster tuning **guardrail retry**: one re-prompt when retryable clamps remain (`sizing_needs_retry`); max 2 sizing LLM calls; state exposes `sizing_attempts` / `guardrail_retries`
 - Cluster tuning **`validate_performance`** graph node (rule-based peak fitness) → `performance_validation` on agent state / API
@@ -16,6 +22,7 @@
 - Engineer guide: **§6b deep-dive** in `docs/platform/retrieval-and-rag.md` — store ranking (two-shelf `select_history_records`, `similarity_score` weights/scales table + SKU-family gotcha), index-build internals (hashing embedder, one-vector-per-file, `.faiss`/`.meta.json`), and the heuristic-vs-embeddings design choice; fixed the FAISS index snippet arg (`source_dir`) and the stale `historical_context` row in `docs/domain/cluster-tuning-agent.md`
 - Engineer guide: **node-local config abstraction** — `docs/framework/nodes-and-routers.md` §5–6 (config opaque to framework; build-time closure → state hand-off; non-graph-consumer bootstrap load) and the `resource_pressure` YAML/state single-source-of-truth block in `docs/domain/cluster-tuning-agent.md` Step C/D
 - Engineer guide: **collapsible in-depth pressure deep-dive** in `docs/domain/cluster-tuning-agent.md` — design rationale (pressure axes vs named scenarios; pressure ≠ failure; role separation), full `resource_pressure` parameter reference, "add a disk/spill dimension" recipe, the honest no-code-changes boundary, and `history_*` knob reference
+- Engineer guide: **selective collapsible deep-dives** also on `spark-rca-agent.md` (evidence_pack / taxonomy), `evaluation-and-quality.md` (new Evaluator), `recommendation-store.md` (backend + experience wrap), `nodes-and-routers.md` (register domain node); house style recorded in `BACKLOG.md` for future sections
 
 ## 1.0.0 — 2026-07-31 (Release 1)
 

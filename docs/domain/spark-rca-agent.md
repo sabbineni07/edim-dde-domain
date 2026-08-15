@@ -197,6 +197,44 @@ Missing `result` after invoke → HTTP 500 (no silent full-state dump).
 
 ---
 
+??? note "In depth (optional) — agent authors — evidence_pack vs live SQL, and extending the taxonomy"
+
+    Read this when you are dry-testing RCA, adding failure categories, or deciding
+    whether a new signal belongs in classify vs runbooks.
+
+    **Live SQL vs `evidence_pack`.** With no override, Steps A–E each run a SQL
+    collector against the Spark metrics/logs UC tables; Step F assembles the pack.
+    When the request includes `evidence_pack`, **all five collectors are skipped**
+    and the supplied pack is used as-is (same shape the API projector later
+    returns). Use that for CI, Windows smoke, and demos without warehouse access.
+    The classify / RAG / LLM path is unchanged either way.
+
+    **Where signals live.**
+
+    | Layer | Owns | Extend by |
+    |-------|------|-----------|
+    | `helpers/classify.py` | Coarse category hint (`resource`, `timeout_or_cancel`, `config`, `unknown`, …) from regexes over anchors / error text | Add a pattern + category return; keep confidence honest |
+    | `knowledge/spark-runbooks/` | Human playbooks retrieved into `runbook_context` | New markdown + re-index; no Python |
+    | RCA skills / prompts | How the LLM weighs evidence + citations | Content under `agents/spark_rca/content/` |
+    | `validate_output` | Structural clamps on the LLM JSON | Only when the response schema grows |
+
+    **OOM / memory as an example, not a peer of cluster-tuning pressure.** RCA
+    may treat OOM language as **failure evidence** because the job failed and
+    logs/anchors say so. That is the opposite of cluster-tuning, which must not
+    invent OOM from high utilization alone. Keep the taxonomies separate: RCA =
+    why it failed; tuning = how to right-size from metrics.
+
+    **Adding a category without a new node type.** Prefer: (1) a classify regex +
+    category, (2) a runbook page whose keywords match the retrieval query, (3)
+    skill text that tells the LLM how to cite that runbook. Only introduce a new
+    `domain.rca.*` node when the graph topology itself must change (extra collect,
+    new validation gate, etc.).
+
+    Empty retrieval is intentional: the LLM still runs with an explicit “no
+    runbook hits” note so synthesis never silently pretends grounding existed.
+
+---
+
 ## 6. Knowledge path (detail)
 
 ```mermaid

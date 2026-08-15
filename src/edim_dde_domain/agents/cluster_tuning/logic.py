@@ -280,7 +280,13 @@ def assess_risks(state: dict[str, Any]) -> dict[str, Any]:
 def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
     sizing = state.get("sizing") or {}
     risk = state.get("risk_assessment") or {}
-    metrics = state.get("metrics") or {}
+    # Metrics override blobs often omit job_id/cluster_id (those live on the
+    # request). Copy request IDs into the local metrics view so reason-code /
+    # downstream consumers see a complete row without mutating agent state.
+    metrics = dict(state.get("metrics") or {})
+    for key in ("job_id", "cluster_id"):
+        if not metrics.get(key) and state.get(key):
+            metrics[key] = state[key]
 
     current_type = str(sizing.get("current_node_type") or "")
     recommended_type = str(sizing.get("recommended_node_type") or "")

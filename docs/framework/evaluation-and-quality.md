@@ -39,6 +39,45 @@ print(result.to_dict())
 The seam supports deterministic rubrics today and an LLM-as-judge or
 MLflow/LangSmith evaluator later without changing callers.
 
+??? note "In depth (optional) — agent authors — writing a new Evaluator"
+
+    Use this when adding a quality gate for another agent (or a second tuning
+    rubric). Operators only need §1–3 and §4's golden-case checklist.
+
+    **Framework contract.** Implement `Evaluator` (`name` + `evaluate(inputs,
+    output, context) → EvaluationResult`). Register at domain bootstrap with
+    `register_evaluator(...)`. Callers always use `evaluate("…")` so swapping a
+    deterministic rubric for an LLM judge later does not change CI wiring.
+
+    **What belongs in each field.**
+
+    | Field | Meaning |
+    |-------|---------|
+    | `score` | Weighted rubric quality in `[0, 1]` |
+    | `confidence` | How complete/reliable the *evaluator's* evidence was — never the LLM's self-report |
+    | `passed` | Gate for CI (e.g. score ≥ threshold **and** contract dimension = 1.0) |
+    | `dimensions` | Named partial scores for diagnosis |
+    | `findings` | Human-readable failure reasons |
+    | `metadata` | Threshold, confidence definition, policy version |
+
+    **Recipe.**
+
+    1. Add `edim_dde_domain/evaluation/<agent>.py` with a class implementing the
+       protocol.
+    2. Prefer **config-driven direction checks** (pass policy via constructor or
+       `context`) over hard-coded scenario `if/else` — see
+       `ClusterTuningQualityEvaluator` + YAML `resource_pressure`.
+    3. Register from `bootstrap._register_evaluators()`.
+    4. Add golden cases under `tests/test_<agent>_quality.py` that lock the axes
+       you care about (not a closed scenario enum).
+    5. Document the rubric dimensions in this guide (or a short agent-local
+       subsection).
+
+    **Confidence definition to copy.** Start with
+    `0.7 × critical-input completeness + 0.3 × rubric-dimension coverage` and
+    document it in `metadata["confidence_definition"]`. Calibrating that number
+    against accepted/applied outcomes is Phase 2 work (see backlog).
+
 ## 3. Cluster-tuning rubric
 
 `ClusterTuningQualityEvaluator` scores five dimensions:

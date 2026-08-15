@@ -12,8 +12,15 @@ from edim_dde_domain.agents.cluster_tuning.helpers.guardrails import (
 from edim_dde_domain.agents.cluster_tuning.helpers.resource_optimization import (
     estimate_resource_optimization,
 )
-from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import compute_sizing_hints
-from edim_dde_domain.agents.cluster_tuning.logic import parse_sizing, prepare_sizing_payload
+from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import (
+    compute_sizing_hints,
+    infer_reason_codes,
+)
+from edim_dde_domain.agents.cluster_tuning.logic import (
+    generate_recommendation,
+    parse_sizing,
+    prepare_sizing_payload,
+)
 
 
 def test_compute_sizing_hints_low_util():
@@ -216,3 +223,69 @@ def test_estimate_resource_optimization_upsize_is_negative():
         recommended_max_workers=4,
     )
     assert opt["resource_optimization_pct"] == -100.0
+
+
+def test_infer_reason_codes_without_ids_still_emits_pressure():
+    """Metrics-override blobs often omit job_id/cluster_id; that is not 'no evidence'."""
+    codes = infer_reason_codes(
+        {
+            "azure_worker_vm_size": "Standard_D8s_v5",
+            "max_worker_nodes_provisioned": 10,
+            "avg_worker_nodes_consumed": 8.0,
+            "p99_worker_nodes_consumed": 10.0,
+            "peak_worker_cpu_utilization_pct": 45,
+            "peak_worker_memory_utilization_pct": 94,
+        },
+        {"node_family": "E", "recommended_max_workers": 10},
+        change_required=True,
+    )
+    assert "INSUFFICIENT_EVIDENCE" not in codes
+    assert "RESOURCE_PRESSURE_MEMORY_SATURATED" in codes
+    assert "CAPACITY_HEADROOM_LOW" in codes
+    assert "RESOURCE_SHAPE_CHANGED" in codes
+
+
+def test_infer_reason_codes_empty_metrics_is_insufficient():
+    assert infer_reason_codes({}, {"node_family": "D"}) == ["INSUFFICIENT_EVIDENCE"]
+    assert infer_reason_codes(
+        {"job_id": "j-1", "cluster_id": "c-1"},
+        {"node_family": "D"},
+    ) == ["INSUFFICIENT_EVIDENCE"]
+
+
+def test_generate_recommendation_merges_request_ids_into_metrics_view():
+    out = generate_recommendation(
+        {
+            "job_id": "j-override-1",
+            "cluster_id": "c-override-1",
+            "metrics": {
+                "azure_worker_vm_size": "Standard_D8s_v5",
+                "max_worker_nodes_provisioned": 16,
+                "avg_worker_nodes_consumed": 3.0,
+                "p99_worker_nodes_consumed": 5.0,
+                "peak_worker_cpu_utilization_pct": 22,
+                "peak_worker_memory_utilization_pct": 31,
+            },
+            "sizing": {
+                "current_node_type": "Standard_D8s_v5",
+                "recommended_node_type": "Standard_D8ads_v6",
+                "node_family": "D",
+                "vcpus": 8,
+                "current_max_workers": 16,
+                "recommended_min_workers": 0,
+                "recommended_max_workers": 6,
+                "min_workers": 0,
+                "auto_termination_minutes": 0,
+            },
+            "risk_assessment": {"risk_level": "low"},
+            "performance_validation": {"meets_peak_requirements": True},
+            "sizing_hints_full": {},
+        }
+    )
+    codes = out["recommendation"]["reason_codes"]
+    assert "INSUFFICIENT_EVIDENCE" not in codes
+    assert any(c.startswith("RESOURCE_PRESSURE_") for c in codes)
+    assert any(c.startswith("CAPACITY_HEADROOM_") for c in codes)
+    # Request IDs must not be written back into state metrics by side effect —
+    # generate_recommendation only returns recommendation/comparison.
+    assert set(out.keys()) >= {"recommendation", "comparison"}

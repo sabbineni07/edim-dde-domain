@@ -123,7 +123,40 @@ Persist failures are logged once and **do not** fail the recommend HTTP 200.
 
 Document model: `RecommendationRecord` (`edim_dde_ai.recommendations.models`).
 
----
+??? note "In depth (optional) — platform engineers — new backend + experience-index wrap"
+
+    Read this when adding a store backend or debugging why history rows appear in
+    retrieval. Day-to-day API use only needs §3–5.
+
+    **Add a backend (Strategy + Factory).**
+
+    1. Implement `RecommendationStore` (+ usually inherit
+       `RecommendationStatusMixin` for shared lifecycle).
+    2. Register it in `create_recommendation_store` /
+       `configure_recommendation_store_from_env`.
+    3. Reuse `edim_dde_ai.store.connection_env` for DSN/Cosmos/Redis so StateStore
+       and RecommendationStore stay aligned.
+    4. Document the env selector in [Env vars](../reference/env-vars.md) and the
+       backend table in §4 above.
+    5. Prefer **inherit from `EDIM_STATE_STORE`** unless history must diverge
+       deliberately (`none` while catalog stays on Postgres is the common case).
+
+    **Experience index is a Decorator, not a second store.**
+    `set_recommendation_store` wraps every backend in `ExperienceIndexingStore`.
+    On `save` / `update_status` it:
+
+    - looks up an `ExperienceTransform` for `record.agent_id`;
+    - upserts a derived feature/action card into the active `RetrievalProvider`
+      (corpus from the transform); or
+    - deletes the card when status is `rejected` / `superseded`.
+
+    Failures log and never fail the HTTP recommend path. With
+    `EDIM_RETRIEVAL=none` or no registered transform, wrapping is a no-op on the
+    index side. The store remains the system of record; vectors are a derived
+    view. Details: [Retrieval & RAG §6c](retrieval-and-rag.md#6c-experience-index-platform-all-future-agents).
+
+    **Do not** put vector search inside RecommendationStore itself — that would
+    break plug-and-play backends and mix product history with retrieval.
 
 ## 7. What this store is *not*
 
