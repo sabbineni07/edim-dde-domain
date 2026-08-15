@@ -70,7 +70,14 @@ def test_classify_resource_and_sql():
         {
             "raw_anchors": {"failure_reason": "Executor OutOfMemoryError: Java heap space"},
             "evidence": [{"excerpt": "Java heap space"}],
-        }
+        },
+        signal_groups=[
+            {
+                "category": "resource",
+                "confidence": 0.7,
+                "patterns": ["OutOfMemory|Java heap space"],
+            }
+        ],
     )
     assert oom["category"] == "resource"
 

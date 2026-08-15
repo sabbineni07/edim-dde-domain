@@ -12,6 +12,13 @@ corpora:
     # provider: databricks_vector
     # databricks_index: catalog.schema.spark_runbooks_vs
 
+  spark-rca-outcomes:
+    description: >
+      Derived failure-feature / diagnosis / action cards from persisted spark_rca
+      lifecycle records. Retrieved by evidence-feature similarity across jobs;
+      job_id and job_run_id remain metadata for exact entity-history views.
+    azure_index: spark-rca-outcomes
+
   cluster-tuning-guidance:
     description: >
       Cluster sizing / rightsizing playbooks for cluster_tuning historical_context

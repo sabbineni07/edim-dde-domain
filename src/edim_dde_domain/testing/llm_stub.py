@@ -110,7 +110,7 @@ def _rca_from_text(text: str) -> str:
         category, confidence = "resource", 0.85
         summary = "Likely executor/driver OOM based on evidence."
         actions = [
-            "Inspect executor memory and spill metrics",
+            "Inspect executor memory, GC, and spill metrics for the failed stage",
             "Re-run with additional logging",
         ]
     elif (
@@ -120,18 +120,24 @@ def _rca_from_text(text: str) -> str:
     ):
         category, confidence = "sql_error", 0.8
         summary = "Likely SQL/analysis error based on evidence."
-        actions = ["Verify table names and schema", "Re-run with additional logging"]
+        actions = [
+            "Verify catalog, schema, and table identifiers used by the failed query",
+            "Re-run with additional logging",
+        ]
     elif any(k in lower for k in ("timeout", "cancelled")):
         category, confidence = "timeout_or_cancel", 0.7
         summary = "Likely timeout or cancel based on evidence."
         actions = [
-            "Check job timeouts and cancel signals",
+            "Check workflow timeout policy and the actor that issued cancellation",
             "Re-run with additional logging",
         ]
     else:
         category, confidence = "unknown", 0.4
         summary = "Insufficient evidence for a precise root cause."
-        actions = ["Inspect full failure_reason/stack", "Re-run with additional logging"]
+        actions = [
+            "Collect the complete failure reason and first causal stack frame",
+            "Re-run with additional logging",
+        ]
 
     refs = re.findall(r'"ref"\s*:\s*"([^"]+)"', text)
     return json.dumps(
@@ -149,14 +155,29 @@ def _rca_from_text(text: str) -> str:
                 "metric_anomalies": "",
                 "physical_plan_bottlenecks": "",
             },
+            "possible_causes": [],
             "contributing_factors": [summary],
             "recommended_actions": actions,
             "recommendations": {
-                "code_query_rewrites": [],
+                "code_query_rewrites": [actions[0]],
                 "spark_delta_configs": [],
                 "infrastructure": [],
             },
             "evidence_refs": refs[:8],
+            "context_assessment": {
+                "runbooks": (
+                    "not used"
+                    if "no runbook hits" in lower
+                    else "corroborated the evidence-based diagnosis"
+                ),
+                "history": (
+                    "not used"
+                    if "no prior rca history" in lower
+                    else "corroborated the evidence feature pattern"
+                ),
+                "web": "not used",
+                "web_citations": [],
+            },
             "timeline_highlights": [],
         }
     )

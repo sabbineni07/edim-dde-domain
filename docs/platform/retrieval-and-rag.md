@@ -260,13 +260,13 @@ RecommendationStore.save / update_status
 ExperienceTransform(agent_id)   ← domain “index parser”
         │
         ▼
-ExperienceDocument (resource features + action text + metadata)
+ExperienceDocument (domain features + diagnosis/action text + metadata)
         │  upsert doc_id = recommendation_id
         ▼
 RetrievalProvider corpus (e.g. cluster-tuning-outcomes)
         │
         ▼
-search_corpus(query from live features) → de-duped hits → sizing prompt
+search_corpus(query from live features) → de-duped hits → agent prompt
 ```
 
 ### Layers (do not collapse)
@@ -274,7 +274,7 @@ search_corpus(query from live features) → de-duped hits → sizing prompt
 | Layer | Role |
 |-------|------|
 | **RecommendationStore** | System of record — lifecycle, PATCH, exact job history |
-| **ExperienceDocument** | Derived card — configured pressure features + action text for similarity |
+| **ExperienceDocument** | Derived card — domain features + diagnosis/action text for similarity |
 | **RetrievalProvider** | Same FAISS / Azure / Databricks backends as runbooks |
 
 ### Index parser (`ExperienceTransform`)
@@ -305,6 +305,15 @@ Outcome: applied
 
 6. Put `job_id` / `cluster_id` / `recommendation_id` / `status` in **metadata** (entity filters for chat), not as the retrieval key.
 
+For `spark_rca` (`helpers/experience_transform.py`), the same platform path
+extracts open evidence features: broad hint/final categories, evidence-channel
+presence, source types, and bounded technical signature tokens. It stores the
+diagnosis, evidence analysis, and recommended actions in `spark-rca-outcomes`.
+`job_id` / `job_run_id` remain metadata and exact-history filters; they are not
+similarity keys. Unlike tuning, RCA indexes cross-job precedent only after
+status `accepted` or `applied`. Proposed RCA rows stay in exact entity history
+but do not teach an unreviewed diagnosis to future runs.
+
 ### Resource-pressure configuration
 
 Thresholds and dimension definitions live on the
@@ -326,10 +335,12 @@ failure require their own explicit event/metric/log evidence.
 
 | Status | Experience index |
 |--------|------------------|
-| `proposed`, `accepted`, `applied` | **Upsert** (idempotent by `recommendation_id`) |
+| `proposed`, `accepted`, `applied` | Platform asks the domain transform to upsert; the transform may apply a stricter acceptance gate |
 | `rejected`, `superseded` | **Delete** from the corpus |
 
-`proposed` is indexed so local demos work before anyone PATCHes accepted/applied; metadata `status` remains available for future boosts.
+Cluster tuning indexes `proposed` for cold-start demos. Spark RCA deliberately
+returns no experience document for `proposed`; only reviewed `accepted` /
+`applied` diagnoses become cross-job precedent.
 
 Wiring: `set_recommendation_store` wraps backends in `ExperienceIndexingStore` so every `save` / `update_status` updates the index. Failures log and never fail the HTTP path. No-op when `EDIM_RETRIEVAL=none` or no transform is registered.
 
@@ -377,6 +388,32 @@ Chat / “explain job X”:
   RecommendationStore.list(job_id=X)   ← entity path
   optional: search outcomes with filter metadata.job_id=X
 ```
+
+---
+
+## 6d. Optional public-web enrichment
+
+Public web search is a separate provider plane, not a RetrievalProvider corpus.
+`edim_dde_ai.web` defines a `WebSearchProvider` Strategy, registry, Null Object,
+deterministic memory provider, and `http_json` adapter. The generic
+`web.search` node reads one pre-sanitized query key and emits bounded normalized
+hits plus citation-ready context.
+
+Safety is split deliberately:
+
+| Layer | Responsibility |
+|-------|----------------|
+| Domain query builder | Decide trigger; remove raw logs, SQL, paths, IDs, table names, and arbitrary text |
+| YAML node config | Enable/disable, `top_k`, allowed domains |
+| Host environment | Select/provider endpoint/API key |
+| Prompt/skills | Treat snippets as untrusted data; never as instructions or current-run evidence |
+| Validator/evaluator | Drop unsupplied URLs; reject external-only diagnosis |
+
+`build_web_search_query.enabled` is the RCA feature flag and defaults to false.
+It emits a blank query, so `web.search` performs no provider call. Provider
+errors return explicit empty context and do not fail RCA. See
+[Spark RCA agent](../domain/spark-rca-agent.md) and
+[Env vars](../reference/env-vars.md).
 
 ---
 

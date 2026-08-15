@@ -242,10 +242,14 @@ def _register_experience_transforms() -> None:
         from edim_dde_domain.agents.cluster_tuning.helpers.experience_transform import (
             register_cluster_tuning_experience_transform,
         )
+        from edim_dde_domain.agents.spark_rca.helpers.experience_transform import (
+            register_spark_rca_experience_transform,
+        )
 
         register_cluster_tuning_experience_transform(
             _cluster_tuning_pressure_config()
         )
+        register_spark_rca_experience_transform()
     except Exception as exc:  # noqa: BLE001
         logger.warning("experience transform registration skipped/failed: %s", exc)
 
@@ -253,9 +257,13 @@ def _register_experience_transforms() -> None:
 def _register_evaluators() -> None:
     """Register domain quality rubrics with the framework evaluator registry."""
     try:
-        from edim_dde_domain.evaluation import register_cluster_tuning_evaluator
+        from edim_dde_domain.evaluation import (
+            register_cluster_tuning_evaluator,
+            register_spark_rca_evaluator,
+        )
 
         register_cluster_tuning_evaluator(_cluster_tuning_pressure_config())
+        register_spark_rca_evaluator()
     except Exception as exc:  # noqa: BLE001
         logger.warning("evaluator registration skipped/failed: %s", exc)
 

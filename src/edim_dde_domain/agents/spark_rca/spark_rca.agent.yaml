@@ -167,8 +167,78 @@ graph:
       type: domain.rca.assemble_evidence
     - id: rule_classify
       type: domain.rca.classify_failure
+      # Broad category seeds only; diagnosis remains evidence-first in the LLM.
+      # Ordered groups and patterns are agent policy, not hard-coded Python.
+      signal_groups:
+        - category: sql_error
+          confidence: 0.55
+          rationale: SQL analysis, parse, or resolution signal matched telemetry.
+          patterns:
+            - 'AnalysisException|ParseException'
+            - 'table(?:\s+or\s+view)?\s+not\s+found|cannot\s+resolve|UNRESOLVED_'
+            - 'SparkSQL|SYNTAX_ERROR'
+        - category: data_quality
+          confidence: 0.60
+          rationale: Schema, constraint, type, or data-quality signal matched telemetry.
+          patterns:
+            - 'null\s+constraint|ConstraintViolation|NOT\s+NULL'
+            - 'schema\s+mismatch|type\s+mismatch|DELTA_SCHEMA'
+            - 'data\s+quality'
+        - category: resource
+          confidence: 0.70
+          rationale: Explicit runtime resource or executor-loss signal matched telemetry.
+          patterns:
+            - 'OutOfMemory|OOM|Java heap space|MemoryError'
+            - 'No space left|disk\s+full'
+            - 'ExecutorLost|Lost executor|Container killed'
+        - category: skew_shuffle
+          confidence: 0.55
+          rationale: Shuffle, fetch-failure, or skew signal matched telemetry.
+          patterns:
+            - 'skew'
+            - 'shuffle.*(?:fail|error)|FetchFailed'
+        - category: timeout_or_cancel
+          confidence: 0.65
+          rationale: Timeout, cancellation, or explicit termination signal matched telemetry.
+          patterns:
+            - 'timeout|timed\s+out|deadline exceeded'
+            - 'cancelled|canceled|killed by user'
+        - category: config
+          confidence: 0.60
+          rationale: Access, credential, connection, or configuration signal matched telemetry.
+          patterns:
+            - 'permission\s+denied|Unauthorized|AccessDenied|Forbidden'
+            - 'secret|credential|authentication|authorization'
+            - 'SparkConnect|configuration|ConfigException'
     - id: build_retrieval_query
       type: domain.rca.build_retrieval_query
+    - id: load_historical_context
+      type: domain.rca.load_historical_context
+      enabled: true
+      corpus: spark-rca-outcomes
+      top_k: 5
+      same_job_limit: 3
+    - id: build_web_search_query
+      type: domain.rca.build_web_search_query
+      # Online enrichment is opt-in. It never receives raw logs, SQL, paths,
+      # table names, job identifiers, or arbitrary user text.
+      enabled: false
+      trigger: low_confidence_or_unknown
+      confidence_below: 0.55
+    - id: search_public_web
+      type: web.search
+      # Execution is gated by build_web_search_query.enabled above: blank query
+      # means this node performs no provider call.
+      enabled: true
+      query_key: web_search_query
+      output_key: web_search_hits
+      context_key: web_search_context
+      top_k: 3
+      allowed_domains:
+        - docs.databricks.com
+        - kb.databricks.com
+        - spark.apache.org
+        - learn.microsoft.com
     - id: retrieve_runbooks
       type: rag.retrieve
       corpus: spark-runbooks
@@ -188,6 +258,8 @@ graph:
       type: domain.rca.parse_llm_json
     - id: validate_output
       type: domain.rca.validate_output
+    - id: evaluate_output
+      type: domain.rca.evaluate_output
 
   edges:
     - [START, collect_failure_anchors]
@@ -198,9 +270,13 @@ graph:
     - [collect_stage_pressure, assemble_evidence]
     - [assemble_evidence, rule_classify]
     - [rule_classify, build_retrieval_query]
-    - [build_retrieval_query, retrieve_runbooks]
+    - [build_retrieval_query, load_historical_context]
+    - [load_historical_context, build_web_search_query]
+    - [build_web_search_query, search_public_web]
+    - [search_public_web, retrieve_runbooks]
     - [retrieve_runbooks, prepare_llm_payload]
     - [prepare_llm_payload, synthesize]
     - [synthesize, parse_llm_json]
     - [parse_llm_json, validate_output]
-    - [validate_output, END]
+    - [validate_output, evaluate_output]
+    - [evaluate_output, END]

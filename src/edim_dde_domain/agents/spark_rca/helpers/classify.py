@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 RCA_CATEGORIES = (
@@ -14,32 +13,6 @@ RCA_CATEGORIES = (
     "config",
     "unknown",
 )
-
-_SQL_PATTERNS = re.compile(
-    r"AnalysisException|ParseException|table(?:\s+or\s+view)?\s+not\s+found|"
-    r"cannot\s+resolve|UNRESOLVED_|SparkSQL|SYNTAX_ERROR",
-    re.I,
-)
-_DQ_PATTERNS = re.compile(
-    r"null\s+constraint|schema\s+mismatch|data\s+quality|ConstraintViolation|"
-    r"NOT\s+NULL|type\s+mismatch|DELTA_SCHEMA",
-    re.I,
-)
-_RESOURCE_PATTERNS = re.compile(
-    r"OutOfMemory|OOM|Java heap space|No space left|disk\s+full|"
-    r"ExecutorLost|Lost executor|Container killed|MemoryError",
-    re.I,
-)
-_SKEW_PATTERNS = re.compile(r"skew|shuffle.*(fail|error)|FetchFailed", re.I)
-_TIMEOUT_PATTERNS = re.compile(
-    r"timeout|timed\s+out|cancelled|canceled|killed by user", re.I
-)
-_CONFIG_PATTERNS = re.compile(
-    r"permission\s+denied|Unauthorized|AccessDenied|secret|credential|"
-    r"SparkConnect|configuration|ConfigException",
-    re.I,
-)
-
 
 def _text_blob(evidence_pack: dict[str, Any]) -> str:
     parts: list[str] = []
@@ -67,48 +40,60 @@ def _text_blob(evidence_pack: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def classify_failure_pack(evidence_pack: dict[str, Any]) -> dict[str, Any]:
-    """Return category hint with confidence and rationale from heuristics."""
+def classify_failure_pack(
+    evidence_pack: dict[str, Any],
+    *,
+    signal_groups: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Return a configurable signal hint; the LLM still performs diagnosis.
+
+    Pattern groups live in agent YAML so adding signatures/categories does not
+    require classifier code changes. Group order expresses precedence.
+    """
+    import re
+
     anchors = evidence_pack.get("raw_anchors") or {}
     sql_errors: list[dict[str, Any]] = list(anchors.get("sql_errors") or [])
     blob = _text_blob(evidence_pack)
 
-    if sql_errors or _SQL_PATTERNS.search(blob):
+    # Structured SQL error events are direct evidence independent of text regex.
+    if sql_errors:
         return {
             "category": "sql_error",
-            "confidence": 0.75 if sql_errors else 0.55,
-            "rationale": "SQL failure events or AnalysisException-style messages present.",
+            "confidence": 0.75,
+            "rationale": "Structured SQL failure events are present.",
         }
-    if _DQ_PATTERNS.search(blob):
-        return {
-            "category": "data_quality",
-            "confidence": 0.6,
-            "rationale": "Schema/constraint/data-quality language in failure text.",
-        }
-    if _RESOURCE_PATTERNS.search(blob):
-        return {
-            "category": "resource",
-            "confidence": 0.7,
-            "rationale": "OOM / executor lost / disk pressure signals.",
-        }
-    if _SKEW_PATTERNS.search(blob):
-        return {
-            "category": "skew_shuffle",
-            "confidence": 0.55,
-            "rationale": "Shuffle/skew/fetch-fail language in telemetry.",
-        }
-    if _TIMEOUT_PATTERNS.search(blob):
-        return {
-            "category": "timeout_or_cancel",
-            "confidence": 0.65,
-            "rationale": "Timeout or cancellation language.",
-        }
-    if _CONFIG_PATTERNS.search(blob):
-        return {
-            "category": "config",
-            "confidence": 0.6,
-            "rationale": "Permission/secret/config language.",
-        }
+
+    for group in signal_groups or []:
+        if not isinstance(group, dict):
+            continue
+        category = str(group.get("category") or "unknown").strip()
+        if category not in RCA_CATEGORIES:
+            continue
+        patterns = [
+            str(pattern).strip()
+            for pattern in (group.get("patterns") or [])
+            if str(pattern).strip()
+        ]
+        for pattern in patterns:
+            try:
+                matched = re.search(pattern, blob, re.IGNORECASE)
+            except re.error:
+                continue
+            if matched:
+                try:
+                    confidence = float(group.get("confidence", 0.55))
+                except (TypeError, ValueError):
+                    confidence = 0.55
+                return {
+                    "category": category,
+                    "confidence": max(0.0, min(1.0, confidence)),
+                    "rationale": str(
+                        group.get("rationale")
+                        or f"Configured {category} signal pattern matched telemetry."
+                    ),
+                    "matched_signal": matched.group(0)[:160],
+                }
 
     has_any = bool(
         anchors.get("pipeline_end")

@@ -93,7 +93,8 @@ Extras: `pip install 'edim-dde-ai[postgres]'` / `[cosmos]` / `[redis]` (same as 
 
 ## 5. HTTP surface
 
-On successful `POST /api/v1/cluster_tuning/recommend`, the API **best-effort** saves a `proposed` row and returns:
+On successful `POST /api/v1/cluster_tuning/recommend` or
+`POST /api/v1/rca/analyze`, the API **best-effort** saves a `proposed` row and returns:
 
 | Field | Meaning |
 |-------|---------|
@@ -105,8 +106,13 @@ On successful `POST /api/v1/cluster_tuning/recommend`, the API **best-effort** s
 | GET | `/api/v1/cluster_tuning/recommendations` | List (filters: `job_id`, `cluster_id`, `status`, `limit`) |
 | GET | `/api/v1/cluster_tuning/recommendations/{id}` | Fetch one |
 | PATCH | `/api/v1/cluster_tuning/recommendations/{id}` | Body `{ "status": "accepted" }` |
+| GET | `/api/v1/rca/recommendations` | RCA list (filters: `job_id`, `status`, `limit`) |
+| GET | `/api/v1/rca/recommendations/{id}` | Fetch one RCA lifecycle row |
+| PATCH | `/api/v1/rca/recommendations/{id}` | Review/apply/reject an RCA diagnosis/action proposal |
 
-Persist failures are logged once and **do not** fail the recommend HTTP 200.
+Routes enforce `record.agent_id`, so an RCA id is not readable/updateable
+through the tuning route (and vice versa). Persist failures are logged once and
+**do not** fail the successful analysis/recommend response.
 
 ---
 

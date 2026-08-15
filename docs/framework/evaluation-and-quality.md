@@ -102,7 +102,33 @@ Confidence:
 Critical metrics: worker SKU, provisioned max workers, peak worker CPU, peak
 worker memory.
 
-## 4. How to prove a prompt improved quality
+## 4. Spark-RCA rubric
+
+`SparkRcaQualityEvaluator` is attached to every successful RCA graph result:
+
+| Dimension | Weight | Examples |
+|-----------|--------|----------|
+| Contract | 20% | valid broad category, summary, signature, actions, bounded model confidence |
+| Evidence | 25% | cited refs exist in the supplied pack; evidence channels are analyzed |
+| Diagnosis | 20% | diagnosis overlaps current-run signals; high-confidence rule conflicts are flagged |
+| Actions | 15% | concrete fixes/checks rather than only “check logs” |
+| Context | 10% | retrieved runbooks/history/web are explicitly corroborated, conflicted, or not used |
+| Safety | 10% | web URLs were actually supplied; external context does not replace current evidence |
+
+Default pass requires score ≥ **0.75**, contract = 1.0, evidence ≥ 0.75,
+actions ≥ 0.66, and safety = 1.0.
+
+`root_cause.confidence` / `model_confidence` remains the model/rule estimate.
+`quality.confidence` is:
+
+```text
+0.70 × evidence-pack channel completeness
++ 0.30 × deterministic-rubric coverage
+```
+
+The two values answer different questions and must not be averaged.
+
+## 5. How to prove a prompt improved quality
 
 Use the same **golden cases**, model/deployment, temperature, and retrieval
 snapshot before and after:
@@ -133,7 +159,7 @@ deterministic regressions. A calibrated production score requires labeled
 outcomes (accepted/applied, post-change success, no regression) and periodic
 human review.
 
-## 5. Confidence limitations
+## 6. Confidence limitations
 
 Current confidence does **not** mean “probability the recommendation is
 correct.” It means “the evaluator had enough inputs and checks to judge it.”

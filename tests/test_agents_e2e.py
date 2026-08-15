@@ -47,6 +47,8 @@ def test_spark_rca_with_evidence_override(bootstrapped_agents):
         }
     )
     assert out["result"]["root_cause"]["category"] == "resource"
+    assert out["result"]["quality"]["passed"] is True
+    assert out["result"]["quality"]["confidence"] < 1.0
 
 
 def test_spark_rca_sql_error_override(bootstrapped_agents):
@@ -63,6 +65,7 @@ def test_spark_rca_sql_error_override(bootstrapped_agents):
         }
     )
     assert out["result"]["root_cause"]["category"] == "sql_error"
+    assert out["result"]["quality"]["passed"] is True
 
 
 def test_cluster_tuning_with_explanation(bootstrapped_agents):

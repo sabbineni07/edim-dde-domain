@@ -17,12 +17,19 @@ Ops / DE ask: *“Why did this Spark job run fail, and what should we do next?�
 The agent:
 
 1. Collects **multi-section telemetry** from UC (failure anchors, SQL plans, error logs, timeline, stage pressure) — or accepts an `evidence_pack` override.
-2. Assembles a structured **evidence pack** and a **rule-based classification hint**.
-3. Builds a retrieval query and calls **`rag.retrieve`** against the `spark-runbooks` corpus (knowledge plane).
-4. Asks the **RCA LLM** to synthesize root cause, actions, and structured recommendations with citations when hits exist.
-5. Parses + validates output into a stable **`RcaResponse`**.
+2. Assembles a structured **evidence pack** and a YAML-configured broad
+   classification hint (the hint is not the diagnosis).
+3. Retrieves curated **runbooks**, feature-similar **prior RCA outcomes**, and
+   exact same-job/run history.
+4. Optionally searches an allowlisted public web provider when YAML enables it
+   and the hint is unknown/low-confidence. Only sanitized exception-class tokens
+   leave the process.
+5. Asks the **RCA LLM** to separate the primary cause, possible causes,
+   contributing factors, fixes, and context assessment.
+6. Validates the response, attaches deterministic `spark_rca.quality`, and
+   persists the diagnosis/actions in the shared recommendation lifecycle store.
 
-It does **not** restart jobs or open tickets (integrations are later backlog).
+It does **not** restart jobs, apply fixes, or open tickets.
 
 ---
 
@@ -74,6 +81,9 @@ flowchart TB
   M[(SPARK_METRICS_TABLE)]:::store
   L[(SPARK_LOGS_TABLE)]:::store
   Idx[(spark-runbooks index)]:::store
+  Exp[(spark-rca-outcomes index)]:::store
+  Hist[(RecommendationStore)]:::store
+  Web[Allowlisted public web]:::external
   Foundry[Azure AI Foundry]:::external
   DTO[RcaResponse]:::out
 
@@ -85,11 +95,15 @@ flowchart TB
   F((assemble_evidence)):::process
   G((rule_classify)):::process
   H((build_retrieval_query)):::process
+  HX((load_historical_context)):::process
+  WQ((build_web_search_query)):::process
+  WS((web.search)):::process
   I((retrieve_runbooks<br/>rag.retrieve)):::process
   J((prepare_llm_payload)):::process
   K((synthesize<br/>llm_chain rca)):::process
   N((parse_llm_json)):::process
   O((validate_output)):::process
+  Q((evaluate_output)):::process
 
   Client -->|RcaRequest| A
   M --> A & B & D & E
@@ -97,11 +111,15 @@ flowchart TB
   A --> B --> C --> D --> E --> F
   F -->|evidence_pack| G
   G -->|classification_hint| H
-  H -->|retrieval_query| I
+  H --> HX --> WQ --> WS --> I
+  Exp -->|feature-similar outcomes| HX
+  Hist -->|exact job/run rows| HX
+  Web -->|bounded cited hits| WS
   Idx -->|hits / context| I
   I --> J --> K
   Foundry -->|llm_raw| K
-  K --> N --> O --> DTO
+  K --> N --> O --> Q --> DTO
+  Q -->|quality + persisted proposal| Hist
   DTO -->|JSON| Client
 ```
 
@@ -117,6 +135,28 @@ rag:
   search_mode: hybrid
   cite: true
 ```
+
+**YAML web-search policy** (`build_web_search_query.enabled` is the feature flag):
+
+```yaml
+- id: build_web_search_query
+  type: domain.rca.build_web_search_query
+  enabled: false
+  trigger: low_confidence_or_unknown
+  confidence_below: 0.55
+- id: search_public_web
+  type: web.search
+  enabled: true  # blank query from the disabled policy means no provider call
+  top_k: 3
+  allowed_domains:
+    - docs.databricks.com
+    - kb.databricks.com
+    - spark.apache.org
+    - learn.microsoft.com
+```
+
+The host separately configures `EDIM_WEB_SEARCH=none|http_json`. Enabling the flag
+without a provider produces an explicit empty context and does not fail RCA.
 
 ---
 
@@ -140,13 +180,32 @@ Merges SQL rows (or override) into a normalized **evidence pack**: excerpts, ref
 
 ### Step G — `rule_classify`
 
-Deterministic taxonomy hint (`classification_hint`) from failure text / anchors (OOM, SQL error, timeout, …). Guides retrieval + LLM; not the final root cause alone.
+Produces a broad `classification_hint` from structured SQL-error events and
+ordered `signal_groups` in agent YAML. Python implements the generic
+pattern-strategy loop; patterns, confidence, rationale, priority, and category
+live in YAML. The broad category guides retrieval and is never the final root
+cause by itself. Unknown mechanisms remain `unknown` with their exact signature.
 
 ### Step H — `build_retrieval_query`
 
 Builds `retrieval_query` text from classify + evidence for similarity / hybrid search.
 
-### Step I — `retrieve_runbooks` (`rag.retrieve`)
+### Step I — history and optional web enrichment
+
+`load_historical_context` keeps two history lanes separate:
+
+1. `spark-rca-outcomes` — accepted/applied RCA cards retrieved by open
+   evidence-feature similarity across jobs.
+2. RecommendationStore — exact records for this `job_id` / `job_run_id`,
+   including proposed lifecycle rows.
+
+`build_web_search_query` returns an empty query unless YAML enables search and
+the trigger fires. It permits only exception/failure class-like tokens; it drops
+raw excerpts, SQL, paths, table names, job IDs, run IDs, and arbitrary user text.
+`web.search` applies `top_k`, domain allowlisting, provider normalization, and
+non-fatal fallback.
+
+### Step J — `retrieve_runbooks` (`rag.retrieve`)
 
 | Config | Value |
 |--------|-------|
@@ -159,21 +218,35 @@ Backend = process `EDIM_RETRIEVAL` (or corpus override in `corpora.yaml`). Empty
 
 Knowledge design: [Retrieval & RAG](../platform/retrieval-and-rag.md) · [External add-ons](external-addons.md).
 
-### Step J — `prepare_llm_payload`
+### Step K — `prepare_llm_payload`
 
-Flattens evidence + classification + **runbook_context** into prompt string fields for the RCA human template.
+Flattens evidence, classification, runbooks, prior history, and optional public
+web results into distinct prompt sections. The prompt explicitly ranks
+current-run evidence above every context lane.
 
-### Step K — `synthesize` (`llm_chain` / chain `rca`)
+### Step L — `synthesize` (`llm_chain` / chain `rca`)
 
-Foundry completion → `llm_raw` (JSON-shaped RCA answer + skills).
+Foundry completion → `llm_raw`: primary cause, possible causes with verification
+steps, contributing factors, grouped fixes, evidence refs, and context assessment.
 
-### Step L — `parse_llm_json`
+### Step M — `parse_llm_json`
 
 Parse model JSON into structured fields.
 
-### Step M — `validate_output`
+### Step N — `validate_output`
 
-Legacy-aligned validate: confidence clamp, required shapes, rich recommendation blocks. Writes final `result` object required by the API projector.
+Normalizes categories/shapes, clamps model confidence, drops unknown evidence
+refs and unsupplied web URLs, and writes the stable API `result`.
+
+### Step O — `evaluate_output`
+
+Runs `spark_rca.quality`. Its confidence is deterministic evidence-pack
+completeness plus rubric coverage; it is not the model's probability. The API
+persists the final diagnosis/actions as lifecycle status `proposed`. Stored
+rows keep a **bounded** `evidence_pack` snapshot (anchors + truncated excerpts)
+and omit regenerated prompt context (`runbook_context`, `historical_context`,
+web hits) so Cosmos/Redis payloads stay small while experience indexing still
+has feature material.
 
 ---
 
@@ -181,7 +254,9 @@ Legacy-aligned validate: confidence clamp, required shapes, rich recommendation 
 
 | Field | Meaning |
 |-------|---------|
-| `root_cause` | category, summary, confidence, optional signature |
+| `root_cause` | category, summary, model confidence, signature |
+| `quality` | deterministic score, evaluator confidence, dimensions, findings |
+| `possible_causes` | bounded alternatives + evidence refs + verification checks |
 | `recommended_actions` | Flat action list |
 | `recommendations` | Structured buckets (infra / code / …) when present |
 | `contributing_factors` | Secondary factors |
@@ -189,15 +264,19 @@ Legacy-aligned validate: confidence clamp, required shapes, rich recommendation 
 | `evidence` | Cited snippets / refs |
 | `timeline` | Normalized timeline |
 | `classification_hint` | Rule-based hint |
+| `context_assessment` | How runbooks/history/web corroborated or conflicted |
+| `runbook_context` / `historical_context` | Grounding supplied to the LLM |
+| `web_search_hits` | Bounded title/URL/snippet results (when enabled) |
 | `job_status` / `status` | Job / agent status |
 | `evidence_pack` | Pack used (when projected) |
 | `request_id` | Correlation |
+| `recommendation_id` / `recommendation_status` | Persisted lifecycle record |
 
 Missing `result` after invoke → HTTP 500 (no silent full-state dump).
 
 ---
 
-??? note "In depth (optional) — agent authors — evidence_pack vs live SQL, and extending the taxonomy"
+??? note "In depth (optional) — engineers — evidence, extensibility, history, web, and confidence"
 
     Read this when you are dry-testing RCA, adding failure categories, or deciding
     whether a new signal belongs in classify vs runbooks.
@@ -209,12 +288,14 @@ Missing `result` after invoke → HTTP 500 (no silent full-state dump).
     returns). Use that for CI, Windows smoke, and demos without warehouse access.
     The classify / RAG / LLM path is unchanged either way.
 
-    **Where signals live.**
+    **Where policy and signals live.**
 
     | Layer | Owns | Extend by |
     |-------|------|-----------|
-    | `helpers/classify.py` | Coarse category hint (`resource`, `timeout_or_cancel`, `config`, `unknown`, …) from regexes over anchors / error text | Add a pattern + category return; keep confidence honest |
+    | `spark_rca.agent.yaml` `signal_groups` | Ordered broad-category hint patterns, confidence, rationale | Add/edit YAML; no classifier Python change |
+    | `helpers/classify.py` | Generic ordered pattern strategy + structured SQL-error handling | Change only when the classification mechanism changes |
     | `knowledge/spark-runbooks/` | Human playbooks retrieved into `runbook_context` | New markdown + re-index; no Python |
+    | `helpers/experience_transform.py` | Open evidence features → diagnosis/action card | Extend generic feature extraction, not named scenarios |
     | RCA skills / prompts | How the LLM weighs evidence + citations | Content under `agents/spark_rca/content/` |
     | `validate_output` | Structural clamps on the LLM JSON | Only when the response schema grows |
 
@@ -224,14 +305,32 @@ Missing `result` after invoke → HTTP 500 (no silent full-state dump).
     invent OOM from high utilization alone. Keep the taxonomies separate: RCA =
     why it failed; tuning = how to right-size from metrics.
 
-    **Adding a category without a new node type.** Prefer: (1) a classify regex +
-    category, (2) a runbook page whose keywords match the retrieval query, (3)
+    **Adding a category without a new node type.** Prefer: (1) a YAML signal group +
+    broad category, (2) a runbook page whose keywords match the retrieval query, (3)
     skill text that tells the LLM how to cite that runbook. Only introduce a new
     `domain.rca.*` node when the graph topology itself must change (extra collect,
     new validation gate, etc.).
 
     Empty retrieval is intentional: the LLM still runs with an explicit “no
     runbook hits” note so synthesis never silently pretends grounding existed.
+
+    **History acceptance gate.** Every successful analysis is persisted as
+    `proposed`, so exact job/run history is immediately available. Cross-job
+    experience similarity indexes only `accepted` or `applied` RCA records.
+    `rejected` and `superseded` remove indexed cards. This prevents an unreviewed
+    model diagnosis from becoming precedent.
+
+    **Two confidence values.** `root_cause.confidence` /
+    `root_cause.model_confidence` is the model/rule estimate. `quality.confidence`
+    measures evidence-pack completeness plus deterministic rubric coverage.
+    Product gates should use `quality.passed`, dimensions, and findings rather
+    than treating model confidence as calibrated probability.
+
+    **Web-search boundary.** YAML is the per-agent feature flag; environment
+    configuration selects a provider. Search is low-confidence/unknown-only by
+    default, domains are allowlisted, queries contain only technical
+    exception-class tokens, and provider failure is non-fatal. Web snippets are
+    untrusted data and can never replace an `evidence_pack` ref.
 
 ---
 
@@ -240,13 +339,20 @@ Missing `result` after invoke → HTTP 500 (no silent full-state dump).
 ```mermaid
 sequenceDiagram
   participant C as classify + build query
+  participant H as RCA history
   participant R as rag.retrieve
   participant I as RetrievalProvider
+  participant W as web.search (optional)
   participant L as rca llm_chain
   C->>R: retrieval_query
   R->>I: hybrid search corpus=spark-runbooks
   I-->>R: hits + runbook_context
-  R->>L: prepare_llm_payload includes context
+  C->>H: evidence-feature query + job/run ids
+  H->>I: hybrid search corpus=spark-rca-outcomes
+  H-->>L: similar outcomes + exact history
+  C->>W: sanitized query (only if YAML trigger fires)
+  W-->>L: bounded title/URL/snippet results
+  R->>L: prepare_llm_payload keeps every lane separate
   Note over L: Empty hits OK — prompt notes no grounding
 ```
 
@@ -262,6 +368,9 @@ sequenceDiagram
 | Spark logs UC table | Error / warning / exception text |
 | Foundry LLM | RCA synthesis |
 | RetrievalProvider + corpus | Runbook grounding |
+| RecommendationStore | RCA lifecycle + exact history |
+| `spark-rca-outcomes` corpus | Accepted/applied feature-similar diagnoses/actions |
+| WebSearchProvider (optional) | Allowlisted public-web enrichment |
 | Sample markdown | `knowledge/spark-runbooks/` for local FAISS seed |
 | LangSmith (optional) | Traces |
 
@@ -274,9 +383,17 @@ sequenceDiagram
 | Graph | `agents/spark_rca/spark_rca.agent.yaml` |
 | Nodes | `agents/spark_rca/nodes.py` + logic helpers |
 | Evidence / classify / validate | `helpers/` |
+| Experience/history | `helpers/experience_transform.py`, `helpers/historical_context.py` |
+| Quality evaluator | `evaluation/spark_rca.py` |
 | Corpus registry | `config/corpora.yaml` |
 | Sample runbooks | `knowledge/spark-runbooks/` |
 | Prompts / skills | `content/prompts/`, `content/skills/` |
+
+Lifecycle API:
+
+- `GET /api/v1/rca/recommendations`
+- `GET /api/v1/rca/recommendations/{recommendation_id}`
+- `PATCH /api/v1/rca/recommendations/{recommendation_id}`
 
 ---
 

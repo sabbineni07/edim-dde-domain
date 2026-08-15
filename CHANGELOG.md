@@ -9,6 +9,12 @@
   metrics view so override paths keep full pressure reason codes
 
 ### Added
+- **Spark RCA quality/lifecycle parity:** YAML-configured signal groups,
+  primary/possible-cause/fix/context prompt contract, expanded generic runbooks,
+  `spark_rca.quality` deterministic evaluator with evidence-based confidence,
+  RecommendationStore lifecycle persistence, accepted/applied-only
+  `spark-rca-outcomes` experience cards, exact job/run history, and YAML-gated
+  sanitized public-web enrichment
 - Cluster tuning **guardrail retry**: one re-prompt when retryable clamps remain (`sizing_needs_retry`); max 2 sizing LLM calls; state exposes `sizing_attempts` / `guardrail_retries`
 - Cluster tuning **`validate_performance`** graph node (rule-based peak fitness) → `performance_validation` on agent state / API
 - Engineer guide: **recommendation lifecycle store** (`docs/platform/recommendation-store.md`) + endpoints / env-var updates

@@ -8,12 +8,15 @@ Base app: `edim_dde_api.main:app`
 
 | Method | Path | Request | Response |
 |--------|------|---------|----------|
-| GET | `/health` | — | `{status, agents, version, observability, state_store, recommendation_store, retrieval}` |
+| GET | `/health` | — | `{status, agents, version, observability, state_store, recommendation_store, retrieval, web_search}` |
 | POST | `/api/v1/cluster_tuning/recommend` | `TuningRequest` | `TuningResponse` |
 | GET | `/api/v1/cluster_tuning/recommendations` | query filters | `list[RecommendationHistoryItem]` |
 | GET | `/api/v1/cluster_tuning/recommendations/{id}` | — | `RecommendationHistoryItem` |
 | PATCH | `/api/v1/cluster_tuning/recommendations/{id}` | `RecommendationStatusUpdate` | `RecommendationHistoryItem` |
 | POST | `/api/v1/rca/analyze` | `RcaRequest` | `RcaResponse` |
+| GET | `/api/v1/rca/recommendations` | query filters | `list[RecommendationHistoryItem]` |
+| GET | `/api/v1/rca/recommendations/{id}` | — | `RecommendationHistoryItem` |
+| PATCH | `/api/v1/rca/recommendations/{id}` | `RecommendationStatusUpdate` | `RecommendationHistoryItem` |
 | POST | `/api/v1/knowledge/ingest` | `KnowledgeIngestRequest` | `KnowledgeIngestResponse` |
 | GET | `/api/v1/debug/sql-auth` | — | Booleans only (Apps SQL auth diagnostics; no tokens) |
 
@@ -50,9 +53,10 @@ Successful recommends are **best-effort** persisted via pluggable `Recommendatio
 
 | Field / route | Meaning |
 |---------------|---------|
-| `recommendation_id` / `recommendation_status` | Set on `TuningResponse` when persist succeeds |
+| `recommendation_id` / `recommendation_status` | Set on tuning and RCA responses when persist succeeds |
 | `GET …/cluster_tuning/recommendations` | List newest-first (`job_id`, `cluster_id`, `status`, `limit`) |
 | `PATCH …/recommendations/{id}` | Lifecycle: `proposed` \| `accepted` \| `rejected` \| `applied` \| `superseded` |
+| `GET …/rca/recommendations` | RCA history newest-first (`job_id`, `status`, `limit`) |
 
 ### Request id / logging
 

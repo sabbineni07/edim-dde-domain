@@ -32,6 +32,11 @@
 | `EDIM_DBX_VS_ENDPOINT` | Databricks VS | Vector Search endpoint name |
 | `EDIM_DBX_VS_INDEX` | Databricks VS | Default index name |
 | `EDIM_DBX_VS_CORPUS_MAP` | Databricks VS | Optional `corpus:index,...` |
+| `EDIM_WEB_SEARCH` | API lifespan / AI | Optional public-web provider: `none` (default) or `http_json`; RCA YAML must also enable its web nodes |
+| `EDIM_WEB_SEARCH_ENDPOINT` | HTTP JSON web provider | HTTPS search endpoint accepting `q` and `count` query parameters |
+| `EDIM_WEB_SEARCH_API_KEY` | HTTP JSON web provider | Provider API key (prefer Key Vault) |
+| `EDIM_WEB_SEARCH_KEY_HEADER` | HTTP JSON web provider | API-key header (default `Ocp-Apim-Subscription-Key`) |
+| `EDIM_WEB_SEARCH_TIMEOUT_SECONDS` | HTTP JSON web provider | Bounded request timeout (default 8 seconds) |
 | `DATABRICKS_HOST` | domain sources | SQL warehouse hostname |
 | `DATABRICKS_HTTP_PATH` | domain sources | Warehouse HTTP path |
 | `DATABRICKS_JOB_CLUSTER_METRICS_TABLE` | cluster_tuning SQL | UC FQN (`catalog.schema.table`) |

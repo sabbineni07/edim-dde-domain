@@ -128,17 +128,73 @@ def _normalize_evidence_analysis(raw: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _normalize_possible_causes(
+    raw: dict[str, Any], allowed_refs: set[str]
+) -> list[dict[str, Any]]:
+    rows = raw.get("possible_causes")
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows[:5]:
+        if not isinstance(row, dict):
+            continue
+        cause = str(row.get("cause") or "").strip()
+        verification = str(row.get("verification") or "").strip()
+        if not cause or not verification:
+            continue
+        likelihood = str(row.get("likelihood") or "low").strip().lower()
+        if likelihood not in {"low", "medium", "high"}:
+            likelihood = "low"
+        out.append(
+            {
+                "cause": cause[:500],
+                "likelihood": likelihood,
+                "supporting_evidence_refs": [
+                    str(ref)
+                    for ref in (row.get("supporting_evidence_refs") or [])
+                    if str(ref) in allowed_refs
+                ],
+                "verification": verification[:800],
+            }
+        )
+    return out
+
+
+def _normalize_context_assessment(
+    raw: dict[str, Any], allowed_web_urls: set[str]
+) -> dict[str, Any]:
+    value = raw.get("context_assessment")
+    if not isinstance(value, dict):
+        value = {}
+    return {
+        "runbooks": str(value.get("runbooks") or "not used").strip()[:800],
+        "history": str(value.get("history") or "not used").strip()[:800],
+        "web": str(value.get("web") or "not used").strip()[:800],
+        "web_citations": [
+            str(url)
+            for url in (value.get("web_citations") or [])
+            if str(url) in allowed_web_urls
+        ][:5],
+    }
+
+
 def validate_rca_llm_output(
     raw: dict[str, Any],
     *,
     evidence_pack: dict[str, Any],
     classification_hint: dict[str, Any],
+    web_search_hits: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Clamp/normalize LLM JSON; fall back to rule classification when needed."""
     allowed_refs = {
         str(e.get("ref")) for e in (evidence_pack.get("evidence") or []) if e.get("ref")
     }
     category = _normalize_category(raw, classification_hint)
+    allowed_web_urls = {
+        str(hit.get("url"))
+        for hit in (web_search_hits or [])
+        if isinstance(hit, dict) and hit.get("url")
+    }
 
     summary = str(raw.get("summary") or "").strip()
     if not summary:
@@ -215,10 +271,13 @@ def validate_rca_llm_output(
             "category": category,
             "summary": str(summary),
             "confidence": confidence,
+            "model_confidence": confidence,
             "confidence_label": label,
             "failure_signature": signature[:256],
         },
         "evidence_analysis": evidence_analysis,
+        "possible_causes": _normalize_possible_causes(raw, allowed_refs),
+        "context_assessment": _normalize_context_assessment(raw, allowed_web_urls),
         "recommendations": recommendations,
         "timeline": timeline_out,
         "evidence": evidence_out,

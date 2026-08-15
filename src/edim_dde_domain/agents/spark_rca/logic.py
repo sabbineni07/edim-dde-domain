@@ -6,6 +6,12 @@ from typing import Any
 
 from edim_dde_domain.agents.spark_rca.helpers.classify import classify_failure_pack
 from edim_dde_domain.agents.spark_rca.helpers.evidence_pack import build_evidence_pack
+from edim_dde_domain.agents.spark_rca.helpers.experience_transform import (
+    infer_failure_features,
+)
+from edim_dde_domain.agents.spark_rca.helpers.historical_context import (
+    compose_historical_context,
+)
 from edim_dde_domain.agents.spark_rca.helpers.validate import validate_rca_llm_output
 from edim_dde_domain.llm.json_util import dumps, parse_json_object
 
@@ -63,8 +69,10 @@ def assemble_evidence(state: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def classify_failure(state: dict[str, Any]) -> dict[str, Any]:
-    """Rule-based category from evidence pack (legacy taxonomy)."""
+def classify_failure(
+    state: dict[str, Any], *, signal_groups: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Config-seeded broad category hint from evidence pack."""
     pack = state.get("evidence_pack") or {}
     if not isinstance(pack, dict):
         pack = {}
@@ -72,7 +80,11 @@ def classify_failure(state: dict[str, Any]) -> dict[str, Any]:
     view = dict(pack)
     if state.get("error_text"):
         view["_error_text"] = state.get("error_text")
-    return {"classification_hint": classify_failure_pack(view)}
+    return {
+        "classification_hint": classify_failure_pack(
+            view, signal_groups=signal_groups
+        )
+    }
 
 
 def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
@@ -92,6 +104,82 @@ def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
     return {"retrieval_query": query}
 
 
+def load_historical_context(
+    state: dict[str, Any], *, config: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    policy = config or {}
+    return {
+        "historical_context": compose_historical_context(
+            state,
+            enabled=bool(policy.get("enabled", True)),
+            corpus=str(policy.get("corpus") or "spark-rca-outcomes"),
+            top_k=int(policy.get("top_k", 5)),
+            same_job_limit=int(policy.get("same_job_limit", 3)),
+        )
+    }
+
+
+def build_web_search_query(
+    state: dict[str, Any], *, config: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Build a PII-safe online query only when configured policy triggers.
+
+    Raw log excerpts, IDs, table names, paths, SQL, and user text are never sent.
+    The query consists only of bounded technical feature tokens already derived
+    from the evidence pack.
+    """
+    policy = config or {}
+    if not bool(policy.get("enabled", False)):
+        return {"web_search_query": ""}
+    hint = state.get("classification_hint")
+    if not isinstance(hint, dict):
+        hint = {}
+    confidence = float(hint.get("confidence") or 0.0)
+    category = str(hint.get("category") or "unknown")
+    trigger = str(policy.get("trigger") or "low_confidence_or_unknown")
+    threshold = float(policy.get("confidence_below", 0.55))
+    should_search = (
+        trigger == "always"
+        or category == "unknown"
+        or confidence < threshold
+    )
+    if not should_search:
+        return {"web_search_query": ""}
+    pack = state.get("evidence_pack")
+    if not isinstance(pack, dict):
+        pack = {}
+    features = infer_failure_features(
+        evidence_pack=pack,
+        classification_hint=hint,
+    )
+    safe_tokens = []
+    for feature in features:
+        if not feature.startswith("signal_"):
+            continue
+        token = feature.removeprefix("signal_")
+        # Only exception/failure class-like tokens are safe for public egress.
+        # Paths, table names, IDs, and ordinary words are intentionally dropped.
+        if token.endswith(("error", "exception", "failure", "timeout")):
+            safe_tokens.append(token)
+        if len(safe_tokens) >= 8:
+            break
+    query = " ".join(
+        [
+            "Databricks Apache Spark job failure root cause remediation",
+            category if category != "unknown" else "",
+            *safe_tokens,
+        ]
+    ).strip()
+    # Defense in depth: scrub residual PII patterns even from class-like tokens.
+    try:
+        from edim_dde_domain.security.pii import redact_text
+
+        query = redact_text(query)
+    except Exception:  # noqa: BLE001
+        pass
+    return {"web_search_query": query}
+
+
 def _section_text(section: Any, empty_message: str) -> str:
     if not section:
         return empty_message
@@ -108,6 +196,8 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
     sections = pack.get("sections") or {}
     hint = state.get("classification_hint") or {}
     runbook_context = state.get("runbook_context") or state.get("retrieval_context")
+    historical_context = state.get("historical_context")
+    web_search_context = state.get("web_search_context")
 
     def _s(value: Any) -> str:
         return "(not provided)" if value is None or value == "" else str(value)
@@ -136,6 +226,12 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
         "runbook_context": _s(runbook_context)
         if runbook_context
         else "(no runbook hits retrieved — retrieval disabled or empty index)",
+        "historical_context": _s(historical_context)
+        if historical_context and historical_context != "None"
+        else "(no prior RCA history retrieved)",
+        "web_search_context": _s(web_search_context)
+        if web_search_context
+        else "(web search disabled, not triggered, unavailable, or empty)",
     }
 
 
@@ -175,7 +271,14 @@ def validate_output(state: dict[str, Any]) -> dict[str, Any]:
         pack = {}
 
     validated = validate_rca_llm_output(
-        raw, evidence_pack=pack, classification_hint=hint
+        raw,
+        evidence_pack=pack,
+        classification_hint=hint,
+        web_search_hits=[
+            hit
+            for hit in (state.get("web_search_hits") or [])
+            if isinstance(hit, dict)
+        ],
     )
     result = {
         "request_id": state.get("request_id"),
@@ -188,10 +291,35 @@ def validate_output(state: dict[str, Any]) -> dict[str, Any]:
         "recommended_actions": validated.get("recommended_actions") or [],
         "contributing_factors": validated.get("contributing_factors") or [],
         "evidence_analysis": validated.get("evidence_analysis") or {},
+        "possible_causes": validated.get("possible_causes") or [],
+        "context_assessment": validated.get("context_assessment") or {},
         "recommendations": validated.get("recommendations") or {},
         "timeline": validated.get("timeline") or [],
         "evidence": validated.get("evidence") or [],
         "classification_hint": hint,
         "evidence_pack": pack,
+        "runbook_context": state.get("runbook_context"),
+        "historical_context": state.get("historical_context"),
+        "web_search_context": state.get("web_search_context"),
+        "web_search_hits": state.get("web_search_hits") or [],
     }
     return {"result": result}
+
+
+def evaluate_output(state: dict[str, Any]) -> dict[str, Any]:
+    """Attach deterministic quality/confidence without replacing model confidence."""
+    from edim_dde_ai.evaluation import evaluate
+
+    result = dict(state.get("result") or {})
+    quality = evaluate(
+        "spark_rca.quality",
+        inputs={"evidence_pack": state.get("evidence_pack") or {}},
+        output=result,
+        context={
+            "runbook_context": state.get("runbook_context"),
+            "historical_context": state.get("historical_context"),
+            "web_search_context": state.get("web_search_context"),
+        },
+    )
+    result["quality"] = quality.to_dict()
+    return {"result": result, "quality": quality.to_dict()}
