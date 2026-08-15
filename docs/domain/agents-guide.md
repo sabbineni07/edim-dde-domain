@@ -46,7 +46,7 @@ flowchart LR
 
 | Agent | HTTP | Job | Primary UC | LLM | Knowledge |
 |-------|------|-----|------------|-----|-----------|
-| `cluster_tuning` | `POST /api/v1/cluster_tuning/recommend` | Right-size job cluster SKU / workers | Job cluster metrics table | Sizing (+ optional explanation) | None in R1 |
+| `cluster_tuning` | `POST /api/v1/cluster_tuning/recommend` | Right-size job cluster SKU / workers | Job cluster metrics table | Sizing (+ optional explanation) | Guidance corpus + RecommendationStore history |
 | `spark_rca` | `POST /api/v1/rca/analyze` | Explain failed Spark run | Spark metrics + logs tables | RCA synthesize | `rag.retrieve` → `spark-runbooks` |
 
 ---
@@ -69,6 +69,7 @@ flowchart TB
   F --> Agents
   Auth --> Agents
   RAG -.-> spark_rca
+  RAG -.-> cluster_tuning
   KV -.-> Apps
   LS -.-> Both
 ```

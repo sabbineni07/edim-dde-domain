@@ -17,10 +17,26 @@ def normalize_metrics_factory(_config: dict[str, Any]):
     return _node
 
 
-@register_node("domain.tuning.prepare_sizing_payload")
-def prepare_sizing_payload_factory(_config: dict[str, Any]):
+@register_node("domain.tuning.build_retrieval_query")
+def build_retrieval_query_factory(_config: dict[str, Any]):
     def _node(state: dict[str, Any]) -> dict[str, Any]:
-        return logic.prepare_sizing_payload(state)
+        return logic.build_retrieval_query(state)
+
+    return _node
+
+
+@register_node("domain.tuning.prepare_sizing_payload")
+def prepare_sizing_payload_factory(config: dict[str, Any]):
+    history_keys = (
+        "history_job_top_n",
+        "history_similar_top_n",
+        "history_candidate_limit",
+        "history_prefer_statuses",
+    )
+    history_config = {k: config[k] for k in history_keys if k in config}
+
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.prepare_sizing_payload(state, history_config=history_config or None)
 
     return _node
 

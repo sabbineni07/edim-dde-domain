@@ -7,6 +7,10 @@ entry:
 
 content_dir: ./content
 
+# Optional RAG corpus for sizing guidance (EDIM_RETRIEVAL=none → empty hits; still OK)
+rag:
+  corpus: cluster-tuning-guidance
+
 graph:
   nodes:
     - id: collect_metrics
@@ -66,8 +70,22 @@ graph:
         LIMIT 1
     - id: normalize_metrics
       type: domain.tuning.normalize_metrics
+    - id: build_retrieval_query
+      type: domain.tuning.build_retrieval_query
+    - id: retrieve_guidance
+      type: rag.retrieve
+      corpus: cluster-tuning-guidance
+      query_key: retrieval_query
+      top_k: 4
+      output_key: guidance_hits
+      context_key: guidance_context
     - id: prepare_sizing_payload
       type: domain.tuning.prepare_sizing_payload
+      # RecommendationStore history: prefer same job_id, then similar peer jobs
+      history_job_top_n: 5
+      history_similar_top_n: 5
+      history_candidate_limit: 80
+      history_prefer_statuses: [applied, accepted, proposed]
     - id: run_sizing
       type: llm_chain
       chain: sizing
@@ -91,7 +109,9 @@ graph:
   edges:
     - [START, collect_metrics]
     - [collect_metrics, normalize_metrics]
-    - [normalize_metrics, prepare_sizing_payload]
+    - [normalize_metrics, build_retrieval_query]
+    - [build_retrieval_query, retrieve_guidance]
+    - [retrieve_guidance, prepare_sizing_payload]
     - [prepare_sizing_payload, run_sizing]
     - [run_sizing, parse_sizing]
     - [validate_performance, assess_risks]
@@ -100,6 +120,7 @@ graph:
     - [generate_explanation, END]
   routes:
     # Re-prompt sizing when retryable guardrail clamps remain (max 2 attempts).
+    # Skip retrieve on retry — historical_context already on state.
     - after: parse_sizing
       when:
         field: sizing_needs_retry

@@ -6,6 +6,8 @@
 - Cluster tuning **guardrail retry**: one re-prompt when retryable clamps remain (`sizing_needs_retry`); max 2 sizing LLM calls; state exposes `sizing_attempts` / `guardrail_retries`
 - Cluster tuning **`validate_performance`** graph node (rule-based peak fitness) → `performance_validation` on agent state / API
 - Engineer guide: **recommendation lifecycle store** (`docs/platform/recommendation-store.md`) + endpoints / env-var updates
+- Cluster tuning **historical context**: `rag.retrieve` on corpus `cluster-tuning-guidance` + RecommendationStore history → `{historical_context}` (sample knowledge under `knowledge/cluster-tuning-guidance/`)
+- Engineer guide: **§6b deep-dive** in `docs/platform/retrieval-and-rag.md` — store ranking (two-shelf `select_history_records`, `similarity_score` weights/scales table + SKU-family gotcha), index-build internals (hashing embedder, one-vector-per-file, `.faiss`/`.meta.json`), and the heuristic-vs-embeddings design choice; fixed the FAISS index snippet arg (`source_dir`) and the stale `historical_context` row in `docs/domain/cluster-tuning-agent.md`
 
 ## 1.0.0 — 2026-07-31 (Release 1)
 

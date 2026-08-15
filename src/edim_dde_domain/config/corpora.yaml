@@ -11,3 +11,9 @@ corpora:
     # Databricks Vector Search override example:
     # provider: databricks_vector
     # databricks_index: catalog.schema.spark_runbooks_vs
+
+  cluster-tuning-guidance:
+    description: >
+      Cluster sizing / rightsizing playbooks for cluster_tuning historical_context
+      via rag.retrieve. Complements RecommendationStore (structured past proposals).
+    azure_index: cluster-tuning-guidance

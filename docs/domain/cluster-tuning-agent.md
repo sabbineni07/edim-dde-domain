@@ -22,7 +22,11 @@ The agent:
 4. Runs **rule-based performance validation** and **risk assessment**.
 5. Returns a stable **`TuningResponse`** (never the raw agent state bag).
 
-It does **not** apply cluster changes, write back to Databricks, or use RAG.
+**Historical context (RAG + store):** before sizing, the graph retrieves optional guidance
+(`corpus: cluster-tuning-guidance`) and merges **RecommendationStore** history into
+`{historical_context}`: prefer the same `job_id`, then fill with **similar** peer-job
+rows (SKU / utilization heuristics; top-N from YAML). With `EDIM_RETRIEVAL=none` and an
+empty store, the prompt still gets `None` and sizing proceeds.
 
 ---
 
@@ -150,7 +154,7 @@ Builds **string** prompt fields:
 | `job_run_ingest` | Full metrics JSON |
 | `sizing_hints` | Deterministic 90% util / 10% buffer hints |
 | `guardrail_feedback` | `"None"` on first pass; violation list on **retry** |
-| `historical_context` | Reserved (`"None"` in R1) |
+| `historical_context` | Prior `RecommendationStore` rows (same `job_id` first, then similar peer jobs) + optional retrieved guidance, merged into one string; `"None"` when both are empty. See [Retrieval & RAG §6b](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context) for the ranking and index internals |
 
 ### Step D — `run_sizing` (`llm_chain` / chain `sizing`)
 
@@ -250,7 +254,8 @@ sequenceDiagram
 | Azure AI Foundry | Sizing / explanation LLM |
 | LangSmith (optional) | Trace spans tagged with `agent_id`, `request_id` |
 | RecommendationStore | Persist / list / status (Postgres local · Cosmos deploy) |
-| Knowledge / RAG | **Not used** |
+| RetrievalProvider | Optional guidance corpus `cluster-tuning-guidance` |
+| Knowledge / RAG | Guidance markdown under `knowledge/cluster-tuning-guidance/` |
 
 See [External add-ons](external-addons.md).
 
@@ -262,6 +267,7 @@ See [External add-ons](external-addons.md).
 |---------|----------|
 | Graph | `agents/cluster_tuning/cluster_tuning.agent.yaml` |
 | Nodes | `agents/cluster_tuning/nodes.py` + `logic.py` |
+| Historical context | `helpers/historical_context.py` (store + RAG merge) |
 | Guardrails | `helpers/guardrails.py` |
 | Performance | `helpers/validate_performance.py` |
 | Sizing policy | `helpers/sizing_policy.py` |

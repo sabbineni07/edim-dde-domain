@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from edim_dde_domain.agents.cluster_tuning.helpers.historical_context import (
+    build_retrieval_query as _build_retrieval_query,
+    compose_historical_context,
+)
 from edim_dde_domain.agents.cluster_tuning.helpers.guardrails import (
     format_guardrail_feedback,
     should_retry_sizing,
@@ -37,10 +41,18 @@ def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def prepare_sizing_payload(state: dict[str, Any]) -> dict[str, Any]:
+def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
+    """Build free-text query for cluster-tuning guidance RAG."""
+    return _build_retrieval_query(state)
+
+
+def prepare_sizing_payload(
+    state: dict[str, Any], *, history_config: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Flatten metrics into string fields for the sizing human prompt.
 
     On guardrail retry, preserves ``guardrail_feedback`` set by ``parse_sizing``.
+    Fills ``historical_context`` from RecommendationStore + optional RAG hits.
     """
     metrics = state.get("metrics") or {}
     current_config = {
@@ -54,12 +66,22 @@ def prepare_sizing_payload(state: dict[str, Any]) -> dict[str, Any]:
     feedback = state.get("guardrail_feedback")
     if not feedback or str(feedback).strip() in ("", "None"):
         feedback = "None"
+    # On guardrail retry, keep prior historical_context (avoid re-fetch churn).
+    prior = state.get("historical_context")
+    if (
+        prior
+        and str(prior).strip() not in ("", "None")
+        and state.get("sizing_attempts")
+    ):
+        historical = str(prior)
+    else:
+        historical = compose_historical_context(state, config=history_config)
     return {
         "current_config": dumps(current_config),
         "job_run_ingest": dumps(metrics),
         "sizing_hints": dumps(sizing_hints_for_llm(hints)),
         "guardrail_feedback": feedback,
-        "historical_context": "None",
+        "historical_context": historical,
         "sizing_hints_full": hints,
     }
 
