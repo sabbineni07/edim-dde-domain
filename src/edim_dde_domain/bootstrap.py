@@ -176,6 +176,7 @@ def bootstrap_agents(*, load_external: bool = True) -> None:
             return
         load_sources()
         _load_corpora()
+        _register_experience_transforms()
         _import_packaged_agent_nodes()
         try:
             ids = register_from_directory(
@@ -213,6 +214,18 @@ def _load_corpora() -> None:
         )
     except Exception as exc:  # noqa: BLE001 — bootstrap should not hard-fail
         logger.warning("corpora.yaml load skipped/failed: %s", exc)
+
+
+def _register_experience_transforms() -> None:
+    """Register domain ExperienceTransforms (situation/action index parsers)."""
+    try:
+        from edim_dde_domain.agents.cluster_tuning.helpers.experience_transform import (
+            register_cluster_tuning_experience_transform,
+        )
+
+        register_cluster_tuning_experience_transform()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("experience transform registration skipped/failed: %s", exc)
 
 
 def reset_bootstrap() -> None:

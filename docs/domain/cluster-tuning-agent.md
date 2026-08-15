@@ -22,11 +22,7 @@ The agent:
 4. Runs **rule-based performance validation** and **risk assessment**.
 5. Returns a stable **`TuningResponse`** (never the raw agent state bag).
 
-**Historical context (RAG + store):** before sizing, the graph retrieves optional guidance
-(`corpus: cluster-tuning-guidance`) and merges **RecommendationStore** history into
-`{historical_context}`: prefer the same `job_id`, then fill with **similar** peer-job
-rows (SKU / utilization heuristics; top-N from YAML). With `EDIM_RETRIEVAL=none` and an
-empty store, the prompt still gets `None` and sizing proceeds.
+**Historical context (RAG + store + experience index):** before sizing, the graph retrieves optional guidance (`corpus: cluster-tuning-guidance`), similarity-searches **past experiences** (`corpus: cluster-tuning-outcomes` — situation/action cards derived from RecommendationStore writes), and merges a thin **same-`job_id`** shelf from the store into `{historical_context}`. Cross-job learning is **feature-based**, not `job_id`-based; heuristic peer ranking is only a cold-start fallback when the experience index is empty. With `EDIM_RETRIEVAL=none` and an empty store, the prompt still gets `None` and sizing proceeds. Details: [Retrieval & RAG §6b–6c](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context).
 
 ---
 
@@ -154,7 +150,7 @@ Builds **string** prompt fields:
 | `job_run_ingest` | Full metrics JSON |
 | `sizing_hints` | Deterministic 90% util / 10% buffer hints |
 | `guardrail_feedback` | `"None"` on first pass; violation list on **retry** |
-| `historical_context` | Prior `RecommendationStore` rows (same `job_id` first, then similar peer jobs) + optional retrieved guidance, merged into one string; `"None"` when both are empty. See [Retrieval & RAG §6b](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context) for the ranking and index internals |
+| `historical_context` | Experience-index hits (feature similarity over past outcomes) + same-`job_id` store shelf + optional retrieved guidance; `"None"` when all empty. See [Retrieval & RAG §6b–6c](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context) |
 
 ### Step D — `run_sizing` (`llm_chain` / chain `sizing`)
 
@@ -267,7 +263,8 @@ See [External add-ons](external-addons.md).
 |---------|----------|
 | Graph | `agents/cluster_tuning/cluster_tuning.agent.yaml` |
 | Nodes | `agents/cluster_tuning/nodes.py` + `logic.py` |
-| Historical context | `helpers/historical_context.py` (store + RAG merge) |
+| Historical context | `helpers/historical_context.py` (experience search + store + RAG merge) |
+| Experience transform | `helpers/experience_transform.py` (situation/action index parser) |
 | Guardrails | `helpers/guardrails.py` |
 | Performance | `helpers/validate_performance.py` |
 | Sizing policy | `helpers/sizing_policy.py` |

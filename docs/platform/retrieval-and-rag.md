@@ -20,7 +20,8 @@ This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProv
                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ RAG (pattern)  — retrieve → inject into prompt → llm_chain → answer      │
-│   Pilots: spark_rca runbooks · cluster_tuning guidance + store history   │
+│   Pilots: spark_rca runbooks · cluster_tuning guidance + experience      │
+│           outcomes + store history                                       │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -29,7 +30,8 @@ This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProv
 | **Similarity search** | Find nearest / best-matching chunks (vector and/or keyword) |
 | **Hybrid search** | Combine vector + keyword signals (`search_mode: hybrid`) |
 | **RAG** | Application pattern that **uses** retrieval, then an LLM |
-| **Corpus** | Logical knowledge set (e.g. `spark-runbooks`) — not a backend name |
+| **Corpus** | Logical knowledge set (e.g. `spark-runbooks`, `cluster-tuning-outcomes`) — not a backend name |
+| **Experience index** | Derived situation/action cards from RecommendationStore writes, searched by **features** (see §6c) |
 
 **Design rule (same as StateStore / Observability):** backends are plug-and-play; agent YAML composes the RAG recipe.
 
@@ -161,76 +163,68 @@ If `EDIM_RETRIEVAL=none` or the index is empty, RCA continues; the prompt shows 
 
 ```text
 SQL / metrics → normalize → build_retrieval_query → rag.retrieve (cluster-tuning-guidance)
-  → prepare_sizing_payload   (merges RecommendationStore rows + guidance_context
+  → prepare_sizing_payload   (merges experience hits + store job shelf + guidance
                               into historical_context)
   → llm_chain (sizing) → guardrails → …
 ```
 
-`historical_context` is built from **two independent lanes** that only ever meet in a single prompt string. Different storage, different code, different failure modes; **either can be empty** and sizing still runs.
+`historical_context` is built from **three independent lanes** that only meet in one prompt string. Different storage, different code, different failure modes; **any can be empty** and sizing still runs.
 
 | Lane | Source | What it is | Populated by |
 |------|--------|------------|--------------|
-| **A — written guidance** | `rag.retrieve` → `RetrievalProvider` | Human-authored playbook chunks from corpus `cluster-tuning-guidance` | You pre-build an index (below) |
-| **B — past decisions** | `RecommendationStore` | Prior proposals this system produced: **same `job_id` first**, then **similar peer jobs** | Automatically, as `/recommend` persists records |
+| **A — written guidance** | `rag.retrieve` → corpus `cluster-tuning-guidance` | Human-authored playbooks | You pre-build an index (§6b.2) |
+| **B′ — past experiences (primary)** | Similarity search → corpus `cluster-tuning-outcomes` | Situation/action cards derived from past recommendations (**feature** similarity, not `job_id`) | Automatic index on RecommendationStore write (§6c) |
+| **B — this job's store rows** | `RecommendationStore` | Thin **same-`job_id`** shelf; heuristic peer ranking only as **cold-start fallback** when B′ is empty | `/recommend` persist + PATCH status |
 
-Both are **secondary** to live metrics / sizing hints. Empty store + `EDIM_RETRIEVAL=none` → `historical_context: "None"` (sizing still runs). The merge (`compose_historical_context`) appends whichever blocks exist, keeps them visually separate so the model can tell a past decision from a guideline, and truncates at **6000 chars**. The store lookup is wrapped — a DB outage degrades to *no history*, never a failed request. On a guardrail **retry** the graph reuses the `historical_context` already on state, so neither lane is hit twice.
+All are **secondary** to live metrics / sizing hints. Empty store + `EDIM_RETRIEVAL=none` → `historical_context: "None"`. The merge (`compose_historical_context`) appends whichever blocks exist (experience → store → guidance), keeps them visually separate, and truncates at **6000 chars**. Failures degrade to *no history*, never a failed request. On a guardrail **retry** the graph reuses `historical_context` already on state.
+
+**Tuning vs chat (same data, different intent):**
+
+| Intent | Path |
+|--------|------|
+| **Sizing / “jobs like this situation”** | Experience corpus (features) + optional same-job shelf |
+| **“What happened to job X?”** | `RecommendationStore.list(job_id=X)` (entity path); `job_id` is also in experience **metadata** for filtered search later |
 
 YAML knobs on `prepare_sizing_payload`:
 
 ```yaml
 - id: prepare_sizing_payload
   type: domain.tuning.prepare_sizing_payload
-  history_job_top_n: 5          # max same-job rows (Shelf 1)
-  history_similar_top_n: 5      # max similar other-job rows (Shelf 2); 0 disables Shelf 2
-  history_candidate_limit: 80   # how many recent store rows to pull before ranking
+  history_job_top_n: 5
+  history_similar_top_n: 5           # heuristic Shelf 2; used only when experience index is empty
+  history_candidate_limit: 80
   history_prefer_statuses: [applied, accepted, proposed]
+  history_experience_top_k: 5
+  history_experience_corpus: cluster-tuning-outcomes
+  history_heuristic_fallback: true   # false → never use heuristic peer ranking
 ```
 
-### 6b.1 Lane B — how store rows are ranked (`select_history_records`)
+### 6b.1 Lane B — store shelves (`select_history_records`)
 
-Before sizing, the store holds rows from **every** job, not just this one. The selector pulls the `history_candidate_limit` most recent rows and fills **two shelves**:
+- **Shelf 1 — this job's own past.** Exact `job_id` match; newest-first within `history_prefer_statuses`. Cap `history_job_top_n`. Always available for the entity/chat story.
+- **Shelf 2 — heuristic peers (fallback only).** `similarity_score()` arithmetic (SKU / util / tokens / status). Used **only when** the experience index returned no hits (or `history_heuristic_fallback: false` disables it entirely). When experience hits exist, Shelf 2 is skipped so the prompt is not flooded with duplicate peer content.
 
-- **Shelf 1 — this job's own past.** Rows whose `job_id` equals the incoming `job_id`. Ordered newest-first, then stable-sorted by `history_prefer_statuses` (so `applied`/`accepted` float up while newest stays first within each band). Capped at `history_job_top_n`. **No scoring** — an exact ID match never needs a heuristic.
-- **Shelf 2 — jobs that look like this one.** Everything not already picked, scored by `similarity_score()` (below), sorted descending, capped at `history_similar_top_n`. Runs **even when Shelf 1 is full**, so peers still contribute. When Shelf 1 has anything, candidates scoring **< 0.25** are dropped as noise; when Shelf 1 is empty, that floor is not applied.
-
-`similarity_score()` is plain arithmetic over four ideas — **no embeddings, no vector DB**. Max ≈ **7.9**.
+`similarity_score()` terms (fallback path; max ≈ **7.9**):
 
 | Term | Rule | Points |
 |------|------|--------|
-| SKU match | exact `azure_worker_vm_size` string | **3.0** |
-| SKU family | else first segment after stripping `standard_` matches (e.g. `d8s`) | **1.0** |
-| `max_worker_nodes_provisioned` | `weight × max(0, 1 − |Δ|/scale)`, weight 1.5, scale 16 | 0–1.5 |
-| `peak_worker_cpu_utilization_pct` | same falloff, weight 1.0, scale 50 | 0–1.0 |
-| `peak_worker_memory_utilization_pct` | weight 1.0, scale 50 | 0–1.0 |
-| `avg_worker_nodes_consumed` | weight 1.0, scale 8 | 0–1.0 |
-| `p99_worker_nodes_consumed` | weight 1.0, scale 8 | 0–1.0 |
-| token overlap | `0.5 × Jaccard` of current metrics vs record's node type + reason codes + SKU | 0–0.5 |
-| status bonus | `max(0, 0.4 − 0.1 × status_rank)` (`applied`=0 … `rejected`=4) | 0–0.4 |
-
-Each numeric term is a **linear falloff**: identical values earn the full weight; a gap of one full *scale* earns **0** (clamped).
-
-> **Gotcha — the "family" bonus is really a *size* bonus.** It compares only the first underscore segment, so `d8s` vs `d16s` do **not** match and earn **0**, even though both are D-series v5. Only an exact SKU string gets meaningful SKU credit. Consequence, with a `Standard_D8s_v5` / max 16 / CPU 28% / mem 41% incoming job (numbers from the real function):
->
-> | Candidate | Score |
-> |-----------|-------|
-> | `Standard_D8s_v5`, applied, similar shape | **8.37** |
-> | `Standard_E4ds_v5`, rejected, memory-bound | **2.68** |
-> | `Standard_D16s_v5`, accepted, much bigger | **0.80** |
->
-> A different instance family outranks the same family, purely because the bigger D16 job's node counts/CPU are >1 scale away and clamp to zero. If that ordering is wrong for the product, widen the scales or make the SKU compare family-aware — both are single-function changes in `helpers/historical_context.py`.
+| SKU match | exact `azure_worker_vm_size` | **3.0** |
+| SKU “family” | first segment after `standard_` (really a *size* token — `d8s` ≠ `d16s`) | **1.0** |
+| `max_worker_nodes_provisioned` | linear falloff, weight 1.5, scale 16 | 0–1.5 |
+| peak CPU / mem % | weight 1.0, scale 50 each | 0–1.0 each |
+| avg / p99 workers | weight 1.0, scale 8 each | 0–1.0 each |
+| token overlap | `0.5 × Jaccard` | 0–0.5 |
+| status bonus | `max(0, 0.4 − 0.1 × rank)` | 0–0.4 |
 
 ### 6b.2 Lane A — building the guidance index
 
-Sample docs live in `edim_dde_domain/knowledge/cluster-tuning-guidance/`. "Building an index" converts each markdown file **once** into a numeric vector so the machine can answer *"which text is relevant to this cluster?"* instantly. The `.md` files stay the source of truth; the index is a **derived artifact** you can delete and rebuild.
+Sample docs: `edim_dde_domain/knowledge/cluster-tuning-guidance/`. Mechanics of local FAISS + `HashingEmbedder`:
 
-Mechanics of the default local backend (`FaissRetrieval` + `HashingEmbedder`):
-
-- **One file = one vector. No chunking.** The whole file is read as a single string, so a long multi-topic file becomes one blurry average — prefer several short, single-topic files.
-- **Text → 384 numbers.** For each token: `sha256(token)`, first 4 bytes mod 384 pick a slot, byte 4 parity picks `+1`/`−1`; votes are summed and the vector is L2-normalized. Two docs are "close" when they **share vocabulary** — this is keyword matching, *not* meaning (`reduce max_workers` won't find `shrink the cluster`). Swap in Foundry / Azure OpenAI embeddings in the ingest job when you need real semantics.
-- **What lands on disk** (under `EDIM_FAISS_INDEX_PATH`): `cluster-tuning-guidance.faiss` (the vectors, in insertion order, in a `IndexFlatIP`) and `cluster-tuning-guidance.meta.json` (per-doc `id` / full `text` / `metadata.path`). Row *N* in the sidecar is vector *N* in FAISS — that alignment is how a search hit becomes readable text.
-- **Query time:** `build_retrieval_query` flattens live metrics into one line, it's embedded with the same embedder, FAISS returns `k = min(top_k, ntotal)` hits (so 2 indexed docs + `top_k: 4` → 2 hits), then hybrid mode adds `+0.05` per query word literally present and re-sorts.
-
-Index it locally (run once; re-run when docs change):
+- **One file = one vector. No chunking.** Prefer short, single-topic files.
+- **Text → 384 numbers** via token hashing (`sha256` → slot + sign); vocabulary overlap, not meaning.
+- Disk: `{corpus}.faiss` + `{corpus}.meta.json` under `EDIM_FAISS_INDEX_PATH` (row *N* ↔ vector *N*).
+- Query: `build_retrieval_query` → embed → `k = min(top_k, ntotal)` → optional hybrid `+0.05` keyword boost.
+- **`search_corpus` de-dupes** by `id` then by `action_signature` / content hash so duplicate guidance does not enter the prompt.
 
 ```python
 from pathlib import Path
@@ -241,17 +235,106 @@ root = Path(edim_dde_domain.__file__).resolve().parent / "knowledge" / "cluster-
 build_faiss_index_from_dir(corpus="cluster-tuning-guidance", source_dir=root)
 ```
 
-Requires `EDIM_RETRIEVAL=faiss` **and** `EDIM_FAISS_INDEX_PATH=<dir>`. **Deployed** environments have no build step in the app: the corpus name maps to an Azure AI Search index via `config/corpora.yaml`, and an ingest job owns population.
+Requires `EDIM_RETRIEVAL=faiss` and `EDIM_FAISS_INDEX_PATH`. Deployed: corpus → Azure index via `config/corpora.yaml`.
 
-### 6b.3 Design choice — why a heuristic for Lane B (not embeddings)
+### 6b.3 Design evolution — heuristic → experience index
 
-Three options were considered for ranking **store rows** (Lane B is structured records, distinct from Lane A's free text):
+| Option | Role now |
+|--------|----------|
+| **A — heuristic Shelf 2** | **Cold-start fallback** when `EDIM_RETRIEVAL=none` or the outcomes corpus is empty |
+| **B — experience index** | **Primary** cross-job learning (see §6c) |
+| **C — SQL-side similarity** | Still rejected — breaks plug-and-play stores |
 
-- **A — in-process heuristic (chosen).** `similarity_score()` over SKU/metric/token/status. Zero new infra, deterministic, debuggable, works the moment records exist, and needs no index rebuild. Cost: hand-tuned weights and the family gotcha above.
-- **B — index recommendations into a `RetrievalProvider`.** Reuse FAISS/Azure to vector-search past records. More "semantic," but needs an ingest path per store, an index to keep in sync, and embeddings to earn their keep on what is mostly numeric data. A natural **later** layer if heuristic ranking proves insufficient.
-- **C — SQL-side similarity.** Push scoring into Postgres/Cosmos. Fast at scale but backend-specific — breaks the plug-and-play `RecommendationStore` contract across memory/cosmos/redis.
+---
 
-A wins for R1 because it's backend-agnostic and immediately useful; B can slot in behind the same `select_history_records` seam without touching callers.
+## 6c. Experience index (platform — all future agents)
+
+Cross-job learning must **not** key primarily on `job_id`. Many jobs share almost the same cluster shape and different jobs share the same failure mode (over-provisioned / under-provisioned / OOM). The **experience index** is the platform answer.
+
+```text
+RecommendationStore.save / update_status
+        │  ExperienceIndexingStore proxy (automatic)
+        ▼
+ExperienceTransform(agent_id)   ← domain “index parser”
+        │
+        ▼
+ExperienceDocument (situation + action text + metadata)
+        │  upsert doc_id = recommendation_id
+        ▼
+RetrievalProvider corpus (e.g. cluster-tuning-outcomes)
+        │
+        ▼
+search_corpus(query from live features) → de-duped hits → sizing prompt
+```
+
+### Layers (do not collapse)
+
+| Layer | Role |
+|-------|------|
+| **RecommendationStore** | System of record — lifecycle, PATCH, exact job history |
+| **ExperienceDocument** | Derived card — situation labels + action text for similarity |
+| **RetrievalProvider** | Same FAISS / Azure / Databricks backends as runbooks |
+
+### Index parser (`ExperienceTransform`)
+
+Domain packs register one transform per `agent_id` at bootstrap (`register_experience_transform`). Platform code never hard-codes tuning field names.
+
+For `cluster_tuning` (`helpers/experience_transform.py`):
+
+1. Read metrics + reason codes + recommendation payload from the record.
+2. Infer **situation labels**, e.g. `over_provisioned`, `under_provisioned`, `oom_or_memory_pressure`, `sku_change`, `moved_to_memory_sku`. `over_provisioned` and `under_provisioned` are **mutually exclusive** (live utilization wins when reason codes conflict), and reason codes that describe the *proposed change* — notably `PERFORMANCE_DEGRADATION_RISK` — must not be read as observed cluster state.
+3. Build **action lines**, e.g. `reduced max_workers 16 → 8`, `changed sku D8s → D4s`.
+4. Emit index text:
+
+```text
+Situation: over_provisioned, sku_change
+Signals: sku=… max_workers=… peak_cpu_pct=… …
+Reason codes: …
+Action: reduced max_workers …; changed sku …
+Outcome: applied
+```
+
+5. Put `job_id` / `cluster_id` / `recommendation_id` / `status` in **metadata** (entity filters for chat), not as the retrieval key.
+
+### When documents are written / removed
+
+| Status | Experience index |
+|--------|------------------|
+| `proposed`, `accepted`, `applied` | **Upsert** (idempotent by `recommendation_id`) |
+| `rejected`, `superseded` | **Delete** from the corpus |
+
+`proposed` is indexed so local demos work before anyone PATCHes accepted/applied; metadata `status` remains available for future boosts.
+
+Wiring: `set_recommendation_store` wraps backends in `ExperienceIndexingStore` so every `save` / `update_status` updates the index. Failures log and never fail the HTTP path. No-op when `EDIM_RETRIEVAL=none` or no transform is registered.
+
+### De-duplication
+
+| Problem | Fix |
+|---------|-----|
+| Same recommendation indexed twice | Upsert by `recommendation_id` (verified: 2× re-save → 1 doc) |
+| Same *action* from many jobs in top-k | `search_corpus(..., dedupe=True)` keeps highest score per `id`, then per `action_signature` / content hash |
+| Same markdown path re-indexed | Path-based `doc_id` on guidance corpora |
+
+**Duplicates are counted, not discarded.** Many jobs hitting the same situation is *signal*, so the surviving hit carries `metadata['occurrences']` and `metadata['also_job_ids']`, rendered in the prompt as `occurrences=3 also_jobs=['job-1001', …]`. The model sees "this action was applied 3 times across jobs" once, instead of three identical paragraphs — or, worse, silently losing that it is a common pattern.
+
+### Adding a future agent
+
+1. Implement `ExperienceTransform` for that `agent_id` + corpus name.
+2. Register at bootstrap; add corpus to `config/corpora.yaml`.
+3. Build the agent query from **features**, not ids; keep store list-by-id for chat.
+
+### Chat vs tuning (recommendation)
+
+```text
+Tuning prompt sections:
+  [Similar past experiences]   ← feature search (little job_id noise)
+  [Prior recommendations]      ← same job_id only (when present)
+  [Retrieved sizing guidance]  ← playbooks
+
+Chat / “explain job X”:
+  RecommendationStore.list(job_id=X)   ← entity path
+  optional: search outcomes with filter metadata.job_id=X
+```
 
 ---
 

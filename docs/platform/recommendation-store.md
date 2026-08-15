@@ -14,6 +14,8 @@
 
 Same **Strategy + Factory + Registry** pattern as StateStore / Observability / Retrieval — plug-and-play backends, one process-wide instance.
 
+**Derived experience index:** `set_recommendation_store` wraps backends in `ExperienceIndexingStore` so each `save` / `update_status` also upserts (or deletes) a situation/action card into the active `RetrievalProvider` corpus (see [Retrieval & RAG §6c](retrieval-and-rag.md#6c-experience-index-platform--all-future-agents)). The store remains the system of record; vectors are a derived view for **feature** similarity across jobs.
+
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  RecommendationStore (product history)                          │

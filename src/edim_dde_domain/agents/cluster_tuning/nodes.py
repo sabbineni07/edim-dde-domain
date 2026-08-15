@@ -32,6 +32,9 @@ def prepare_sizing_payload_factory(config: dict[str, Any]):
         "history_similar_top_n",
         "history_candidate_limit",
         "history_prefer_statuses",
+        "history_experience_top_k",
+        "history_experience_corpus",
+        "history_heuristic_fallback",
     )
     history_config = {k: config[k] for k in history_keys if k in config}
 

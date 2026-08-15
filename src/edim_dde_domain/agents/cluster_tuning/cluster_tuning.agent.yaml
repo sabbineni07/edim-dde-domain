@@ -81,11 +81,15 @@ graph:
       context_key: guidance_context
     - id: prepare_sizing_payload
       type: domain.tuning.prepare_sizing_payload
-      # RecommendationStore history: prefer same job_id, then similar peer jobs
+      # RecommendationStore: same job_id shelf; heuristic similar = cold-start fallback
       history_job_top_n: 5
       history_similar_top_n: 5
       history_candidate_limit: 80
       history_prefer_statuses: [applied, accepted, proposed]
+      # Experience index (feature similarity over past outcomes)
+      history_experience_top_k: 5
+      history_experience_corpus: cluster-tuning-outcomes
+      history_heuristic_fallback: true
     - id: run_sizing
       type: llm_chain
       chain: sizing

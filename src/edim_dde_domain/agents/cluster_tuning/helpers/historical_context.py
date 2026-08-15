@@ -1,10 +1,14 @@
 """Build historical_context for cluster_tuning sizing prompts.
 
-Two complementary sources (product parity):
+Three complementary sources (feature-first product parity):
 
-1. **RecommendationStore** — past proposals ranked by job_id match first, then
-   metric/SKU similarity (top-N from YAML node config)
-2. **RetrievalProvider** — optional ``rag.retrieve`` hits (guidance corpus)
+1. **Experience index** (primary for cross-job learning) — situation/action
+   cards derived from RecommendationStore rows, retrieved by similarity search
+   on corpus ``cluster-tuning-outcomes`` (not by job_id).
+2. **RecommendationStore** — thin **same-job** shelf for this ``job_id``;
+   heuristic peer-job ranking is a **fallback** when the experience index is
+   empty (cold start / ``EDIM_RETRIEVAL=none``).
+3. **Guidance RAG** — optional ``rag.retrieve`` hits (playbook corpus).
 
 Either source may be empty; sizing still runs with ``historical_context: "None"``.
 """
@@ -21,6 +25,8 @@ _EMPTY = "None"
 _DEFAULT_JOB_TOP_N = 5
 _DEFAULT_SIMILAR_TOP_N = 5
 _DEFAULT_CANDIDATE_LIMIT = 80
+_DEFAULT_EXPERIENCE_TOP_K = 5
+_DEFAULT_EXPERIENCE_CORPUS = "cluster-tuning-outcomes"
 _MAX_CHARS = 6000
 _STATUS_RANK = {"applied": 0, "accepted": 1, "proposed": 2, "superseded": 3, "rejected": 4}
 
@@ -32,6 +38,10 @@ def default_history_config() -> dict[str, Any]:
         "history_similar_top_n": _DEFAULT_SIMILAR_TOP_N,
         "history_candidate_limit": _DEFAULT_CANDIDATE_LIMIT,
         "history_prefer_statuses": ["applied", "accepted", "proposed"],
+        "history_experience_top_k": _DEFAULT_EXPERIENCE_TOP_K,
+        "history_experience_corpus": _DEFAULT_EXPERIENCE_CORPUS,
+        # When True, skip heuristic Shelf-2 if experience search returned hits.
+        "history_heuristic_fallback": True,
     }
 
 
@@ -43,6 +53,7 @@ def merge_history_config(raw: dict[str, Any] | None) -> dict[str, Any]:
         "history_job_top_n",
         "history_similar_top_n",
         "history_candidate_limit",
+        "history_experience_top_k",
     ):
         if key in raw and raw[key] is not None:
             cfg[key] = max(0, int(raw[key]))
@@ -50,6 +61,10 @@ def merge_history_config(raw: dict[str, Any] | None) -> dict[str, Any]:
         cfg["history_prefer_statuses"] = [
             str(s).strip().lower() for s in raw["history_prefer_statuses"] if str(s).strip()
         ]
+    if raw.get("history_experience_corpus"):
+        cfg["history_experience_corpus"] = str(raw["history_experience_corpus"]).strip()
+    if "history_heuristic_fallback" in raw and raw["history_heuristic_fallback"] is not None:
+        cfg["history_heuristic_fallback"] = bool(raw["history_heuristic_fallback"])
     return cfg
 
 
@@ -246,17 +261,17 @@ def select_history_records(
     records: list[Any],
     *,
     config: dict[str, Any] | None = None,
+    include_similar: bool = True,
 ) -> list[Any]:
-    """Prefer same job_id; always fill with similar other-job rows up to similar_top_n.
+    """Prefer same job_id; optionally fill with similar other-job rows.
 
     - ``history_job_top_n``: max rows with matching job_id (status preference applied)
-    - ``history_similar_top_n``: max additional similar rows (other jobs, or when
-      job_id has no history). Runs even when job matches exist, so similar peer
-      jobs can still inform sizing.
+    - ``history_similar_top_n``: max additional similar rows when ``include_similar``
+      is True (heuristic fallback when the experience index is cold).
     """
     cfg = merge_history_config(config)
     job_top_n = int(cfg["history_job_top_n"])
-    similar_top_n = int(cfg["history_similar_top_n"])
+    similar_top_n = int(cfg["history_similar_top_n"]) if include_similar else 0
     prefer = list(cfg["history_prefer_statuses"])
 
     job_id = str(state.get("job_id") or "").strip()
@@ -301,8 +316,71 @@ def select_history_records(
     return selected
 
 
-def _load_store_history(
+def _load_experience_block(
     state: dict[str, Any], *, config: dict[str, Any] | None = None
+) -> str:
+    """Similarity search over the outcomes corpus (feature-first). Never raises."""
+    cfg = merge_history_config(config)
+    top_k = int(cfg["history_experience_top_k"])
+    if top_k <= 0:
+        return ""
+    corpus = str(cfg["history_experience_corpus"] or _DEFAULT_EXPERIENCE_CORPUS)
+    try:
+        from edim_dde_ai.retrieval import get_retrieval_provider, search_corpus
+        from edim_dde_domain.agents.cluster_tuning.helpers.experience_transform import (
+            build_experience_query,
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+    if getattr(get_retrieval_provider(), "name", "") == "none":
+        return ""
+
+    query = build_experience_query(state)
+    if not query.strip():
+        return ""
+    try:
+        hits = search_corpus(
+            query,
+            corpus=corpus,
+            top_k=top_k,
+            search_mode="hybrid",
+            dedupe=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("historical_context experience search failed: %s", exc)
+        return ""
+    if not hits:
+        return ""
+
+    lines = [
+        "### Similar past experiences "
+        f"(corpus={corpus}, top_k={top_k}; feature similarity, not job_id)"
+    ]
+    for i, hit in enumerate(hits, start=1):
+        meta = hit.metadata or {}
+        header = (
+            f"[{i}] score={hit.score:.3f} "
+            f"status={meta.get('status')} "
+            f"labels={meta.get('situation_labels')} "
+            f"job_id={meta.get('job_id')}"
+        )
+        occurrences = int(meta.get("occurrences") or 1)
+        if occurrences > 1:
+            also = meta.get("also_job_ids") or []
+            header += f" occurrences={occurrences}"
+            if also:
+                header += f" also_jobs={list(also)[:5]}"
+        lines.append(header)
+        lines.append(hit.text.strip())
+    return "\n".join(lines)
+
+
+def _load_store_history(
+    state: dict[str, Any],
+    *,
+    config: dict[str, Any] | None = None,
+    include_similar: bool = True,
 ) -> str:
     """Best-effort list from RecommendationStore (never raises into the graph)."""
     try:
@@ -321,16 +399,18 @@ def _load_store_history(
             agent_id="cluster_tuning",
             limit=max(1, candidate_limit),
         )
-        selected = select_history_records(state, candidates, config=cfg)
+        selected = select_history_records(
+            state, candidates, config=cfg, include_similar=include_similar
+        )
         if not selected:
             return ""
         job_n = sum(1 for r in selected if _rec_attr(r, "_match_kind") == "job_id")
         sim_n = len(selected) - job_n
         title = (
             "### Prior recommendations "
-            f"(job_id matches={job_n}, similar={sim_n}; "
+            f"(job_id matches={job_n}, similar_heuristic={sim_n}; "
             f"job_top_n={cfg['history_job_top_n']}, "
-            f"similar_top_n={cfg['history_similar_top_n']})"
+            f"similar_top_n={cfg['history_similar_top_n'] if include_similar else 0})"
         )
         return format_store_history(selected, title=title)
     except Exception as exc:  # noqa: BLE001
@@ -341,10 +421,19 @@ def _load_store_history(
 def compose_historical_context(
     state: dict[str, Any], *, config: dict[str, Any] | None = None
 ) -> str:
-    """Merge store history + optional RAG guidance into one prompt string."""
+    """Merge experience hits + store history + optional RAG guidance."""
+    cfg = merge_history_config(config)
     parts: list[str] = []
 
-    store_block = _load_store_history(state, config=config)
+    experience_block = _load_experience_block(state, config=cfg)
+    if experience_block:
+        parts.append(experience_block)
+
+    # Heuristic peer ranking only when experience index is cold / disabled.
+    use_heuristic = bool(cfg.get("history_heuristic_fallback", True)) and not experience_block
+    store_block = _load_store_history(
+        state, config=cfg, include_similar=use_heuristic
+    )
     if store_block:
         parts.append(store_block)
 

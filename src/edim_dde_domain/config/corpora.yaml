@@ -15,5 +15,14 @@ corpora:
   cluster-tuning-guidance:
     description: >
       Cluster sizing / rightsizing playbooks for cluster_tuning historical_context
-      via rag.retrieve. Complements RecommendationStore (structured past proposals).
+      via rag.retrieve. Complements RecommendationStore (structured past proposals)
+      and cluster-tuning-outcomes (feature similarity over past actions).
     azure_index: cluster-tuning-guidance
+
+  cluster-tuning-outcomes:
+    description: >
+      Derived experience cards from RecommendationStore writes (situation labels +
+      actions). Indexed automatically when recommendations are saved/status-updated;
+      retrieved by feature similarity for cluster_tuning sizing (not by job_id).
+      job_id remains in metadata for entity/chat filters.
+    azure_index: cluster-tuning-outcomes
