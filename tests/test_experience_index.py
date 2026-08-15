@@ -26,7 +26,7 @@ from edim_dde_ai.retrieval import (
 from edim_dde_domain.agents.cluster_tuning.helpers.experience_transform import (
     ClusterTuningExperienceTransform,
     build_experience_query,
-    infer_situation_labels,
+    infer_feature_labels,
     register_cluster_tuning_experience_transform,
 )
 from edim_dde_domain.agents.cluster_tuning.helpers.historical_context import (
@@ -46,8 +46,8 @@ def teardown_function() -> None:
     clear_experience_transforms()
 
 
-def test_infer_over_provisioned_from_low_cpu():
-    labels = infer_situation_labels(
+def test_infer_feature_labels_from_resource_pressure():
+    labels = infer_feature_labels(
         metrics={
             "azure_worker_vm_size": "Standard_D8s_v5",
             "peak_worker_cpu_utilization_pct": 22,
@@ -55,11 +55,14 @@ def test_infer_over_provisioned_from_low_cpu():
             "max_worker_nodes_provisioned": 16,
             "avg_worker_nodes_consumed": 2,
         },
-        reason_codes=["OVERPROVISIONED_AUTOSCALE"],
-        recommendation={"recommended_max_workers": 4, "recommended_node_type": "Standard_D4s_v5"},
     )
-    assert "over_provisioned" in labels
-    assert "sku_change" in labels
+    assert "cpu_pressure_low" in labels
+    assert "memory_pressure_low" in labels
+    assert "worker_capacity_pressure_low" in labels
+    assert "capacity_headroom_high" in labels
+    assert "over_provisioned" not in labels
+    assert "under_provisioned" not in labels
+    assert "oom_or_memory_pressure" not in labels
 
 
 def test_transform_builds_situation_action_text():
@@ -82,15 +85,18 @@ def test_transform_builds_situation_action_text():
                     "recommended_node_type": "Standard_D4s_v5",
                     "recommended_max_workers": 6,
                 },
-                "reason_codes": ["OVERPROVISIONED_AUTOSCALE", "PER_NODE_UNDERUTILIZED"],
+                "reason_codes": [
+                    "RESOURCE_PRESSURE_CPU_LOW",
+                    "CAPACITY_HEADROOM_HIGH",
+                ],
             },
         )
     )
     assert doc is not None
     assert doc.corpus == "cluster-tuning-outcomes"
     assert doc.doc_id == "rec-xp-1"
-    assert "Situation:" in doc.text
-    assert "over_provisioned" in doc.situation_labels
+    assert "Resource features:" in doc.text
+    assert "cpu_pressure_low" in doc.feature_labels
     assert "reduced max_workers" in doc.text
     assert doc.metadata["job_id"] == "job-9"
     assert doc.action_signature
@@ -119,18 +125,18 @@ def test_save_indexes_experience_into_memory_retrieval():
                     "recommended_node_type": "Standard_E4s_v3",
                     "recommended_max_workers": 4,
                 },
-                "reason_codes": ["PER_NODE_UNDERUTILIZED"],
+                "reason_codes": ["RESOURCE_PRESSURE_CPU_LOW"],
             },
         )
     )
     hits = search_corpus(
-        "over_provisioned reduced max_workers",
+        "cpu_pressure_low reduced max_workers",
         corpus="cluster-tuning-outcomes",
         top_k=3,
     )
     assert hits
     assert hits[0].id == "rec-idx-1"
-    assert "Situation:" in hits[0].text
+    assert "Resource features:" in hits[0].text
 
 
 def test_rejected_removes_from_experience_index():
@@ -143,47 +149,52 @@ def test_rejected_removes_from_experience_index():
             recommendation_id="rec-rej-1",
             status="proposed",
             response={
-                "job_cluster_metrics": {"azure_worker_vm_size": "Standard_D8s_v5"},
+                "job_cluster_metrics": {
+                    "azure_worker_vm_size": "Standard_D8s_v5",
+                    "peak_worker_cpu_utilization_pct": 20,
+                    "peak_worker_memory_utilization_pct": 30,
+                },
                 "recommendation": {"recommended_max_workers": 2},
-                "reason_codes": ["OVERPROVISIONED_AUTOSCALE"],
+                "reason_codes": ["CAPACITY_HEADROOM_HIGH"],
             },
         )
     )
-    assert search_corpus("over_provisioned", corpus="cluster-tuning-outcomes", top_k=5)
+    assert search_corpus("cpu_pressure_low", corpus="cluster-tuning-outcomes", top_k=5)
     store.update_status("rec-rej-1", "rejected")
-    assert search_corpus("over_provisioned", corpus="cluster-tuning-outcomes", top_k=5) == []
+    assert search_corpus("cpu_pressure_low", corpus="cluster-tuning-outcomes", top_k=5) == []
 
 
-def test_degradation_risk_does_not_imply_under_provisioned():
-    """PERFORMANCE_DEGRADATION_RISK describes the proposed change, not cluster state."""
-    labels = infer_situation_labels(
+def test_failure_vocabulary_is_not_inferred_from_high_memory():
+    labels = infer_feature_labels(
         metrics={
             "azure_worker_vm_size": "Standard_D8s_v5",
-            "peak_worker_cpu_utilization_pct": 25,
-            "peak_worker_memory_utilization_pct": 30,
-            "max_worker_nodes_provisioned": 14,
-            "avg_worker_nodes_consumed": 3,
+            "peak_worker_cpu_utilization_pct": 55,
+            "peak_worker_memory_utilization_pct": 96,
         },
-        reason_codes=["PERFORMANCE_DEGRADATION_RISK"],
-        recommendation={"recommended_max_workers": 7},
     )
-    assert "over_provisioned" in labels
-    assert "under_provisioned" not in labels
+    assert "memory_pressure_saturated" in labels
+    assert "limiting_resource_memory" in labels
+    assert all("oom" not in label and "failure" not in label for label in labels)
 
 
-def test_over_and_under_are_mutually_exclusive():
-    labels = infer_situation_labels(
+def test_agent_threshold_override_changes_pressure_label():
+    labels = infer_feature_labels(
         metrics={
-            "peak_worker_cpu_utilization_pct": 95,
-            "peak_worker_memory_utilization_pct": 92,
-            "max_worker_nodes_provisioned": 10,
-            "avg_worker_nodes_consumed": 1,
+            "peak_worker_cpu_utilization_pct": 65,
         },
-        reason_codes=["OVERPROVISIONED_AUTOSCALE"],
-        recommendation={},
+        resource_pressure_config={
+            "dimensions": {
+                "cpu": {
+                    "thresholds": {
+                        "low_below": 25,
+                        "high_at": 60,
+                        "saturated_at": 80,
+                    }
+                }
+            }
+        },
     )
-    assert "under_provisioned" in labels
-    assert "over_provisioned" not in labels
+    assert "cpu_pressure_high" in labels
 
 
 def test_dedupe_counts_collapsed_duplicates():
@@ -236,7 +247,7 @@ def test_compose_prefers_experience_block():
                     "recommended_node_type": "Standard_D4s_v5",
                     "recommended_max_workers": 4,
                 },
-                "reason_codes": ["OVERPROVISIONED_AUTOSCALE"],
+                "reason_codes": ["CAPACITY_HEADROOM_HIGH"],
             },
         )
     )
@@ -253,7 +264,7 @@ def test_compose_prefers_experience_block():
         }
     )
     assert "Similar past experiences" in text
-    assert "over_provisioned" in text
+    assert "cpu_pressure_low" in text
     # Heuristic similar shelf suppressed when experience hits exist
     assert "similar_heuristic=" not in text or "similar_heuristic=0" in text
 
@@ -268,7 +279,7 @@ def test_build_experience_query_mentions_situation():
             }
         }
     )
-    assert "over_provisioned" in q
+    assert "cpu_pressure_low" in q
     assert "Standard_D8s_v5" in q
 
 

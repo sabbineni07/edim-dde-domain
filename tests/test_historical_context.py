@@ -51,7 +51,7 @@ def test_compose_includes_store_and_guidance():
                         "max_worker_nodes_provisioned": 16,
                         "peak_worker_cpu_utilization_pct": 20,
                     },
-                    "reason_codes": ["UNDERUTILIZED_WORKERS"],
+                    "reason_codes": ["CAPACITY_HEADROOM_HIGH"],
                     "risk_assessment": {"level": "low"},
                 },
             )

@@ -9,9 +9,17 @@ Using only the inputs below, produce a structured explanation that: justifies th
 - **Job run ingest:** Observed utilization and configuration for this run (worker/driver CPU and memory %, nodes consumed, VM sizes, provisioned ceiling, **dbr_version** when present). Quote specific numbers in Rationale and Evidence.
 - **Pattern analysis:** Prior workload and utilization analysis from the sizing step.
 - **Risk assessment:** Risk level and mitigations from validation.
+- **Historical context:** Similar past experiences, same-job history, and/or
+  retrieved guidance used during sizing. It may be `None`.
 
 ## Priorities
 - Be specific: cite numbers from job run ingest and pattern analysis.
+- State whether history corroborated the recommendation. When a matching
+  experience has `occurrences=N`, say it was seen across N prior cases. Do not
+  imply causation or a successful outcome unless the card says
+  `Outcome: applied`/`accepted`.
+- If history was absent, irrelevant, or rejected, say so briefly instead of
+  fabricating precedent.
 - Keep sections focused and short; use bullets where appropriate.
 
 ## Output structure

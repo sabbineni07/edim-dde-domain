@@ -37,9 +37,16 @@ def prepare_sizing_payload_factory(config: dict[str, Any]):
         "history_heuristic_fallback",
     )
     history_config = {k: config[k] for k in history_keys if k in config}
+    resource_pressure_config = config.get("resource_pressure")
 
     def _node(state: dict[str, Any]) -> dict[str, Any]:
-        return logic.prepare_sizing_payload(state, history_config=history_config or None)
+        return logic.prepare_sizing_payload(
+            state,
+            history_config=history_config or None,
+            resource_pressure_config=resource_pressure_config
+            if isinstance(resource_pressure_config, dict)
+            else None,
+        )
 
     return _node
 

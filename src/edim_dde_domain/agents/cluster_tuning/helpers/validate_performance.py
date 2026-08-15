@@ -8,13 +8,12 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import (
+    normalize_resource_pressure_config,
     recommended_min_max_workers,
 )
 
 # Recommended capacity should stay at least this fraction of current (legacy ~80%).
 CAPACITY_FLOOR_RATIO = 0.8
-# Peak util target used with the 90%/10% sizing policy.
-PEAK_TARGET_PCT = 90.0
 # When peak is above target×1.05, require recommended capacity ≥ 90% of current.
 HIGH_PEAK_CAPACITY_RATIO = 0.9
 
@@ -28,14 +27,20 @@ def validate_performance(
     peak_cpu_pct: float = 0.0,
     peak_memory_pct: float = 0.0,
     job_run_ingest: Optional[dict[str, Any]] = None,
+    resource_pressure_config: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Return whether the recommendation is likely to meet peak load.
 
     Checks (legacy-aligned):
     - recommended capacity (vCPU × max_workers) ≥ ~80% of current capacity
     - recommended max_workers ≥ sizing floor from ingest (when ingest present)
-    - if peak CPU/mem is above ~90% target, avoid cutting below ~90% of current capacity
+    - if peak CPU/mem is above the configured target, avoid cutting below ~90%
+      of current capacity
     """
+    policy = normalize_resource_pressure_config(resource_pressure_config)
+    peak_target = float(policy["target_utilization_pct"])
+    buffer_pct = float(policy["capacity_buffer_pct"])
+
     current_capacity = max(int(current_vcpus) * int(current_max_workers), 1)
     recommended_capacity = max(int(recommended_vcpus) * int(recommended_max_workers), 1)
 
@@ -47,7 +52,7 @@ def validate_performance(
 
     ingest = job_run_ingest or {}
     if ingest:
-        _, floor_max = recommended_min_max_workers(ingest)
+        _, floor_max = recommended_min_max_workers(ingest, buffer_pct=buffer_pct)
         if int(recommended_max_workers) < int(floor_max):
             meets = False
             reasons.append("recommended_max_workers_below_sizing_floor")
@@ -68,7 +73,7 @@ def validate_performance(
         peak_cpu = float(peak_cpu_pct or 0)
         peak_mem = float(peak_memory_pct or 0)
 
-    high_peak = peak_cpu > PEAK_TARGET_PCT * 1.05 or peak_mem > PEAK_TARGET_PCT * 1.05
+    high_peak = peak_cpu > peak_target * 1.05 or peak_mem > peak_target * 1.05
     if high_peak and recommended_capacity < current_capacity * HIGH_PEAK_CAPACITY_RATIO:
         meets = False
         reasons.append("high_peak_util_with_aggressive_capacity_cut")

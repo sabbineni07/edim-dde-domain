@@ -31,7 +31,7 @@ This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProv
 | **Hybrid search** | Combine vector + keyword signals (`search_mode: hybrid`) |
 | **RAG** | Application pattern that **uses** retrieval, then an LLM |
 | **Corpus** | Logical knowledge set (e.g. `spark-runbooks`, `cluster-tuning-outcomes`) — not a backend name |
-| **Experience index** | Derived situation/action cards from RecommendationStore writes, searched by **features** (see §6c) |
+| **Experience index** | Derived resource-feature/action cards from RecommendationStore writes, searched by **features** (see §6c) |
 
 **Design rule (same as StateStore / Observability):** backends are plug-and-play; agent YAML composes the RAG recipe.
 
@@ -249,7 +249,9 @@ Requires `EDIM_RETRIEVAL=faiss` and `EDIM_FAISS_INDEX_PATH`. Deployed: corpus �
 
 ## 6c. Experience index (platform — all future agents)
 
-Cross-job learning must **not** key primarily on `job_id`. Many jobs share almost the same cluster shape and different jobs share the same failure mode (over-provisioned / under-provisioned / OOM). The **experience index** is the platform answer.
+Cross-job learning must **not** key primarily on `job_id`. Many jobs share
+similar resource-pressure profiles even when their ids, configurations, and
+workloads differ. The **experience index** is the platform answer.
 
 ```text
 RecommendationStore.save / update_status
@@ -258,7 +260,7 @@ RecommendationStore.save / update_status
 ExperienceTransform(agent_id)   ← domain “index parser”
         │
         ▼
-ExperienceDocument (situation + action text + metadata)
+ExperienceDocument (resource features + action text + metadata)
         │  upsert doc_id = recommendation_id
         ▼
 RetrievalProvider corpus (e.g. cluster-tuning-outcomes)
@@ -272,7 +274,7 @@ search_corpus(query from live features) → de-duped hits → sizing prompt
 | Layer | Role |
 |-------|------|
 | **RecommendationStore** | System of record — lifecycle, PATCH, exact job history |
-| **ExperienceDocument** | Derived card — situation labels + action text for similarity |
+| **ExperienceDocument** | Derived card — configured pressure features + action text for similarity |
 | **RetrievalProvider** | Same FAISS / Azure / Databricks backends as runbooks |
 
 ### Index parser (`ExperienceTransform`)
@@ -281,20 +283,44 @@ Domain packs register one transform per `agent_id` at bootstrap (`register_exper
 
 For `cluster_tuning` (`helpers/experience_transform.py`):
 
-1. Read metrics + reason codes + recommendation payload from the record.
-2. Infer **situation labels**, e.g. `over_provisioned`, `under_provisioned`, `oom_or_memory_pressure`, `sku_change`, `moved_to_memory_sku`. `over_provisioned` and `under_provisioned` are **mutually exclusive** (live utilization wins when reason codes conflict), and reason codes that describe the *proposed change* — notably `PERFORMANCE_DEGRADATION_RISK` — must not be read as observed cluster state.
-3. Build **action lines**, e.g. `reduced max_workers 16 → 8`, `changed sku D8s → D4s`.
-4. Emit index text:
+1. Read metrics + recommendation payload from the record.
+2. Use the persisted `resource_pressure` profile when present; otherwise derive it
+   from the packaged defaults for legacy rows.
+3. Generate feature labels from the configured dimensions, for example
+   `cpu_pressure_low`, `memory_pressure_high`,
+   `worker_capacity_pressure_low`, `capacity_headroom_high`, and
+   `limiting_resource_memory`. These names are generated; they are not a closed
+   scenario enum.
+4. Build **action lines**, e.g. `reduced max_workers 16 → 8`, `changed sku D8s → D4s`.
+   The de-duplication signature records semantic direction (`sku:changed`,
+   `family:retained`, `max_workers:reduced`) rather than an exact SKU pair.
+5. Emit index text:
 
 ```text
-Situation: over_provisioned, sku_change
-Signals: sku=… max_workers=… peak_cpu_pct=… …
-Reason codes: …
+Resource features: cpu_pressure_low, memory_pressure_low, capacity_headroom_high
+Signals: sku=… cpu=22%(low) memory=31%(low) worker_capacity=12.5%(low)
 Action: reduced max_workers …; changed sku …
 Outcome: applied
 ```
 
-5. Put `job_id` / `cluster_id` / `recommendation_id` / `status` in **metadata** (entity filters for chat), not as the retrieval key.
+6. Put `job_id` / `cluster_id` / `recommendation_id` / `status` in **metadata** (entity filters for chat), not as the retrieval key.
+
+### Resource-pressure configuration
+
+Thresholds and dimension definitions live on the
+`prepare_sizing_payload.resource_pressure` block in
+`cluster_tuning.agent.yaml`. Each dimension declares a `resource` or `capacity`
+role and supplies either `metric_keys` (max/mean aggregation) or a
+numerator/denominator ratio, thresholds
+(`low_below`, `high_at`, `saturated_at`), and optional
+`preferred_families`. `shape_change_min_level` controls when a limiting resource
+may justify changing VM shape.
+
+The pressure engine is dimension-agnostic: adding disk, network, spill, or
+another measurable dimension is a YAML change when the metrics already exist.
+Prompts, experience indexing, and evaluation consume the generated profile.
+Utilization never manufactures a failure event. OOM, throttling, spill, and job
+failure require their own explicit event/metric/log evidence.
 
 ### When documents are written / removed
 
@@ -315,7 +341,23 @@ Wiring: `set_recommendation_store` wraps backends in `ExperienceIndexingStore` s
 | Same *action* from many jobs in top-k | `search_corpus(..., dedupe=True)` keeps highest score per `id`, then per `action_signature` / content hash |
 | Same markdown path re-indexed | Path-based `doc_id` on guidance corpora |
 
-**Duplicates are counted, not discarded.** Many jobs hitting the same situation is *signal*, so the surviving hit carries `metadata['occurrences']` and `metadata['also_job_ids']`, rendered in the prompt as `occurrences=3 also_jobs=['job-1001', …]`. The model sees "this action was applied 3 times across jobs" once, instead of three identical paragraphs — or, worse, silently losing that it is a common pattern.
+**Duplicates are counted, not discarded.** Many jobs sharing the same
+pressure/action pattern is *signal*, so the surviving hit carries
+`metadata['occurrences']` and `metadata['also_job_ids']`, rendered in the prompt
+as `occurrences=3 also_jobs=['job-1001', …]`. The model sees "this action was
+applied 3 times across jobs" once, instead of three identical paragraphs—or,
+worse, silently losing that it is a common pattern.
+
+### Migration from the former scenario vocabulary
+
+The outcomes index is derived data. After deploying this change, rebuild or
+replay RecommendationStore rows so documents using
+`over_provisioned`, `under_provisioned`, or `oom_or_memory_pressure` are
+replaced by generated pressure features. Rebuild the
+`cluster-tuning-guidance` corpus as well, because its source files were
+reorganized around pressure, capacity, resource shape, and evidence boundaries.
+Do not retain the former labels as aliases; doing so would keep stale retrieval
+matches and continue conflating high utilization with failure evidence.
 
 ### Adding a future agent
 

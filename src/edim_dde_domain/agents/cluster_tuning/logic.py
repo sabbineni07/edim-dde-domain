@@ -17,6 +17,7 @@ from edim_dde_domain.agents.cluster_tuning.helpers.resource_optimization import 
     estimate_resource_optimization,
 )
 from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import (
+    compute_resource_pressure,
     compute_sizing_hints,
     infer_reason_codes,
     parse_family_from_node_type,
@@ -47,7 +48,10 @@ def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def prepare_sizing_payload(
-    state: dict[str, Any], *, history_config: dict[str, Any] | None = None
+    state: dict[str, Any],
+    *,
+    history_config: dict[str, Any] | None = None,
+    resource_pressure_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Flatten metrics into string fields for the sizing human prompt.
 
@@ -62,7 +66,9 @@ def prepare_sizing_payload(
         "driver_node_count": metrics.get("driver_node_count"),
         "dbr_version": metrics.get("dbr_version"),
     }
-    hints = compute_sizing_hints(metrics)
+    hints = compute_sizing_hints(
+        metrics, resource_pressure_config=resource_pressure_config
+    )
     feedback = state.get("guardrail_feedback")
     if not feedback or str(feedback).strip() in ("", "None"):
         feedback = "None"
@@ -75,7 +81,11 @@ def prepare_sizing_payload(
     ):
         historical = str(prior)
     else:
-        historical = compose_historical_context(state, config=history_config)
+        historical = compose_historical_context(
+            state,
+            config=history_config,
+            resource_pressure_config=resource_pressure_config,
+        )
     return {
         "current_config": dumps(current_config),
         "job_run_ingest": dumps(metrics),
@@ -83,6 +93,7 @@ def prepare_sizing_payload(
         "guardrail_feedback": feedback,
         "historical_context": historical,
         "sizing_hints_full": hints,
+        "resource_pressure_config": resource_pressure_config or {},
     }
 
 
@@ -111,7 +122,9 @@ def parse_sizing(state: dict[str, Any]) -> dict[str, Any]:
         }
 
     applied, adjustments = validate_and_clamp_with_adjustments(
-        raw, job_run_ingest=metrics
+        raw,
+        job_run_ingest=metrics,
+        resource_pressure_config=state.get("resource_pressure_config"),
     )
     pattern = str(raw.get("pattern_analysis") or applied.get("rationale") or "Sizing from LLM")
 
@@ -167,6 +180,7 @@ def validate_performance(state: dict[str, Any]) -> dict[str, Any]:
             peak_cpu_pct=float(metrics.get("peak_worker_cpu_utilization_pct") or 0),
             peak_memory_pct=float(metrics.get("peak_worker_memory_utilization_pct") or 0),
             job_run_ingest=metrics,
+            resource_pressure_config=state.get("resource_pressure_config"),
         )
     }
 
@@ -191,24 +205,34 @@ def assess_risks(state: dict[str, Any]) -> dict[str, Any]:
     rec_cap = int(perf.get("recommended_capacity_vcpu") or max(rec_vcpus * rec_max, 1))
     change_pct = abs(cur_cap - rec_cap) / cur_cap * 100.0
 
-    peak_cpu = float(metrics.get("peak_worker_cpu_utilization_pct") or 0)
-    peak_mem = float(metrics.get("peak_worker_memory_utilization_pct") or 0)
-    peak_util = max(peak_cpu, peak_mem)
+    pressure = compute_resource_pressure(
+        metrics, config=state.get("resource_pressure_config")
+    )
+    elevated_pressure = any(
+        isinstance(details, dict)
+        and details.get("role") == "resource"
+        and str(details.get("level") or "") in {"high", "saturated"}
+        for details in (pressure.get("dimensions") or {}).values()
+    )
 
     mitigations: list[str] = []
     if change_pct >= 50:
         level = "high"
-        mitigations.append("Roll out on a canary job first; monitor run duration and OOMs.")
+        mitigations.append(
+            "Roll out on a canary job first; monitor run duration, resource pressure, "
+            "and explicit failure events."
+        )
     elif change_pct >= 25:
         level = "medium"
         mitigations.append("Compare next run duration and spill metrics against baseline.")
     else:
         level = "low"
 
-    if peak_util > 85 and rec_cap < cur_cap:
+    if elevated_pressure and rec_cap < cur_cap:
         level = "high"
         mitigations.append(
-            "Peak utilization is high while capacity decreases — validate against peak windows."
+            "Resource pressure is elevated while capacity decreases — validate against "
+            "peak windows."
         )
 
     if perf and not perf.get("meets_peak_requirements", True):
@@ -278,7 +302,10 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
         or int(sizing.get("min_workers") or 0) != 0
     )
     reason_codes = infer_reason_codes(
-        metrics, sizing, change_required=change_required
+        metrics,
+        sizing,
+        change_required=change_required,
+        resource_pressure_config=state.get("resource_pressure_config"),
     )
     perf = state.get("performance_validation") or {}
     if perf and not perf.get("meets_peak_requirements", True):
@@ -288,6 +315,9 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
     recommendation = {
         **sizing,
         **optimization,
+        "resource_pressure": (state.get("sizing_hints_full") or {}).get(
+            "resource_pressure", {}
+        ),
         "risk_level": risk.get("risk_level", "low"),
         "reason_codes": reason_codes,
         "meets_peak_requirements": perf.get("meets_peak_requirements"),
@@ -325,9 +355,14 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
 
 def prepare_explanation_payload(state: dict[str, Any]) -> dict[str, Any]:
     """Stringify fields for the explanation human prompt (non-colliding keys)."""
+    history = str(state.get("historical_context") or "None")
+    # Explanations need provenance, not the full sizing prompt budget.
+    if len(history) > 3000:
+        history = history[:2980] + "\n…[truncated]"
     return {
         "recommendation_text": dumps(state.get("recommendation") or {}),
         "job_run_ingest": dumps(state.get("metrics") or {}),
         "pattern_analysis": str(state.get("pattern_analysis") or ""),
         "risk_assessment_text": dumps(state.get("risk_assessment") or {}),
+        "historical_context": history,
     }

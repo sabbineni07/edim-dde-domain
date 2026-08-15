@@ -22,7 +22,7 @@ The agent:
 4. Runs **rule-based performance validation** and **risk assessment**.
 5. Returns a stable **`TuningResponse`** (never the raw agent state bag).
 
-**Historical context (RAG + store + experience index):** before sizing, the graph retrieves optional guidance (`corpus: cluster-tuning-guidance`), similarity-searches **past experiences** (`corpus: cluster-tuning-outcomes` — situation/action cards derived from RecommendationStore writes), and merges a thin **same-`job_id`** shelf from the store into `{historical_context}`. Cross-job learning is **feature-based**, not `job_id`-based; heuristic peer ranking is only a cold-start fallback when the experience index is empty. With `EDIM_RETRIEVAL=none` and an empty store, the prompt still gets `None` and sizing proceeds. Details: [Retrieval & RAG §6b–6c](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context).
+**Historical context (RAG + store + experience index):** before sizing, the graph retrieves optional guidance (`corpus: cluster-tuning-guidance`), similarity-searches **past experiences** (`corpus: cluster-tuning-outcomes` — resource-feature/action cards derived from RecommendationStore writes), and merges a thin **same-`job_id`** shelf from the store into `{historical_context}`. Cross-job learning is **feature-based**, not `job_id`-based; heuristic peer ranking is only a cold-start fallback when the experience index is empty. With `EDIM_RETRIEVAL=none` and an empty store, the prompt still gets `None` and sizing proceeds. Details: [Retrieval & RAG §6b–6c](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context).
 
 ---
 
@@ -148,13 +148,168 @@ Builds **string** prompt fields:
 |-----------|---------|
 | `current_config` | Current SKU / max workers / DBR snippet |
 | `job_run_ingest` | Full metrics JSON |
-| `sizing_hints` | Deterministic 90% util / 10% buffer hints |
+| `sizing_hints` | Deterministic worker bounds plus the YAML-configured resource-pressure profile |
 | `guardrail_feedback` | `"None"` on first pass; violation list on **retry** |
 | `historical_context` | Experience-index hits (feature similarity over past outcomes) + same-`job_id` store shelf + optional retrieved guidance; `"None"` when all empty. See [Retrieval & RAG §6b–6c](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context) |
 
 ### Step D — `run_sizing` (`llm_chain` / chain `sizing`)
 
-Calls Foundry with system + human prompts and skills (SKU allow-list skill text, output schema). Writes raw model text to `sizing_raw`.
+Calls Foundry with system + human prompts and all tuning skills (historical-context
+usage, resource-pressure method, VM-family rules, SKU allow-list, output schema).
+Writes raw model text to `sizing_raw`.
+
+**Decision hierarchy:** live metrics → deterministic sizing hints → similar past
+experiences → same-job history → human guidance. Lower-priority evidence can
+corroborate but never override current metrics.
+
+The model must compare every configured pressure dimension, keep utilization
+separate from failure evidence, and avoid family changes unless a supported
+limiting-resource shape mismatch exists. It must include
+`### 5. Historical evidence` stating which history supported the decision or why
+none was used. Repeated experience patterns (`occurrences=N`) are stronger
+corroboration only when pressure features and limiting resource match.
+
+#### YAML-configured pressure policy
+
+`prepare_sizing_payload.resource_pressure` in `cluster_tuning.agent.yaml` is
+**node-local config** — opaque to the framework and read only by this node's
+factory (see [Nodes and routers §5–6](../framework/nodes-and-routers.md#5-node-local-config-is-opaque-to-the-framework)).
+It declares:
+
+- global target utilization, capacity buffer, and minimum level for shape change;
+- dimensions based on one or more metric keys, or a numerator/denominator ratio;
+- a `role` of `resource` (contributes to limiting-resource selection) or
+  `capacity` (drives worker-bound direction and headroom);
+- `low_below`, `high_at`, and `saturated_at` thresholds per dimension;
+- optional Azure family preferences for a limiting resource.
+
+```yaml
+- id: prepare_sizing_payload
+  type: domain.tuning.prepare_sizing_payload
+  # …history_* knobs…
+  resource_pressure:
+    target_utilization_pct: 90
+    capacity_buffer_pct: 10
+    shape_change_min_level: high      # limiting pressure must reach this to move shape
+    dimensions:
+      cpu:
+        role: resource
+        metric_keys: [peak_worker_cpu_utilization_pct, peak_driver_cpu_utilization_pct]
+        thresholds: {low_below: 40, high_at: 70, saturated_at: 85}
+        preferred_families: [F, D]
+      memory:
+        role: resource
+        metric_keys: [peak_worker_memory_utilization_pct, avg_driver_memory_utilization_pct]
+        thresholds: {low_below: 40, high_at: 70, saturated_at: 90}
+        preferred_families: [E]
+      worker_capacity:
+        role: capacity
+        ratio: {numerator_key: avg_worker_nodes_consumed, denominator_key: max_worker_nodes_provisioned, scale: 100}
+        thresholds: {low_below: 40, high_at: 70, saturated_at: 90}
+```
+
+The current YAML defines CPU, memory, and worker-capacity dimensions. They are
+initial configuration, not a fixed scenario taxonomy. `compute_resource_pressure`
+iterates the configuration and emits, per dimension, `value_pct` + `level`
+(`low` / `moderate` / `high` / `saturated`) plus a derived `limiting_resource`,
+`capacity_headroom`, and `preferred_families`. A future disk, network, spill, or
+other dimension is a YAML addition once its metrics exist — no engine change.
+
+**Single source of truth.** The node resolves the policy once and writes it to
+state as `resource_pressure_config`. Every later consumer reads that state key
+instead of re-reading YAML, so prompt hints and hard clamps cannot drift:
+
+| Consumer | Uses the policy for |
+|----------|---------------------|
+| `run_sizing` prompt (`sizing_hints`) | pressure levels, limiting resource, suggested family |
+| `parse_sizing` guardrails | worker floor from `capacity_buffer_pct` |
+| `validate_performance` | peak target and floor ratio |
+| `assess_risks` | elevated-pressure vs capacity-cut mitigation |
+| experience index + `cluster_tuning.quality` | consistent labels/direction (loaded once at bootstrap for these non-graph consumers) |
+
+High utilization means pressure only. It does not mean OOM, throttling, spill,
+or job failure. Those claims require explicit event/error evidence, potentially
+provided later through a separate RCA evidence channel.
+
+??? note "In depth (optional) — design rationale, full parameter reference, and extending without code"
+
+    Read this only if you need to change or extend the pressure policy. Day-to-day
+    tuning does not require it.
+
+    **Why pressure axes instead of named scenarios.** An earlier design hard-coded
+    `over_provisioned` / `under_provisioned` / `oom_or_memory_pressure` as a closed
+    enum across regexes, prompts, guidance files, indexing, and the evaluator.
+    Adding a concern meant editing five places, and "OOM" was inferred from high
+    memory even on runs that never failed. The pressure model fixes both problems:
+
+    - **Dimensions are data.** Each dimension is a measurement + thresholds, so
+      scenarios *emerge* (all low + high headroom ≈ over-provisioned; a saturated
+      resource ≈ under-provisioned) instead of being enumerated.
+    - **Pressure ≠ failure.** Utilization only yields a pressure `level`. OOM,
+      spill, throttling, and job failure are separate **event evidence**, never
+      synthesized from a percentage. That keeps a completed high-memory run from
+      being mislabelled as an OOM.
+    - **Roles separate two questions.** `capacity` answers *how many workers*;
+      `resource` answers *what shape* (which family). They are computed
+      independently so a capacity change and a family change each need their own
+      evidence.
+
+    **Full parameter reference.**
+
+    | Key | Scope | Meaning | Omitted / invalid |
+    |-----|-------|---------|-------------------|
+    | `target_utilization_pct` | policy | Peak target; also `validate_performance` high-peak line | Defaults to 90 |
+    | `capacity_buffer_pct` | policy | Head-room added to observed demand for the worker floor | Defaults to 10 |
+    | `shape_change_min_level` | policy | Minimum limiting-resource `level` before a family/shape move is justified | Defaults to `high` |
+    | `dimensions.<name>` | dimension | Logical axis name; also the label prefix (`<name>_pressure_<level>`) | — |
+    | `role` | dimension | `resource` (limiting-resource candidate) or `capacity` (worker direction + headroom) | Defaults to `resource` |
+    | `metric_keys` | dimension | One or more ingest keys; aggregated by `aggregation` (`max` default, or `mean`) | Dimension level = `unknown`, skipped |
+    | `ratio` | dimension | `{numerator_key, denominator_key, scale}` instead of `metric_keys` | Missing/zero denominator → `unknown` |
+    | `thresholds` | dimension | `low_below` ≤ `high_at` ≤ `saturated_at`; maps value → level | Out-of-order raises; unset uses 40/70/90 |
+    | `preferred_families` | dimension | Families that satisfy this resource when it is limiting | Empty → shape move for that resource not asserted |
+
+    Level mapping: `value < low_below → low`, `< high_at → moderate`,
+    `< saturated_at → high`, `≥ saturated_at → saturated`. Capacity headroom is the
+    inverse of capacity pressure (`low → high` headroom, `saturated → none`).
+
+    **Worked recipe — add a "disk / spill" dimension without touching Python.**
+
+    1. Confirm the metric already exists in `collect_metrics` output (e.g.
+       `peak_worker_disk_utilization_pct`). *If it does not, this step needs SQL /
+       ingest work — that is the code/content boundary, see below.*
+    2. Add a dimension under `resource_pressure.dimensions`:
+
+        ```yaml
+        disk:
+          role: resource
+          metric_keys: [peak_worker_disk_utilization_pct]
+          thresholds: {low_below: 40, high_at: 75, saturated_at: 90}
+          preferred_families: [L]
+        ```
+
+    3. Nothing else changes: `compute_resource_pressure` iterates it, hints/labels/
+       guardrails/evaluator all read the resolved profile from state, and experience
+       cards start emitting `disk_pressure_*` / `limiting_resource_disk`.
+
+    **The honest "no code changes" boundary.** YAML alone covers thresholds, roles,
+    aggregation, new dimensions over *existing* metrics, buffers, and the shape-change
+    gate. You still need code or content when you:
+
+    - introduce a **new metric column** (SQL SELECT in `collect_metrics` + ingest);
+    - add a **new VM family** beyond `D/E/F/L` (guardrail allow-list is a hard
+      guardrail, not YAML);
+    - want **prose guidance** for a new axis in retrieval (add a
+      `knowledge/cluster-tuning-guidance/` doc and re-index);
+    - change **how** a level maps to an action verb (that logic is deliberately
+      generic and rarely needs editing).
+
+    **`history_*` knobs (same node, different concern).** These tune historical
+    context, not sizing math: `history_job_top_n` / `history_similar_top_n` /
+    `history_candidate_limit` size the same-job and heuristic shelves;
+    `history_prefer_statuses` orders them; `history_experience_top_k` /
+    `history_experience_corpus` control the feature-similarity search; and
+    `history_heuristic_fallback` disables heuristic peers once the experience index
+    is warm. Full model: [Retrieval & RAG §6b–6c](../platform/retrieval-and-rag.md#6b-cluster_tuning-historical-context).
 
 **Cost:** one completion per attempt (retry = second completion).
 
@@ -170,6 +325,30 @@ Calls Foundry with system + human prompts and skills (SKU allow-list skill text,
 **Not retryable:** deterministic `sku_mapped` alone (LLM does not output `azure_node_type`).
 
 Response transparency: `sizing_attempts`, `guardrail_retries`, `guardrail_adjustments`.
+
+### Quality evaluation (offline / CI)
+
+After invocation, `cluster_tuning.quality` can score the agent state using the
+framework evaluator registry:
+
+```python
+from edim_dde_ai.evaluation import evaluate
+
+result = evaluate(
+    "cluster_tuning.quality",
+    inputs={"metrics": request_metrics},
+    output=agent_state,
+    context={
+        "historical_context": agent_state.get("historical_context"),
+        "resource_pressure_config": yaml_pressure_config,
+    },
+)
+```
+
+It returns a 0–1 quality score, evidence-based confidence, dimension scores
+(contract/evidence/direction/history/safety), and findings. Confidence measures
+input/rubric coverage—not the LLM's claimed certainty. See
+[Evaluation, quality, and confidence](../framework/evaluation-and-quality.md).
 
 ### Step F — `validate_performance` (no LLM)
 
@@ -264,7 +443,7 @@ See [External add-ons](external-addons.md).
 | Graph | `agents/cluster_tuning/cluster_tuning.agent.yaml` |
 | Nodes | `agents/cluster_tuning/nodes.py` + `logic.py` |
 | Historical context | `helpers/historical_context.py` (experience search + store + RAG merge) |
-| Experience transform | `helpers/experience_transform.py` (situation/action index parser) |
+| Experience transform | `helpers/experience_transform.py` (pressure/action index parser) |
 | Guardrails | `helpers/guardrails.py` |
 | Performance | `helpers/validate_performance.py` |
 | Sizing policy | `helpers/sizing_policy.py` |

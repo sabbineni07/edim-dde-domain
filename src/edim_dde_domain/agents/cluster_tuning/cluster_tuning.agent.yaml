@@ -90,6 +90,37 @@ graph:
       history_experience_top_k: 5
       history_experience_corpus: cluster-tuning-outcomes
       history_heuristic_fallback: true
+      # Resource dimensions and thresholds are data, not scenario branches.
+      # Add another dimension with metric_keys (or a numerator/denominator ratio)
+      # without changing the pressure engine.
+      resource_pressure:
+        target_utilization_pct: 90
+        capacity_buffer_pct: 10
+        shape_change_min_level: high
+        dimensions:
+          cpu:
+            role: resource
+            metric_keys:
+              - peak_worker_cpu_utilization_pct
+              - peak_driver_cpu_utilization_pct
+            thresholds: {low_below: 40, high_at: 70, saturated_at: 85}
+            preferred_families: [F, D]
+          memory:
+            role: resource
+            metric_keys:
+              - peak_worker_memory_utilization_pct
+              - peak_driver_memory_utilization_pct
+              - avg_driver_memory_utilization_pct
+            thresholds: {low_below: 40, high_at: 70, saturated_at: 90}
+            preferred_families: [E]
+          worker_capacity:
+            role: capacity
+            ratio:
+              numerator_key: avg_worker_nodes_consumed
+              denominator_key: max_worker_nodes_provisioned
+              scale: 100
+            thresholds: {low_below: 40, high_at: 70, saturated_at: 90}
+            preferred_families: []
     - id: run_sizing
       type: llm_chain
       chain: sizing

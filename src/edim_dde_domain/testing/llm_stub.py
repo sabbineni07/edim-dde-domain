@@ -39,13 +39,21 @@ def _sizing_from_text(text: str) -> str:
 
     if util < 40:
         rec_max = max(floor_max, max(2, current_max // 2))
-        family, vcpus = "E", 4
+        family = (
+            "E" if "Standard_E" in current_type
+            else "F" if "Standard_F" in current_type
+            else "L" if "Standard_L" in current_type
+            else "D"
+        )
+        size_m = re.search(r"Standard_[DEFL](\d+)", current_type, re.I)
+        current_vcpus = int(size_m.group(1)) if size_m else 4
+        vcpus = max(4, current_vcpus // 2)
         pattern = (
             "### 1. Workload type\nLow utilization batch job.\n\n"
             "### 2. Resource utilization\n"
             f"Peak util {util:.0f}%.\n\n"
             "### 3. Performance characteristics\nHeadroom available.\n\n"
-            "### 4. Optimization opportunities\nDownsize SKU and max workers."
+            "### 4. Optimization opportunities\nDownsize vCPU tier and max workers; keep family."
         )
     elif util > 80:
         rec_max = max(floor_max, min(current_max + 4, 32))
@@ -72,6 +80,14 @@ def _sizing_from_text(text: str) -> str:
 
     if retrying:
         rec_max = max(rec_max, floor_max)
+
+    history_present = "### Similar past experiences" in text or "### Retrieved sizing guidance" in text
+    history_note = (
+        "Relevant historical experience/guidance corroborates the direction; live metrics remain primary."
+        if history_present
+        else "No relevant historical evidence was available; decision uses live metrics and sizing hints."
+    )
+    pattern += f"\n\n### 5. Historical evidence\n{history_note}"
 
     return json.dumps(
         {

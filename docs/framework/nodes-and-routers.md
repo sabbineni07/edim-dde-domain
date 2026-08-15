@@ -110,4 +110,77 @@ For each YAML node, every key except `id` and `type` becomes `config` passed to 
 
 ---
 
+## 5. Node-local config is opaque to the framework
+
+The framework treats every non-`id`/`type` key as an **uninterpreted payload**
+for exactly one factory. It never validates, merges, or shares those keys across
+nodes. This is why a generic, config-driven engine can carry arbitrarily rich
+domain policy (for example `cluster_tuning`'s `resource_pressure` block) without
+the platform learning anything about that domain.
+
+What the framework guarantees (`core/definition.py` + `graph/builder.py`):
+
+1. `id` and `type` are structural; everything else → `NodeSpec.config` (a plain
+   dict).
+2. At build time it only does `factory = get_node_factory(type)` then
+   `factory(node.config)`.
+3. It does **not** inspect, validate, or type-check domain keys. Unknown keys are
+   simply whatever that one factory chooses to read.
+4. Keys on one node are invisible to other nodes. There is no global config bag.
+
+```text
+node YAML
+  ├── id / type          → framework (routing, registry lookup)
+  └── everything else     → NodeSpec.config → ONE factory (domain interprets)
+```
+
+Consequences:
+
+- Two nodes may use the same key name for different meanings; each factory owns
+  its own vocabulary.
+- Misspelled or extra keys never raise at the framework level — they are ignored
+  by the factory that does not read them. Validate domain-critical keys inside
+  the factory if you need strictness.
+- Adding a new knob (new dimension, new threshold) is a YAML + factory change in
+  the owning domain package; no framework release is required.
+
+## 6. Config → state hand-off (how later nodes "see" a node's config)
+
+A factory closes over config at **build time**; the returned callable runs at
+**invoke time** and can only affect the graph through the **state** it returns.
+So downstream nodes do not read an upstream node's YAML — they read the **state
+keys** that upstream node wrote. State is the shared runtime contract; YAML
+config is private to a node.
+
+```text
+build time:   factory(config)         # config captured in a closure
+invoke time:  _node(state) -> partial # writes shared state keys
+later nodes:  read those state keys    # never the upstream YAML
+```
+
+Worked example — `cluster_tuning`'s `prepare_sizing_payload`
+(`agents/cluster_tuning/nodes.py`) reads its node-local `history_*` and
+`resource_pressure` config, then writes results onto state:
+
+| `prepare_sizing_payload` writes to state | Consumed later by |
+|------------------------------------------|-------------------|
+| `sizing_hints` / `sizing_hints_full` | `run_sizing` LLM prompt |
+| `historical_context` | sizing + explanation prompts |
+| `resource_pressure_config` | `parse_sizing` guardrail clamps, `validate_performance`, `assess_risks` |
+
+Because the resolved policy is placed on state once, the sizing prompt, the hard
+guardrail clamps, and the risk step all use the **same** thresholds without
+re-reading YAML or drifting apart.
+
+### Config that must reach non-graph consumers
+
+Some domain consumers are not graph nodes (e.g. the `ExperienceTransform` index
+parser and the `cluster_tuning.quality` evaluator registered at bootstrap).
+Graph-time node config cannot reach them, so the domain package reads the same
+YAML block once at bootstrap (`bootstrap._cluster_tuning_pressure_config()`) and
+passes it to those registrations. That keeps offline indexing and scoring aligned
+with the agent's live policy while the framework contract stays generic.
+
+---
+
 ← [YAML agents](yaml-agents.md) · [Guide home](../README.md) · [Conditional edges](conditional-edges.md) →

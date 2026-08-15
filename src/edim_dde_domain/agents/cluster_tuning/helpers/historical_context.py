@@ -2,7 +2,7 @@
 
 Three complementary sources (feature-first product parity):
 
-1. **Experience index** (primary for cross-job learning) — situation/action
+1. **Experience index** (primary for cross-job learning) — resource-feature/action
    cards derived from RecommendationStore rows, retrieved by similarity search
    on corpus ``cluster-tuning-outcomes`` (not by job_id).
 2. **RecommendationStore** — thin **same-job** shelf for this ``job_id``;
@@ -317,7 +317,10 @@ def select_history_records(
 
 
 def _load_experience_block(
-    state: dict[str, Any], *, config: dict[str, Any] | None = None
+    state: dict[str, Any],
+    *,
+    config: dict[str, Any] | None = None,
+    resource_pressure_config: dict[str, Any] | None = None,
 ) -> str:
     """Similarity search over the outcomes corpus (feature-first). Never raises."""
     cfg = merge_history_config(config)
@@ -336,7 +339,9 @@ def _load_experience_block(
     if getattr(get_retrieval_provider(), "name", "") == "none":
         return ""
 
-    query = build_experience_query(state)
+    query = build_experience_query(
+        state, resource_pressure_config=resource_pressure_config
+    )
     if not query.strip():
         return ""
     try:
@@ -362,7 +367,7 @@ def _load_experience_block(
         header = (
             f"[{i}] score={hit.score:.3f} "
             f"status={meta.get('status')} "
-            f"labels={meta.get('situation_labels')} "
+            f"features={meta.get('feature_labels')} "
             f"job_id={meta.get('job_id')}"
         )
         occurrences = int(meta.get("occurrences") or 1)
@@ -419,13 +424,20 @@ def _load_store_history(
 
 
 def compose_historical_context(
-    state: dict[str, Any], *, config: dict[str, Any] | None = None
+    state: dict[str, Any],
+    *,
+    config: dict[str, Any] | None = None,
+    resource_pressure_config: dict[str, Any] | None = None,
 ) -> str:
     """Merge experience hits + store history + optional RAG guidance."""
     cfg = merge_history_config(config)
     parts: list[str] = []
 
-    experience_block = _load_experience_block(state, config=cfg)
+    experience_block = _load_experience_block(
+        state,
+        config=cfg,
+        resource_pressure_config=resource_pressure_config,
+    )
     if experience_block:
         parts.append(experience_block)
 

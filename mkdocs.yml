@@ -94,6 +94,7 @@ nav:
       - Conditional edges: framework/conditional-edges.md
       - Content and LLM: framework/content-and-llm.md
       - Orchestration: framework/orchestration-topology.md
+      - Evaluation and quality: framework/evaluation-and-quality.md
   - E — Domain:
       - Sources and SQL: domain/sources-and-sql.md
       - Sources design (deep): DESIGN_SOURCES_AND_SQL_NODES.md

@@ -59,6 +59,29 @@ def test_validate_performance_high_peak_blocks_aggressive_cut():
     assert "high_peak_util_with_aggressive_capacity_cut" in out["reasons"]
 
 
+def test_validate_performance_honors_target_override():
+    # Same cut as above, but a higher configured target treats 91 as not "high peak".
+    out = validate_performance(
+        current_vcpus=8,
+        current_max_workers=16,
+        recommended_vcpus=8,
+        recommended_max_workers=14,
+        peak_cpu_pct=91,
+        peak_memory_pct=50,
+        job_run_ingest={
+            "peak_worker_cpu_utilization_pct": 91,
+            "peak_worker_memory_utilization_pct": 50,
+            "avg_worker_nodes_consumed": 10,
+            "max_worker_nodes_provisioned": 16,
+            "p99_worker_nodes_consumed": 12,
+            "driver_node_count": 1,
+        },
+        resource_pressure_config={"target_utilization_pct": 95},
+    )
+    assert out["meets_peak_requirements"] is True
+    assert "high_peak_util_with_aggressive_capacity_cut" not in out["reasons"]
+
+
 def test_assess_risks_folds_performance_validation():
     out = assess_risks(
         {

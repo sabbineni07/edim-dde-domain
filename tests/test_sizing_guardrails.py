@@ -19,6 +19,7 @@ from edim_dde_domain.agents.cluster_tuning.logic import parse_sizing, prepare_si
 def test_compute_sizing_hints_low_util():
     hints = compute_sizing_hints(
         {
+            "azure_worker_vm_size": "Standard_D8s_v5",
             "peak_worker_cpu_utilization_pct": 20,
             "peak_worker_memory_utilization_pct": 25,
             "avg_worker_nodes_consumed": 4,
@@ -30,6 +31,56 @@ def test_compute_sizing_hints_low_util():
     assert hints["recommended_max_workers"] <= 16
     assert hints["recommended_max_workers"] >= 1
     assert hints["suggested_vm_family"] in ("D", "E", "F", "L")
+
+
+def test_compute_sizing_hints_honors_agent_yaml_threshold_override():
+    hints = compute_sizing_hints(
+        {
+            "azure_worker_vm_size": "Standard_D8s_v5",
+            "peak_worker_cpu_utilization_pct": 65,
+            "peak_worker_memory_utilization_pct": 30,
+        },
+        resource_pressure_config={
+            "dimensions": {
+                "cpu": {
+                    "thresholds": {
+                        "low_below": 25,
+                        "high_at": 60,
+                        "saturated_at": 80,
+                    },
+                    "preferred_families": ["F"],
+                }
+            }
+        },
+    )
+    pressure = hints["resource_pressure"]
+    assert pressure["dimensions"]["cpu"]["level"] == "high"
+    assert pressure["limiting_resource"] == "cpu"
+    assert hints["suggested_vm_family"] == "F"
+
+
+def test_guardrails_honor_capacity_buffer_override():
+    applied, adjustments = validate_and_clamp_with_adjustments(
+        {
+            "node_family": "D",
+            "vcpus": 8,
+            "min_workers": 0,
+            "max_workers": 4,
+            "auto_termination_minutes": 0,
+            "rationale": "downsize",
+        },
+        job_run_ingest={
+            "azure_worker_vm_size": "Standard_D8s_v5",
+            "max_worker_nodes_provisioned": 16,
+            "avg_worker_nodes_consumed": 4,
+            "p99_worker_nodes_consumed": 5,
+            "driver_node_count": 1,
+        },
+        resource_pressure_config={"capacity_buffer_pct": 50},
+    )
+    # floor = ceil(5 * 1.5) = 8 under a 50% buffer override
+    assert applied["max_workers"] >= 8
+    assert any(a["reason"] == "sizing_floor" for a in adjustments)
 
 
 def test_guardrails_map_sku_and_clamp():

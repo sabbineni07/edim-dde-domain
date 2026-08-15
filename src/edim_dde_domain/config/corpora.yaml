@@ -21,8 +21,9 @@ corpora:
 
   cluster-tuning-outcomes:
     description: >
-      Derived experience cards from RecommendationStore writes (situation labels +
-      actions). Indexed automatically when recommendations are saved/status-updated;
+      Derived experience cards from RecommendationStore writes (configured
+      resource-pressure features + actions). Indexed automatically when
+      recommendations are saved/status-updated;
       retrieved by feature similarity for cluster_tuning sizing (not by job_id).
       job_id remains in metadata for entity/chat filters.
     azure_index: cluster-tuning-outcomes

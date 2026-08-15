@@ -177,6 +177,7 @@ def bootstrap_agents(*, load_external: bool = True) -> None:
         load_sources()
         _load_corpora()
         _register_experience_transforms()
+        _register_evaluators()
         _import_packaged_agent_nodes()
         try:
             ids = register_from_directory(
@@ -216,16 +217,47 @@ def _load_corpora() -> None:
         logger.warning("corpora.yaml load skipped/failed: %s", exc)
 
 
+def _cluster_tuning_pressure_config() -> dict[str, Any]:
+    """Read the packaged agent's pressure policy for non-graph consumers."""
+    path = _AGENTS_DIR / "cluster_tuning" / "cluster_tuning.agent.yaml"
+    if not path.is_file():
+        return {}
+    try:
+        import yaml
+
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        nodes = ((payload.get("graph") or {}).get("nodes") or [])
+        for node in nodes:
+            if isinstance(node, dict) and node.get("id") == "prepare_sizing_payload":
+                config = node.get("resource_pressure")
+                return dict(config) if isinstance(config, dict) else {}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cluster tuning pressure config load failed: %s", exc)
+    return {}
+
+
 def _register_experience_transforms() -> None:
-    """Register domain ExperienceTransforms (situation/action index parsers)."""
+    """Register domain ExperienceTransforms (feature/action index parsers)."""
     try:
         from edim_dde_domain.agents.cluster_tuning.helpers.experience_transform import (
             register_cluster_tuning_experience_transform,
         )
 
-        register_cluster_tuning_experience_transform()
+        register_cluster_tuning_experience_transform(
+            _cluster_tuning_pressure_config()
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("experience transform registration skipped/failed: %s", exc)
+
+
+def _register_evaluators() -> None:
+    """Register domain quality rubrics with the framework evaluator registry."""
+    try:
+        from edim_dde_domain.evaluation import register_cluster_tuning_evaluator
+
+        register_cluster_tuning_evaluator(_cluster_tuning_pressure_config())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("evaluator registration skipped/failed: %s", exc)
 
 
 def reset_bootstrap() -> None:

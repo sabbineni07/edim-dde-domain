@@ -1,42 +1,23 @@
-"""Cluster-tuning ExperienceTransform — situation/action cards for outcomes corpus.
+"""Cluster-tuning ExperienceTransform — pressure/action cards for outcomes corpus.
 
-Turns a RecommendationRecord into searchable text focused on *features*
-(over/under provisioned, OOM, SKU moves) rather than job_id. job_id stays in
-metadata for entity/chat lookup filters.
+Cards describe observed resource dimensions and action direction. They never
+infer failure events from utilization and do not depend on a fixed scenario list.
+``job_id`` remains metadata for entity/chat lookup filters.
 """
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from edim_dde_ai.experiences.models import ExperienceDocument
 from edim_dde_ai.recommendations.models import RecommendationRecord
+from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import (
+    compute_resource_pressure,
+    parse_family_from_node_type,
+)
 
 CORPUS = "cluster-tuning-outcomes"
 AGENT_ID = "cluster_tuning"
-
-_OOM = re.compile(r"\boom\b|out[\s_]?of[\s_]?memory|memory.?bound", re.I)
-_OVER = re.compile(
-    r"over.?provision|underutil|OVERPROVISIONED|UNDERUTILIZED|PER_NODE_UNDERUTILIZED",
-    re.I,
-)
-# NOTE: PERFORMANCE_DEGRADATION_RISK describes a risk of the *proposed change*,
-# not the observed cluster state — it must not imply under-provisioning.
-_UNDER = re.compile(
-    r"under.?provision|capacity.?short|cpu.?bound|scale.?up|THROTTL",
-    re.I,
-)
-
-
-def _as_float(value: Any) -> float | None:
-    try:
-        if value is None or value == "":
-            return None
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
 
 def _metrics_from_record(record: RecommendationRecord) -> dict[str, Any]:
     response = record.response if isinstance(record.response, dict) else {}
@@ -57,81 +38,38 @@ def _recommendation_blob(record: RecommendationRecord) -> dict[str, Any]:
     return rec if isinstance(rec, dict) else {}
 
 
-def _reason_codes(record: RecommendationRecord) -> list[str]:
-    response = record.response if isinstance(record.response, dict) else {}
-    rec = _recommendation_blob(record)
-    raw = response.get("reason_codes") or rec.get("reason_codes") or []
-    if not isinstance(raw, list):
-        return []
-    return [str(c) for c in raw if str(c).strip()]
-
-
-def infer_situation_labels(
+def infer_feature_labels(
     *,
     metrics: dict[str, Any],
-    reason_codes: list[str],
-    recommendation: dict[str, Any] | None = None,
+    resource_pressure: dict[str, Any] | None = None,
+    resource_pressure_config: dict[str, Any] | None = None,
 ) -> list[str]:
-    """Map metrics + reason codes → coarse situation labels for indexing/query."""
-    labels: list[str] = []
-    joined = " ".join(reason_codes)
-    peak_cpu = _as_float(metrics.get("peak_worker_cpu_utilization_pct"))
-    peak_mem = _as_float(metrics.get("peak_worker_memory_utilization_pct"))
-    max_w = _as_float(metrics.get("max_worker_nodes_provisioned"))
-    avg_w = _as_float(metrics.get("avg_worker_nodes_consumed"))
-
-    if _OOM.search(joined) or (peak_mem is not None and peak_mem >= 90):
-        labels.append("oom_or_memory_pressure")
-
-    over = bool(_OVER.search(joined)) or (
-        peak_cpu is not None and peak_cpu < 40 and (peak_mem is None or peak_mem < 60)
+    """Generate labels from configured dimensions, without scenario vocabulary."""
+    pressure = (
+        resource_pressure
+        if isinstance(resource_pressure, dict) and resource_pressure.get("dimensions")
+        else compute_resource_pressure(metrics, config=resource_pressure_config)
     )
-    if (
-        max_w is not None
-        and avg_w is not None
-        and max_w >= 4
-        and avg_w < max_w * 0.4
-    ):
-        over = True
-    under = bool(_UNDER.search(joined)) or (peak_cpu is not None and peak_cpu >= 85)
-
-    # Observed state cannot be both; live utilization decides when signals conflict.
-    if over and under:
-        if peak_cpu is not None and peak_cpu >= 85:
-            over = False
-        elif peak_cpu is not None and peak_cpu < 40:
-            under = False
-        else:
-            under = False
-    if over:
-        labels.append("over_provisioned")
-    if under:
-        labels.append("under_provisioned")
-
-    rec = recommendation or {}
-    cur_sku = str(metrics.get("azure_worker_vm_size") or "").strip()
-    new_sku = str(
-        rec.get("recommended_node_type")
-        or rec.get("azure_worker_vm_size")
-        or ""
-    ).strip()
-    if cur_sku and new_sku and cur_sku.lower() != new_sku.lower():
-        labels.append("sku_change")
-        if re.search(r"_E\d", new_sku, re.I) and not re.search(r"_E\d", cur_sku, re.I):
-            labels.append("moved_to_memory_sku")
-        if re.search(r"ads|ds_v", new_sku, re.I):
-            labels.append("moved_to_ds_or_ads")
-
+    labels: list[str] = []
+    for name, details in (pressure.get("dimensions") or {}).items():
+        level = str((details or {}).get("level") or "unknown")
+        if level != "unknown":
+            labels.append(f"{name}_pressure_{level}")
+    limiting = str(pressure.get("limiting_resource") or "unknown")
+    if limiting not in {"none", "unknown"}:
+        labels.append(f"limiting_resource_{limiting}")
+        current_family = parse_family_from_node_type(
+            str(metrics.get("azure_worker_vm_size") or "")
+        )
+        preferred = [str(f).upper() for f in pressure.get("preferred_families") or []]
+        if current_family and preferred and current_family not in preferred:
+            labels.append("resource_shape_mismatch")
+    headroom = str(pressure.get("capacity_headroom") or "unknown")
+    if headroom != "unknown":
+        labels.append(f"capacity_headroom_{headroom}")
     if not labels:
-        labels.append("general_rightsizing")
-    # stable unique order
-    seen: set[str] = set()
-    out: list[str] = []
-    for lab in labels:
-        if lab not in seen:
-            seen.add(lab)
-            out.append(lab)
-    return out
+        labels.append("resource_pressure_unknown")
+    return list(dict.fromkeys(labels))
 
 
 def _action_parts(
@@ -149,10 +87,17 @@ def _action_parts(
     ).strip()
     if new_sku and cur_sku and new_sku.lower() != cur_sku.lower():
         lines.append(f"changed sku {cur_sku} → {new_sku}")
-        sig_bits.append(f"sku:{cur_sku.lower()}->{new_sku.lower()}")
+        sig_bits.append("sku:changed")
+        current_family = parse_family_from_node_type(cur_sku)
+        new_family = parse_family_from_node_type(new_sku)
+        sig_bits.append(
+            "family:changed"
+            if current_family and new_family and current_family != new_family
+            else "family:retained"
+        )
     elif new_sku:
         lines.append(f"recommended sku {new_sku}")
-        sig_bits.append(f"sku:{new_sku.lower()}")
+        sig_bits.append("sku:recommended")
 
     cur_max = metrics.get("max_worker_nodes_provisioned")
     new_max = recommendation.get("recommended_max_workers") or recommendation.get(
@@ -188,46 +133,46 @@ def _action_parts(
 
 def build_experience_text(
     *,
-    situation_labels: list[str],
+    feature_labels: list[str],
     metrics: dict[str, Any],
     recommendation: dict[str, Any],
-    reason_codes: list[str],
+    resource_pressure: dict[str, Any],
     status: str,
 ) -> tuple[str, str]:
     """Return (index_text, action_signature)."""
     action_lines, action_sig = _action_parts(metrics, recommendation)
     sku = str(metrics.get("azure_worker_vm_size") or "").strip() or "unknown"
+    pressure_signals = " ".join(
+        f"{name}={details.get('value_pct')}%({details.get('level')})"
+        for name, details in (resource_pressure.get("dimensions") or {}).items()
+    )
     parts = [
-        f"Situation: {', '.join(situation_labels)}",
-        (
-            f"Signals: sku={sku} "
-            f"max_workers={metrics.get('max_worker_nodes_provisioned')} "
-            f"peak_cpu_pct={metrics.get('peak_worker_cpu_utilization_pct')} "
-            f"peak_memory_pct={metrics.get('peak_worker_memory_utilization_pct')} "
-            f"avg_workers={metrics.get('avg_worker_nodes_consumed')} "
-            f"p99_workers={metrics.get('p99_worker_nodes_consumed')}"
-        ),
-        f"Reason codes: {', '.join(reason_codes) if reason_codes else 'none'}",
+        f"Resource features: {', '.join(feature_labels)}",
+        f"Signals: sku={sku} {pressure_signals}".strip(),
         "Action: " + "; ".join(action_lines),
         f"Outcome: {status}",
     ]
     return "\n".join(parts), action_sig
 
 
-def build_experience_query(state: dict[str, Any]) -> str:
+def build_experience_query(
+    state: dict[str, Any],
+    *,
+    resource_pressure_config: dict[str, Any] | None = None,
+) -> str:
     """Free-text query for the outcomes corpus from the live job metrics."""
     metrics = state.get("metrics") or {}
     if not isinstance(metrics, dict):
         metrics = {}
-    labels = infer_situation_labels(metrics=metrics, reason_codes=[], recommendation={})
+    pressure = compute_resource_pressure(metrics, config=resource_pressure_config)
+    labels = infer_feature_labels(metrics=metrics, resource_pressure=pressure)
     sku = str(metrics.get("azure_worker_vm_size") or "").strip()
     parts = [
         "databricks cluster tuning past outcome",
         " ".join(labels),
         f"sku={sku}" if sku else "",
-        f"max_workers={metrics.get('max_worker_nodes_provisioned')}",
-        f"peak_cpu_pct={metrics.get('peak_worker_cpu_utilization_pct')}",
-        f"peak_memory_pct={metrics.get('peak_worker_memory_utilization_pct')}",
+        f"limiting_resource={pressure.get('limiting_resource')}",
+        f"capacity_headroom={pressure.get('capacity_headroom')}",
         "what actions were taken",
     ]
     return " ".join(str(p) for p in parts if p not in ("", None)).strip()
@@ -235,6 +180,11 @@ def build_experience_query(state: dict[str, Any]) -> str:
 
 class ClusterTuningExperienceTransform:
     """Domain Strategy: RecommendationRecord → ExperienceDocument."""
+
+    def __init__(
+        self, resource_pressure_config: dict[str, Any] | None = None
+    ) -> None:
+        self._resource_pressure_config = dict(resource_pressure_config or {})
 
     @property
     def agent_id(self) -> str:
@@ -247,22 +197,27 @@ class ClusterTuningExperienceTransform:
     def transform(self, record: RecommendationRecord) -> ExperienceDocument | None:
         metrics = _metrics_from_record(record)
         recommendation = _recommendation_blob(record)
-        reasons = _reason_codes(record)
-        labels = infer_situation_labels(
-            metrics=metrics, reason_codes=reasons, recommendation=recommendation
+        pressure = recommendation.get("resource_pressure")
+        if not isinstance(pressure, dict) or not pressure.get("dimensions"):
+            pressure = compute_resource_pressure(
+                metrics, config=self._resource_pressure_config
+            )
+        labels = infer_feature_labels(
+            metrics=metrics,
+            resource_pressure=pressure,
         )
         text, action_sig = build_experience_text(
-            situation_labels=labels,
+            feature_labels=labels,
             metrics=metrics,
             recommendation=recommendation,
-            reason_codes=reasons,
+            resource_pressure=pressure,
             status=str(record.status or "proposed"),
         )
         return ExperienceDocument(
             doc_id=str(record.recommendation_id),
             corpus=CORPUS,
             text=text,
-            situation_labels=labels,
+            feature_labels=labels,
             action_signature=action_sig,
             metadata={
                 "agent_id": AGENT_ID,
@@ -270,14 +225,18 @@ class ClusterTuningExperienceTransform:
                 "cluster_id": record.cluster_id,
                 "recommendation_id": record.recommendation_id,
                 "status": record.status,
-                "situation_labels": labels,
+                "feature_labels": labels,
                 "action_signature": action_sig,
             },
             source=f"recommendation:{record.recommendation_id}",
         )
 
 
-def register_cluster_tuning_experience_transform() -> None:
+def register_cluster_tuning_experience_transform(
+    resource_pressure_config: dict[str, Any] | None = None,
+) -> None:
     from edim_dde_ai.experiences import register_experience_transform
 
-    register_experience_transform(ClusterTuningExperienceTransform())
+    register_experience_transform(
+        ClusterTuningExperienceTransform(resource_pressure_config)
+    )

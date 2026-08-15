@@ -115,6 +115,7 @@ def validate_and_clamp_with_adjustments(
     job_run_ingest: Optional[dict[str, Any]] = None,
     *,
     auto_termination_minutes: int = DEFAULT_AUTO_TERMINATION_MINUTES,
+    resource_pressure_config: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Clamp recommendation and return (applied_config, guardrail_adjustments)."""
     if not rec or not isinstance(rec, dict):
@@ -218,7 +219,15 @@ def validate_and_clamp_with_adjustments(
 
     llm_max_before_floor = out["max_workers"]
     if job_run_ingest:
-        _, floor_max = recommended_min_max_workers(job_run_ingest)
+        from edim_dde_domain.agents.cluster_tuning.helpers.sizing_policy import (
+            normalize_resource_pressure_config,
+        )
+
+        policy = normalize_resource_pressure_config(resource_pressure_config)
+        _, floor_max = recommended_min_max_workers(
+            job_run_ingest,
+            buffer_pct=float(policy["capacity_buffer_pct"]),
+        )
         ceiling_max = int(
             job_run_ingest.get("max_worker_nodes_provisioned")
             or job_run_ingest.get("max_worker_nodes_cluster_ceiling")
