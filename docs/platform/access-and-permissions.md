@@ -52,7 +52,7 @@
 |----------|----------|-----------------|--------------|---------------|
 | **U** | SQL as end user | Forwarded access token | Usually **absent** | N/A (`az login` is you) |
 | **A** | Open KV / platform Azure | App SP (`DATABRICKS_CLIENT_*`) | Container **managed identity** | `az login` |
-| **B** | Foundry LLM | Secrets → `EDIM_FOUNDRY_*` | Same (KV or ACA secret refs) | `az login` or `.env` SP |
+| **B** | Foundry LLM | Secrets → `EDIM_FOUNDRY_*` SP, or API key, or `az login` | Same (KV or ACA secret refs) | `az login`, `.env` SP, or API key |
 
 Creating an Entra SP and storing its client id/secret in KV for Foundry = **Identity B only**.
 
@@ -62,7 +62,7 @@ Creating an Entra SP and storing its client id/secret in KV for Foundry = **Iden
 
 | Host | How you run | SQL warehouse auth | Foundry auth | Who opens Key Vault | Deploy artifact |
 |------|-------------|--------------------|--------------|---------------------|-----------------|
-| **Local machine** | `uvicorn` / IDE | `az login` → `DefaultAzureCredential` | `az login` if `EDIM_FOUNDRY_*` empty; else SP | Optional: `DefaultAzureCredential` | Editable installs |
+| **Local machine** | `uvicorn` / IDE | `az login` → `DefaultAzureCredential` | SP if set; else API key; else `az login` | Optional: `DefaultAzureCredential` | Editable installs |
 | **Databricks Apps** | `app.yaml` + Apps runtime | **Identity U** (`X-Forwarded-Access-Token`) | **Identity B** from KV or Apps secrets | **Identity A** = App SP | `deploy/databricks-app/` |
 | **Docker (local/CI)** | `deploy/docker/Dockerfile` | Same as local or MI | SP via `EDIM_FOUNDRY_*` / KV | Inject secrets or host `az login` | Same image as ACA |
 | **Azure Container Apps** | Same Docker image | **Identity A** = container MI | Identity B → `EDIM_FOUNDRY_*` | **Identity A** = ACA MI | ACR + ACA env |
@@ -93,7 +93,7 @@ Creating an Entra SP and storing its client id/secret in KV for Foundry = **Iden
   az login → uvicorn
                ├─ optional KV via DefaultAzureCredential
                ├─ SQL → az login
-               └─ LLM → az login or EDIM_FOUNDRY_* from .env / KV
+               └─ LLM → SP, else API key, else az login
 ```
 
 ### 3.3 Azure Container Apps

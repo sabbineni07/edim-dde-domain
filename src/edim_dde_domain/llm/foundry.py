@@ -3,26 +3,25 @@
 Business purpose
 ----------------
 Adapter that hosts call via ``set_llm_provider(get_foundry_llm_provider())``.
-Uses Azure AD tokens (not API keys) against Foundry's OpenAI-compatible
-``/openai/v1`` surface. Keeps Foundry SP on ``EDIM_FOUNDRY_*`` so SQL's
-``DefaultAzureCredential`` is not polluted by ``AZURE_CLIENT_*``.
+Talks to Foundry's OpenAI-compatible ``/openai/v1`` surface. Keeps Foundry SP
+on ``EDIM_FOUNDRY_*`` so SQL's ``DefaultAzureCredential`` is not polluted by
+``AZURE_CLIENT_*``.
 
 Auth order
 ----------
-1. ``EDIM_FOUNDRY_TENANT_ID`` + ``EDIM_FOUNDRY_CLIENT_ID`` +
-   ``EDIM_FOUNDRY_CLIENT_SECRET`` → ``ClientSecretCredential``
-   (prod: inject from Key Vault into these env names — not ``AZURE_CLIENT_*``)
-2. Legacy fallback: ``AZURE_TENANT_ID`` / ``AZURE_CLIENT_ID`` / ``AZURE_CLIENT_SECRET``
-   (deprecated; pollutes ``DefaultAzureCredential`` used for SQL)
-3. Else ``DefaultAzureCredential`` (local ``az login`` / Managed Identity)
+1. Foundry SP — ``EDIM_FOUNDRY_TENANT_ID`` + ``CLIENT_ID`` + ``CLIENT_SECRET``
+   (legacy ``AZURE_TENANT_ID`` / ``AZURE_CLIENT_*`` fallback; prod often via KV)
+2. API key — ``EDIM_FOUNDRY_API_KEY``, else ``AZURE_OPENAI_API_KEY``, else
+   ``AZURE_OPENAI_ENDPOINT_KEY`` (skips ``az login`` when a key is present)
+3. ``DefaultAzureCredential`` — local ``az login`` / Managed Identity
 
-Scope: ``https://ai.azure.com/.default``
+AAD scope (SP / DAC only): ``https://ai.azure.com/.default``
 
 Public API
 ----------
 * ``AZURE_FOUNDRY_AAD_SCOPE``
 * ``FoundryLLMNotConfiguredError``
-* ``get_foundry_access_token`` / ``foundry_token_provider``
+* ``get_foundry_access_token`` / ``foundry_token_provider`` / ``foundry_auth_provider``
 * ``FoundryLLMProvider`` — ``invoke(messages, config=...)``
 * ``get_foundry_llm_provider`` / ``clear_foundry_llm_provider_cache``
 """
@@ -40,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 AZURE_FOUNDRY_AAD_SCOPE = "https://ai.azure.com/.default"
 _legacy_sp_warned = False
+_api_key_warned = False
 
 
 class FoundryLLMNotConfiguredError(DomainToolError):
@@ -86,7 +86,13 @@ def _openai_v1_base_url(endpoint: str) -> str:
     return f"{base}/openai/v1"
 
 
-def _azure_credential(settings: DomainSettings):
+def _foundry_sp_configured(settings: DomainSettings) -> bool:
+    tenant_id, client_id, client_secret = settings.foundry_sp_credentials()
+    return bool(tenant_id and client_id and client_secret)
+
+
+def _azure_sp_or_dac_credential(settings: DomainSettings):
+    """Build ClientSecretCredential (SP) or DefaultAzureCredential (no key path)."""
     global _legacy_sp_warned
     tenant_id, client_id, client_secret = settings.foundry_sp_credentials()
     try:
@@ -116,13 +122,17 @@ def _azure_credential(settings: DomainSettings):
         return DefaultAzureCredential()
     except ImportError as exc:
         raise FoundryLLMNotConfiguredError(
-            "azure-identity is required for Foundry auth. "
-            "Install with: pip install 'edim-dde-domain[azure]'"
+            "azure-identity is required for Foundry AAD auth. "
+            "Install with: pip install 'edim-dde-domain[azure]', "
+            "or set EDIM_FOUNDRY_API_KEY / AZURE_OPENAI_API_KEY for key auth."
         ) from exc
 
 
 def get_foundry_access_token(settings: Optional[DomainSettings] = None) -> str:
-    """Mint an Azure AD token for Foundry (SP secret or az login).
+    """Mint an Azure AD token for Foundry (SP or DefaultAzureCredential).
+
+    Does **not** return an API key — use ``foundry_auth_provider`` for the
+    full SP → key → DAC resolution used by ``FoundryLLMProvider``.
 
     Args:
         settings: Optional settings; defaults to ``get_settings()``.
@@ -136,7 +146,7 @@ def get_foundry_access_token(settings: Optional[DomainSettings] = None) -> str:
     """
     cfg = settings or get_settings()
     try:
-        token = _azure_credential(cfg).get_token(AZURE_FOUNDRY_AAD_SCOPE)
+        token = _azure_sp_or_dac_credential(cfg).get_token(AZURE_FOUNDRY_AAD_SCOPE)
         access = (token.token or "").strip()
         if not access:
             raise FoundryLLMNotConfiguredError("Azure credential returned an empty Foundry token")
@@ -147,30 +157,79 @@ def get_foundry_access_token(settings: Optional[DomainSettings] = None) -> str:
         raise FoundryLLMNotConfiguredError(
             "Failed to obtain Foundry token via Azure credential "
             f"({type(exc).__name__}: {exc}). "
-            "For local dev run `az login`. "
+            "For local dev run `az login`, or set EDIM_FOUNDRY_API_KEY. "
             "For prod set EDIM_FOUNDRY_TENANT_ID / EDIM_FOUNDRY_CLIENT_ID / "
             "EDIM_FOUNDRY_CLIENT_SECRET "
             "(secrets typically loaded from Azure Key Vault into the environment)."
         ) from exc
 
 
-def foundry_token_provider(
+def foundry_auth_mode(settings: Optional[DomainSettings] = None) -> str:
+    """Return which Foundry auth plane would be selected (no network I/O).
+
+    Returns:
+        ``\"sp\"`` | ``\"api_key\"`` | ``\"default_azure_credential\"``.
+    """
+    cfg = settings or get_settings()
+    if _foundry_sp_configured(cfg):
+        return "sp"
+    if cfg.foundry_api_key():
+        return "api_key"
+    return "default_azure_credential"
+
+
+def foundry_auth_provider(
     settings: Optional[DomainSettings] = None,
 ) -> Callable[[], str]:
-    """Return a zero-arg callable that mints a fresh Foundry access token.
+    """Return a zero-arg callable that yields the OpenAI client ``api_key``.
+
+    Resolution order: Foundry SP (AAD token) → API key → DefaultAzureCredential
+    (AAD token via ``az login`` / MI).
 
     Args:
         settings: Settings snapshot closed over by the provider.
 
     Returns:
-        Callable suitable as OpenAI ``api_key`` (refreshed per invoke).
+        Callable suitable as OpenAI ``api_key`` (refreshed per invoke for AAD).
     """
+    global _api_key_warned
     cfg = settings or get_settings()
+    mode = foundry_auth_mode(cfg)
 
-    def _provider() -> str:
+    if mode == "sp":
+
+        def _sp_provider() -> str:
+            return get_foundry_access_token(cfg)
+
+        return _sp_provider
+
+    if mode == "api_key":
+        key = cfg.foundry_api_key()
+        if not _api_key_warned:
+            _api_key_warned = True
+            logger.info(
+                "Foundry auth using API key "
+                "(EDIM_FOUNDRY_API_KEY / AZURE_OPENAI_API_KEY / "
+                "AZURE_OPENAI_ENDPOINT_KEY). Prefer EDIM_FOUNDRY_* SP or "
+                "`az login` in shared environments."
+            )
+
+        def _key_provider() -> str:
+            return key
+
+        return _key_provider
+
+    def _dac_provider() -> str:
         return get_foundry_access_token(cfg)
 
-    return _provider
+    return _dac_provider
+
+
+def foundry_token_provider(
+    settings: Optional[DomainSettings] = None,
+) -> Callable[[], str]:
+    """Alias of ``foundry_auth_provider`` (historical name; may return an API key)."""
+    return foundry_auth_provider(settings)
 
 
 class FoundryLLMProvider:
@@ -178,6 +237,7 @@ class FoundryLLMProvider:
 
     Raises ``FoundryLLMNotConfiguredError`` at construction if
     ``AZURE_OPENAI_ENDPOINT`` is unset. Deployment defaults to ``gpt-4o``.
+    Auth: SP → API key → DefaultAzureCredential (see module docstring).
     """
 
     def __init__(self, settings: Optional[DomainSettings] = None) -> None:
@@ -187,13 +247,15 @@ class FoundryLLMProvider:
             raise FoundryLLMNotConfiguredError(
                 "Azure AI Foundry is not configured. Set AZURE_OPENAI_ENDPOINT "
                 "and authenticate with EDIM_FOUNDRY_TENANT_ID/CLIENT_ID/SECRET "
-                "(Key Vault → env in prod) or `az login` locally."
+                "(Key Vault → env in prod), EDIM_FOUNDRY_API_KEY / "
+                "AZURE_OPENAI_API_KEY, or `az login` locally."
             )
         self._base_url = _openai_v1_base_url(endpoint)
         self._model = (
             (self._settings.azure_openai_deployment_name or "").strip() or "gpt-4o"
         )
-        self._token_provider = foundry_token_provider(self._settings)
+        self._auth_mode = foundry_auth_mode(self._settings)
+        self._token_provider = foundry_auth_provider(self._settings)
 
     def invoke(
         self,
@@ -291,7 +353,12 @@ class FoundryLLMProvider:
 
         logger.debug(
             "foundry_chat_invoke",
-            extra={"model": model, "base_url": base_url, "n_messages": len(normalized)},
+            extra={
+                "model": model,
+                "base_url": base_url,
+                "n_messages": len(normalized),
+                "auth_mode": self._auth_mode,
+            },
         )
         resp = client.chat.completions.create(**create_kwargs)
         choice = (resp.choices or [None])[0]

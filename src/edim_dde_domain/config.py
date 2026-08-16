@@ -103,6 +103,10 @@ class DomainSettings(BaseSettings):
     edim_foundry_tenant_id: str = ""
     edim_foundry_client_id: str = ""
     edim_foundry_client_secret: str = ""
+    # Optional API key auth (after SP, before DefaultAzureCredential / az login).
+    edim_foundry_api_key: str = ""
+    azure_openai_api_key: str = ""
+    azure_openai_endpoint_key: str = ""
     # Legacy Foundry SP names (deprecated — EnvironmentCredential / SQL also read these).
     azure_tenant_id: str = ""
     azure_client_id: str = ""
@@ -142,6 +146,26 @@ class DomainSettings(BaseSettings):
         client_id = client_id or legacy_id
         client_secret = client_secret or legacy_secret
         return tenant, client_id, client_secret
+
+    def foundry_api_key(self) -> str:
+        """Return the first configured Foundry/OpenAI API key, or ``\"\"``.
+
+        Preference order (framework aliases)::
+
+            EDIM_FOUNDRY_API_KEY → AZURE_OPENAI_API_KEY → AZURE_OPENAI_ENDPOINT_KEY
+
+        Used only when Foundry SP credentials are not fully set (see
+        ``FoundryLLMProvider`` auth order: SP → key → DefaultAzureCredential).
+        """
+        for value in (
+            self.edim_foundry_api_key,
+            self.azure_openai_api_key,
+            self.azure_openai_endpoint_key,
+        ):
+            key = (value or "").strip()
+            if key:
+                return key
+        return ""
 
     def sql_configured(self) -> bool:
         """True when hostname and HTTP path are both non-empty after normalization."""

@@ -47,6 +47,7 @@ Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/ret
 | `AZURE_OPENAI_ENDPOINT` | Foundry | OpenAI v1 endpoint |
 | `AZURE_OPENAI_DEPLOYMENT_NAME` | Foundry | Deployment name |
 | `EDIM_FOUNDRY_TENANT_ID` / `EDIM_FOUNDRY_CLIENT_ID` / `EDIM_FOUNDRY_CLIENT_SECRET` | Foundry (prod) | Foundry workload SP (often from Key Vault). Keeps SQL `DefaultAzureCredential` clean |
+| `EDIM_FOUNDRY_API_KEY` / `AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT_KEY` | Foundry (optional) | API key auth when SP unset (checked before `az login`) |
 | `AZURE_TENANT_ID` | Apps → Key Vault | Directory GUID for Apps SP client-credentials. Not the Foundry SP |
 | `AZURE_KEY_VAULT_URL` | API lifespan | Vault URI for secret bootstrap |
 | `EDIM_KV_SECRET_MAP` | Key Vault | Optional `ENV_VAR:vaultSecret,...` map — [Key Vault bootstrap](../platform/key-vault-bootstrap.md) |
