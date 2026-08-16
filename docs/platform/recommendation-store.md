@@ -7,8 +7,30 @@
 
 ## 1. Why a separate store?
 
-`StateStore` is the **control plane** (agent catalog, sessions, audit).  
-`RecommendationStore` is **product history** — persist cluster-tuning (and future) recommendations beyond a single HTTP response, with lifecycle status:
+EDIM keeps **two persistence planes**. They often share the same database/account, but they store different things and are selected by different env vars.
+
+| | **StateStore** (`EDIM_STATE_STORE`) | **RecommendationStore** (`EDIM_RECOMMENDATION_STORE`) |
+|---|--------------------------------------|------------------------------------------------------|
+| **Role** | Control plane — manage the *system* | Product history — remember *outcomes* |
+| **Holds** | Agent catalog, sessions, audit | Tuning/RCA recommendations + lifecycle status |
+| **Written when** | API start / sync / HITL session | After `POST …/recommend` or `…/rca/analyze` (best-effort) |
+| **Read when** | Catalog / health / future HITL | Prompt history, list/get/patch APIs, experience index |
+| **Default** | `memory` | **Inherits** `EDIM_STATE_STORE` if unset / `auto` |
+| **Can turn off?** | No (always one backend) | Yes — set `none` |
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  StateStore          — catalog / sessions / audit               │
+│  Env: EDIM_STATE_STORE                                          │
+└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  RecommendationStore — product history + status                 │
+│  Env: EDIM_RECOMMENDATION_STORE (default = inherit StateStore)   │
+│  Shares connection env (DSN / Cosmos / Redis) with StateStore   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Lifecycle on recommendation rows:
 
 `proposed` → `accepted` | `rejected` | `applied` | `superseded`
 
@@ -16,18 +38,65 @@ Same **Strategy + Factory + Registry** pattern as StateStore / Observability / R
 
 **Derived experience index:** `set_recommendation_store` wraps backends in `ExperienceIndexingStore` so each `save` / `update_status` also upserts (or deletes) a resource-feature/action card into the active `RetrievalProvider` corpus (see [Retrieval & RAG §6c](retrieval-and-rag.md#6c-experience-index-platform-all-future-agents)). The store remains the system of record; vectors are a derived view for **feature** similarity across jobs.
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  RecommendationStore (product history)                          │
-│  Backends: none | memory | postgres | cosmos | redis            │
-│  Shares connection env with StateStore (DSN / Cosmos / Redis)   │
-└─────────────────────────────────────────────────────────────────┘
+### What goes into `EDIM_RECOMMENDATION_STORE` (with examples)
+
+| Field (typical) | Meaning |
+|-----------------|---------|
+| `recommendation_id` | Primary key (UUID); also experience `doc_id` |
+| `agent_id` | `cluster_tuning` or `spark_rca` |
+| `status` | `proposed` / `accepted` / `rejected` / `applied` / `superseded` |
+| `job_id` / `cluster_id` / `job_run_id` | Entity filters for history |
+| `request_id` / `env` / `actor` | Correlation + audit |
+| `request` / `response` | Opaque HTTP-ish payloads (what was asked / what was returned) |
+
+Example **cluster_tuning** history row (Cosmos `recommendations` / Postgres `edim_recommendations`):
+
+```json
+{
+  "recommendation_id": "a1b2c3d4-…",
+  "agent_id": "cluster_tuning",
+  "status": "proposed",
+  "job_id": "12345",
+  "cluster_id": "0815-…",
+  "request_id": "win-live-tuning-001",
+  "env": "dev",
+  "request": {"job_id": "12345", "cluster_id": "0815-…", "include_explanation": false},
+  "response": {
+    "recommendation": {
+      "node_family": "E",
+      "recommended_max_workers": 6,
+      "azure_worker_vm_size": "Standard_E4s_v3"
+    },
+    "reason_codes": ["low_utilization"]
+  },
+  "created_at": "2026-08-16T14:00:00+00:00",
+  "updated_at": "2026-08-16T14:00:00+00:00"
+}
 ```
+
+Example **spark_rca** history row (same store, different `agent_id`):
+
+```json
+{
+  "recommendation_id": "e5f6…",
+  "agent_id": "spark_rca",
+  "status": "proposed",
+  "job_id": "12345",
+  "job_run_id": "67890",
+  "request": {"job_run_id": "67890", "job_id": "12345"},
+  "response": {
+    "root_cause": {"category": "resource", "summary": "Executor OOM…"},
+    "recommended_actions": [{"action": "Increase executor memory", "priority": 1}]
+  }
+}
+```
+
+**Not in RecommendationStore:** agent YAML catalog metadata, sessions, platform audit — those stay in [StateStore](state-store.md).
 
 | Concern | StateStore | RecommendationStore |
 |---------|------------|---------------------|
 | Purpose | Catalog / sessions / audit | Recommendation rows + status |
-| Table / container | `edim_agents`, … | `edim_recommendations` / `recommendations` |
+| Table / container | `agents`, `sessions`, `audit` (Cosmos) / `edim_*` (Postgres) | `recommendations` / `edim_recommendations` |
 | Env selector | `EDIM_STATE_STORE` | `EDIM_RECOMMENDATION_STORE` (default **inherits** StateStore) |
 | `/health` key | `state_store` | `recommendation_store` |
 

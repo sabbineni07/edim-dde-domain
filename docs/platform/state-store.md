@@ -46,6 +46,55 @@ EDIM is split into planes so concerns stay clean:
 
 **Analogy:** In Kubernetes, etcd + API server are control plane; your pods doing work are data plane. In EDIM, Postgres/Cosmos are closer to etcd for *agent platform metadata*; Databricks+Foundry are the workers.
 
+### What goes into `EDIM_STATE_STORE` (with examples)
+
+Selected by **`EDIM_STATE_STORE`** (`memory` | `postgres` | `cosmos` | `redis`).  
+This store does **not** hold SQL metrics, Foundry completions, or recommendation history.
+
+| Document | When written | Example fields |
+|----------|--------------|----------------|
+| **Agent catalog** (`AgentRecord`) | API lifespan: `sync_registered_agents_to_store` after YAML bootstrap | `agent_id`, `display_name`, `version`, `owner`, `risk_tier`, `lifecycle`, `hitl_required`, `source_path`, `git_sha` |
+| **Sessions** (`SessionRecord`) | Multi-turn / HITL resume (when session APIs are used) | `session_id`, `agent_id`, state blob, timestamps |
+| **Audit** (`AuditEvent`) | Register / sync / promote events | `event_id`, `actor`, `action`, `agent_id`, `detail` |
+
+Example **agent catalog** row (Cosmos `agents` / Postgres `edim_agents` payload):
+
+```json
+{
+  "agent_id": "cluster_tuning",
+  "display_name": "DBX Cluster Tuning",
+  "version": 1,
+  "owner": "platform-team",
+  "risk_tier": "medium",
+  "lifecycle": "approved",
+  "hitl_required": false,
+  "source_path": ".../cluster_tuning.agent.yaml",
+  "git_sha": "abc1234",
+  "updated_at": "2026-08-16T12:00:00+00:00"
+}
+```
+
+Example **audit** event:
+
+```json
+{
+  "event_id": "…",
+  "actor": "api-lifespan",
+  "action": "agent_synced",
+  "agent_id": "spark_rca",
+  "detail": {"version": 1},
+  "created_at": "2026-08-16T12:00:00+00:00"
+}
+```
+
+**Not in StateStore:** HTTP recommendation bodies, job sizing outcomes, RCA analyses — those go to **`EDIM_RECOMMENDATION_STORE`** ([Recommendation store](recommendation-store.md)).
+
+```bash
+# Choose the control-plane backend
+export EDIM_STATE_STORE=postgres   # local Compose
+# export EDIM_STATE_STORE=cosmos   # deployed Apps / PROD
+```
+
 ---
 
 ## 1b. Design patterns (GoF)

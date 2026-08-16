@@ -1,0 +1,31 @@
+# Quality Phase 2a — versioned golden corpus (tuning + RCA)
+# Offline pytest gates load these cases; Foundry harness (2b) runs them N times.
+version: "v1"
+created: "2026-08-16"
+description: >
+  Rubric-axis cases for cluster_tuning.quality and spark_rca.quality.
+  Cases score deterministic evaluators offline; Foundry harness uses the same
+  ids for repeated live trials. Outcome correlation (2c) is deferred.
+default_trials: 3
+agents:
+  cluster_tuning:
+    evaluator: cluster_tuning.quality
+    cases_dir: cluster_tuning
+    min_pass_rate: 1.0
+  spark_rca:
+    evaluator: spark_rca.quality
+    cases_dir: spark_rca
+    min_pass_rate: 1.0
+cases:
+  - id: tuning_low_util_reduce_workers
+    agent: cluster_tuning
+    tags: [direction, history, low_pressure]
+  - id: tuning_high_memory_keep_family
+    agent: cluster_tuning
+    tags: [direction, safety, memory_pressure]
+  - id: rca_sql_table_not_found
+    agent: spark_rca
+    tags: [contract, evidence, actions, sql_error]
+  - id: rca_executor_oom
+    agent: spark_rca
+    tags: [contract, evidence, diagnosis, resource]

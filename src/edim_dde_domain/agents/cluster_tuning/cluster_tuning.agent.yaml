@@ -7,7 +7,7 @@ entry:
 
 content_dir: ./content
 
-# Optional Infra bindings (Phase 1): llm is wired at graph build; search / cosmos /
+# Optional Infra bindings: llm + search are wired at graph build; cosmos /
 # sql-warehouse are shape-validated (runtime injection later).
 # Non-secret URLs/names may be literals or ${ENV:…}. Never put API keys here.
 # Sampling knobs are literal numbers. Values match edim-dde-domain/.env (dev).
@@ -21,7 +21,7 @@ content_dir: ./content
 #    max_tokens: 4096
 #  search:
 #    endpoint: https://<ai-search-name>.search.windows.net
-#    index: spark-runbooks
+#    index: cluster-tuning-guidance
 #  cosmos:
 #    endpoint: https://<cosmos-name>.documents.azure.com:443/
 #    database: edim-dde

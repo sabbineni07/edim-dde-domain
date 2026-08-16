@@ -65,9 +65,8 @@ metadata:
 model:
   ref: foundry-gpt-4o     # logical id; resolves via env/registry later
 
-# Optional Phase 1: per-agent infra targets (omit → process .env globals).
-# llm is wired today (incl. literal sampling knobs); search / cosmos /
-# sql-warehouse are shape-validated for demos.
+# Optional: per-agent infra targets (omit → process .env globals).
+# llm + search are wired; cosmos / sql-warehouse are shape-validated for demos.
 bindings:
   llm:
     endpoint: ${ENV:AZURE_OPENAI_ENDPOINT}
@@ -125,7 +124,7 @@ Practical R1: set `metadata.hitl_required` for documentation/catalog; keep `hitl
 
 When `true`, the agent/prompt policy should **ground answers in retrieved sources** (runbook doc ids, evidence `ref`s) instead of free-form claims. Used on `spark_rca` with corpus `spark-runbooks`. It does not change the vector index itself — it is a **response policy** flag for prompts / future output checks.
 
-### `bindings` (Phase 1 — LLM wired; search / cosmos / sql-warehouse documented)
+### `bindings` (LLM + Search wired; cosmos / sql-warehouse documented)
 
 Optional per-agent infra overrides. **Omit the whole block** (or omit a key) to keep process `.env` / Key Vault globals.
 
@@ -137,12 +136,18 @@ Optional per-agent infra overrides. **Omit the whole block** (or omit a key) to 
 | `bindings.llm.top_p` | Nucleus sampling (**literal**) | Injected; Foundry honors |
 | `bindings.llm.top_k` | Top-k (**literal**, provider-dependent) | Injected on config |
 | `bindings.llm.max_tokens` | Max completion tokens (**literal**; sent as `max_completion_tokens`) | Injected; Foundry honors |
-| `bindings.search.endpoint` | Azure AI Search service URL | Parsed only (wiring later) |
-| `bindings.search.index` | Physical index name | Parsed only (wiring later) |
+| `bindings.search.endpoint` | Azure AI Search service URL | Injected into `rag.retrieve` → `search_corpus` |
+| `bindings.search.index` | Physical index name for this agent's retrieve nodes | Injected into `rag.retrieve` → `search_corpus` |
 | `bindings.cosmos.endpoint` | Cosmos account URL | Parsed only (wiring later) |
 | `bindings.cosmos.database` | Cosmos database name | Parsed only (wiring later) |
 | `bindings.sql-warehouse.host` | Databricks workspace host | Parsed only (wiring later) |
 | `bindings.sql-warehouse.http_path` | SQL warehouse HTTP path | Parsed only (wiring later) |
+
+**Search binding notes**
+
+- Applies to **`rag.retrieve`** nodes (guidance / runbooks). Experience-index searches via `search_corpus` in Python helpers still use process CORPUS_MAP unless you pass overrides in code.
+- **Never** put the Search API key in YAML — key stays `EDIM_AZURE_SEARCH_KEY` / Key Vault.
+- Omit → process `EDIM_AZURE_SEARCH_ENDPOINT` + CORPUS_MAP / `corpora.yaml` index mapping.
 
 Use **literal strings** for non-secrets when you want (URLs, deployment names, index/database names, hosts) — e.g. `endpoint: https://….openai.azure.com/openai/v1`. Prefer `${ENV:VAR_NAME}` when the value is environment-specific and you do not want it committed. Sampling knobs (`temperature`, `top_p`, `top_k`, `max_tokens`) are always **literal numbers**.
 

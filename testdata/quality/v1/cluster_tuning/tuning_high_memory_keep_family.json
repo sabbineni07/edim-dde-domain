@@ -1,0 +1,32 @@
+{
+  "case_id": "tuning_high_memory_keep_family",
+  "agent_id": "cluster_tuning",
+  "mode": "score_output",
+  "description": "High memory pressure: keep E-family and current ceiling; do not claim OOM without failure evidence.",
+  "inputs": {
+    "metrics": {
+      "azure_worker_vm_size": "Standard_E8s_v5",
+      "max_worker_nodes_provisioned": 10,
+      "peak_worker_cpu_utilization_pct": 75,
+      "peak_worker_memory_utilization_pct": 95
+    }
+  },
+  "context": {
+    "historical_context": "### Similar past experiences\nMemory-pressure guidance supported keeping E-family."
+  },
+  "output": {
+    "recommendation": {
+      "node_family": "E",
+      "vcpus": 8,
+      "recommended_min_workers": 0,
+      "recommended_max_workers": 10,
+      "auto_termination_minutes": 0,
+      "rationale": "Peak CPU 75 and memory 95 with current max 10.",
+      "pattern_analysis": "### 1. Workload type\nBatch.\n### 2. Resource utilization\nPeak CPU 75 and memory 95.\n### 3. Performance characteristics\nStable.\n### 4. Optimization opportunities\nKeep max workers.\n### 5. Historical evidence\nMemory-pressure guidance supported keeping E-family."
+    }
+  },
+  "expectations": {
+    "passed": true,
+    "min_score": 0.85
+  }
+}

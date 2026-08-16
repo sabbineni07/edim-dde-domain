@@ -10,8 +10,8 @@
 | `EDIM_OBSERVABILITY` | API lifespan / AI | Backend: `langsmith` \| `mlflow` \| `none` \| `auto` (default auto) |
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
-| `EDIM_STATE_STORE` | API lifespan / AI | Control plane: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`) |
-| `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | Recommendation history: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`) |
+| `EDIM_STATE_STORE` | API lifespan / AI | **Control plane** backend: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`). Holds agent catalog, sessions, audit — see [§ State vs recommendation stores](#state-store-vs-recommendation-store) |
+| `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | **Product history** backend: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`). Holds tuning/RCA recommendation rows + status |
 | `EDIM_DATABASE_URL` | Postgres store | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore) |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |
 | `EDIM_COSMOS_KEY` | Cosmos store | Account key (prefer Key Vault in PROD) |
@@ -31,6 +31,7 @@
 | `EDIM_AZURE_SEARCH_CORPUS_MAP` | Azure AI Search | Optional `corpus:index,...` |
 
 Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/retrieval-and-rag.md#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
+
 | `EDIM_DBX_VS_ENDPOINT` | Databricks VS | Vector Search endpoint name |
 | `EDIM_DBX_VS_INDEX` | Databricks VS | Default index name |
 | `EDIM_DBX_VS_CORPUS_MAP` | Databricks VS | Optional `corpus:index,...` |
@@ -63,6 +64,42 @@ Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/ret
 | `EDIM_REQUIRE_SQL` | API | With strict: also require Databricks host/path |
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
+
+---
+
+## State store vs recommendation store
+
+These are **two different planes**. They often share Postgres/Cosmos connection settings, but the env vars select *what kind of data* is persisted.
+
+```text
+EDIM_STATE_STORE          →  agents / sessions / audit     (control plane)
+EDIM_RECOMMENDATION_STORE →  recommend / RCA history rows  (product history)
+```
+
+| Question | `EDIM_STATE_STORE` | `EDIM_RECOMMENDATION_STORE` |
+|----------|--------------------|------------------------------|
+| What is it? | Platform catalog + session/audit | Durable outcomes from agent HTTP calls |
+| Example contents | `{ "agent_id": "cluster_tuning", "lifecycle": "approved", … }` | `{ "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": { … } }` |
+| Written by | Lifespan sync / HITL sessions | `POST /api/v1/cluster_tuning/recommend`, `POST /api/v1/rca/analyze` |
+| Read by | Catalog / `/health` / future HITL | List/get/patch APIs, prompt historical context, experience index |
+| Typical local | `postgres` | unset → inherits postgres |
+| Typical deployed | `cosmos` | unset → inherits cosmos, or set `cosmos` explicitly |
+| Disable? | No | `EDIM_RECOMMENDATION_STORE=none` |
+
+```bash
+# Usual: both planes on the same backend
+export EDIM_STATE_STORE=cosmos
+# leave EDIM_RECOMMENDATION_STORE unset → also cosmos
+
+# History off, catalog still on
+export EDIM_STATE_STORE=postgres
+export EDIM_RECOMMENDATION_STORE=none
+```
+
+Guides with full examples:
+
+- [Control-plane state store](../platform/state-store.md) — what goes into StateStore  
+- [Recommendation lifecycle store](../platform/recommendation-store.md) — what goes into RecommendationStore  
 
 ---
 

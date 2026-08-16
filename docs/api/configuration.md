@@ -62,15 +62,20 @@ export EDIM_CORS_ORIGINS=http://localhost:4200
 # External agent plugin roots
 export EDIM_AGENT_DIRS=/opt/edim-agents/acme
 
-# Control-plane state store (default memory)
+# Control plane (StateStore) — agent catalog, sessions, audit
 # Local: docker compose -f docker-compose.state-store.yml up -d
 export EDIM_STATE_STORE=postgres
 export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 # Deployed: EDIM_STATE_STORE=cosmos + EDIM_COSMOS_* (see state-store.md)
 
-# Recommendation history (default inherits EDIM_STATE_STORE)
-# export EDIM_RECOMMENDATION_STORE=none   # disable persist
-# Full guide: platform/recommendation-store.md
+# Product history (RecommendationStore) — tuning/RCA rows + lifecycle status
+# Default: inherits EDIM_STATE_STORE. Set explicitly only to diverge or disable.
+# export EDIM_RECOMMENDATION_STORE=none      # HTTP still works; no history ids
+# export EDIM_RECOMMENDATION_STORE=cosmos    # same account as StateStore is typical
+#
+# Example StateStore document:  { "agent_id": "cluster_tuning", "lifecycle": "approved" }
+# Example RecommendationStore: { "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": {…} }
+# Full guides: platform/state-store.md · platform/recommendation-store.md
 ```
 
 ## Run
@@ -78,10 +83,10 @@ export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 ```bash
 cd edim-dde-api
 uvicorn edim_dde_api.main:app --reload --port 8080
-curl -s localhost:8080/health   # includes observability + state_store
+curl -s localhost:8080/health   # includes observability + state_store + recommendation_store
 ```
 
-Full store guide: [Control-plane state store](../platform/state-store.md).
+Full store guides: [Control-plane state store](../platform/state-store.md) · [Recommendation store](../platform/recommendation-store.md).
 
 **Smoke testing (dry Foundry-only or live SQL):** [Live & dry smoke test](../contribute/live-smoke-test.md).
 

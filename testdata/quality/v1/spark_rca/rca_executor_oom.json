@@ -1,0 +1,68 @@
+{
+  "case_id": "rca_executor_oom",
+  "agent_id": "spark_rca",
+  "mode": "score_output",
+  "description": "Executor OOM: resource category, cite evidence, concrete memory actions.",
+  "inputs": {
+    "evidence_pack": {
+      "raw_anchors": {
+        "failure_reason": "Executor OutOfMemoryError: Java heap space"
+      },
+      "sections": {
+        "logs": {"top_exceptions": ["OutOfMemoryError"]},
+        "stage_metrics": {"peak_executor_memory_pct": 98},
+        "sql_plans": {}
+      },
+      "evidence": [
+        {
+          "ref": "logs:error:1",
+          "source": "logs",
+          "excerpt": "Executor OutOfMemoryError: Java heap space"
+        },
+        {
+          "ref": "metrics:mem:1",
+          "source": "stage_metrics",
+          "excerpt": "peak_executor_memory_pct=98"
+        }
+      ]
+    }
+  },
+  "context": {},
+  "output": {
+    "root_cause": {
+      "category": "resource",
+      "summary": "The run failed because executors exhausted Java heap under high memory pressure.",
+      "failure_signature": "OutOfMemoryError:Java_heap_space",
+      "confidence": 0.88
+    },
+    "recommended_actions": [
+      "Increase spark.executor.memory and memoryOverhead for the job cluster.",
+      "Confirm peak executor memory from stage metrics before scaling further."
+    ],
+    "recommendations": {
+      "code_query_rewrites": [],
+      "spark_delta_configs": ["spark.executor.memory=8g"],
+      "infrastructure": ["Raise worker memory SKU if heap remains saturated."]
+    },
+    "evidence_analysis": {
+      "log_signals": "OutOfMemoryError Java heap space on executor",
+      "metric_anomalies": "Peak executor memory near saturation (98%).",
+      "physical_plan_bottlenecks": "No plan-level SQL errors were present."
+    },
+    "evidence": [
+      {"ref": "logs:error:1", "source": "logs"},
+      {"ref": "metrics:mem:1", "source": "stage_metrics"}
+    ],
+    "classification_hint": {"category": "resource", "confidence": 0.8},
+    "context_assessment": {
+      "runbooks": "not used",
+      "history": "not used",
+      "web": "not used",
+      "web_citations": []
+    }
+  },
+  "expectations": {
+    "passed": true,
+    "min_score": 0.75
+  }
+}

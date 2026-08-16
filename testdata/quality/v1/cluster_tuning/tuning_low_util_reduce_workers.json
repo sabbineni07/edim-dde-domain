@@ -1,0 +1,32 @@
+{
+  "case_id": "tuning_low_util_reduce_workers",
+  "agent_id": "cluster_tuning",
+  "mode": "score_output",
+  "description": "Low CPU/memory pressure: reduce max workers, keep family, cite history.",
+  "inputs": {
+    "metrics": {
+      "azure_worker_vm_size": "Standard_D8s_v5",
+      "max_worker_nodes_provisioned": 16,
+      "peak_worker_cpu_utilization_pct": 22,
+      "peak_worker_memory_utilization_pct": 31
+    }
+  },
+  "context": {
+    "historical_context": "### Similar past experiences\nOutcome: applied\nAn applied experience seen 2 occurrences corroborated reducing workers."
+  },
+  "output": {
+    "recommendation": {
+      "node_family": "D",
+      "vcpus": 4,
+      "recommended_min_workers": 0,
+      "recommended_max_workers": 8,
+      "auto_termination_minutes": 0,
+      "rationale": "Peak CPU 22 and memory 31 with current max 16.",
+      "pattern_analysis": "### 1. Workload type\nBatch.\n### 2. Resource utilization\nPeak CPU 22 and memory 31.\n### 3. Performance characteristics\nStable.\n### 4. Optimization opportunities\nReduce max workers.\n### 5. Historical evidence\nAn applied experience seen 2 occurrences corroborated reducing workers."
+    }
+  },
+  "expectations": {
+    "passed": true,
+    "min_score": 0.9
+  }
+}

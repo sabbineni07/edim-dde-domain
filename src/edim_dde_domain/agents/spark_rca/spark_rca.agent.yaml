@@ -7,7 +7,7 @@ entry:
 
 content_dir: ./content
 
-# Optional Infra bindings (Phase 1): llm is wired at graph build; search / cosmos /
+# Optional Infra bindings: llm + search are wired at graph build; cosmos /
 # sql-warehouse are shape-validated (runtime injection later).
 # Non-secret URLs/names may be literals or ${ENV:…}. Never put API keys here.
 # Sampling knobs are literal numbers. Values match edim-dde-domain/.env (dev).

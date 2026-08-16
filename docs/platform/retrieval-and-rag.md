@@ -55,6 +55,22 @@ configure_retrieval_from_env()  # Strategy from EDIM_RETRIEVAL
 hits = search_corpus("OutOfMemoryError executor", corpus="spark-runbooks", top_k=5)
 ```
 
+### Per-agent Search binding (`bindings.search`)
+
+Optional on `*.agent.yaml` — same fail-closed `${ENV:…}` pattern as `bindings.llm`.
+GraphBuilder injects `endpoint` / `index` into every `rag.retrieve` node; those
+kwargs flow to `search_corpus`. Search **key** stays process env / Key Vault
+(`EDIM_AZURE_SEARCH_KEY`). Omit the binding to use process endpoint + CORPUS_MAP.
+
+```yaml
+bindings:
+  search:
+    endpoint: ${ENV:EDIM_AZURE_SEARCH_ENDPOINT}
+    index: spark-runbooks   # physical index for this agent's rag.retrieve nodes
+```
+
+See [YAML schema — bindings](../framework/yaml-schema.md#bindings-llm--search-wired-cosmos--sql-warehouse-documented).
+
 ---
 
 ## 2. Decisions locked for EDIM

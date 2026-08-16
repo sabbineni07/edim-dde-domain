@@ -66,8 +66,8 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | **C3** | [PII guardrails](platform/pii-guardrails.md) | Redaction before logs/traces |
 | **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |
 | **C5** | [LangSmith setup](platform/langsmith-setup.md) | Projects, keys, local vs SaaS |
-| **C6** | [Control-plane state store](platform/state-store.md) | Postgres / Cosmos / Redis / memory |
-| **C6b** | [Recommendation lifecycle store](platform/recommendation-store.md) | Persist tuning/RCA history; [Cosmos setup §4b](platform/recommendation-store.md#4b-setting-up-cosmos-for-edim_recommendation_storecosmos) |
+| **C6** | [Control-plane state store](platform/state-store.md) | `EDIM_STATE_STORE` — agent catalog / sessions / audit (examples in guide) |
+| **C6b** | [Recommendation lifecycle store](platform/recommendation-store.md) | `EDIM_RECOMMENDATION_STORE` — tuning/RCA history rows + status; [Cosmos §4b](platform/recommendation-store.md#4b-setting-up-cosmos-for-edim_recommendation_storecosmos) |
 | **C7** | [Retrieval & RAG](platform/retrieval-and-rag.md) | FAISS / Azure AI Search / Databricks; [Azure setup §8](platform/retrieval-and-rag.md#8-setting-up-azure-ai-search-for-a-real-retrievalprovider) |
 
 ### Part D — Framework (`edim-dde-ai`)
@@ -80,6 +80,7 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | **D4** | [Conditional edges](framework/conditional-edges.md) | Branching |
 | **D5** | [Content and LLM](framework/content-and-llm.md) | Prompts, skills, Foundry |
 | **D6** | [Orchestration (`invoke_agent`)](framework/orchestration-topology.md) | Nested agents |
+| **D7** | [Evaluation & quality](framework/evaluation-and-quality.md) | Rubrics, corpus `v1`, Foundry harness |
 
 Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 

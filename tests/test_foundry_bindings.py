@@ -1,4 +1,4 @@
-"""FoundryLLMProvider honors per-invoke endpoint/deployment overrides."""
+"""FoundryLLMProvider honors per-invoke endpoint/deployment/sampling overrides."""
 
 from __future__ import annotations
 
@@ -9,31 +9,43 @@ from edim_dde_domain.config import DomainSettings, clear_settings_cache
 from edim_dde_domain.llm.foundry import FoundryLLMProvider, clear_foundry_llm_provider_cache
 
 
-def test_foundry_invoke_uses_config_endpoint_and_deployment():
+def _clear() -> None:
     clear_settings_cache()
     clear_foundry_llm_provider_cache()
-    settings = DomainSettings(
+
+
+def _settings(**overrides) -> DomainSettings:
+    base = dict(
         azure_openai_endpoint="https://global.example.com",
         azure_openai_deployment_name="gpt-global",
+        edim_foundry_tenant_id="",
+        edim_foundry_client_id="",
+        edim_foundry_client_secret="",
+        azure_tenant_id="",
+        azure_client_id="",
+        azure_client_secret="",
+        edim_foundry_api_key="test-key",
+        azure_openai_api_key="",
+        azure_openai_endpoint_key="",
     )
-    provider = FoundryLLMProvider(settings=settings)
+    base.update(overrides)
+    return DomainSettings(**base)
 
-    fake_choice = SimpleNamespace(
-        message=SimpleNamespace(content="  hello  ")
-    )
+
+def _provider() -> FoundryLLMProvider:
+    return FoundryLLMProvider(settings=_settings())
+
+
+def test_foundry_invoke_uses_config_endpoint_and_deployment():
+    _clear()
+    provider = _provider()
+
+    fake_choice = SimpleNamespace(message=SimpleNamespace(content="  hello  "))
     fake_resp = SimpleNamespace(choices=[fake_choice])
     fake_client = MagicMock()
     fake_client.chat.completions.create.return_value = fake_resp
 
-    with (
-        patch(
-            "edim_dde_domain.llm.foundry.foundry_token_provider",
-            return_value=lambda: "tok",
-        ),
-        patch("openai.OpenAI", return_value=fake_client) as openai_ctor,
-    ):
-        # Re-bind token provider after construction (already set); patch invoke path.
-        provider._token_provider = lambda: "tok"
+    with patch("openai.OpenAI", return_value=fake_client) as openai_ctor:
         text = provider.invoke(
             [("system", "s"), ("human", "h")],
             config={
@@ -47,19 +59,14 @@ def test_foundry_invoke_uses_config_endpoint_and_deployment():
     assert openai_ctor.call_args.kwargs["base_url"] == (
         "https://rca.example.com/openai/v1"
     )
+    assert openai_ctor.call_args.kwargs["api_key"] == "test-key"
     create_kwargs = fake_client.chat.completions.create.call_args.kwargs
     assert create_kwargs["model"] == "gpt-rca"
 
 
 def test_foundry_invoke_falls_back_to_construct_defaults():
-    clear_settings_cache()
-    clear_foundry_llm_provider_cache()
-    settings = DomainSettings(
-        azure_openai_endpoint="https://global.example.com",
-        azure_openai_deployment_name="gpt-global",
-    )
-    provider = FoundryLLMProvider(settings=settings)
-    provider._token_provider = lambda: "tok"
+    _clear()
+    provider = _provider()
 
     fake_choice = SimpleNamespace(message=SimpleNamespace(content="ok"))
     fake_resp = SimpleNamespace(choices=[fake_choice])
@@ -79,14 +86,8 @@ def test_foundry_invoke_falls_back_to_construct_defaults():
 
 
 def test_foundry_invoke_honors_sampling_knobs():
-    clear_settings_cache()
-    clear_foundry_llm_provider_cache()
-    settings = DomainSettings(
-        azure_openai_endpoint="https://global.example.com",
-        azure_openai_deployment_name="gpt-global",
-    )
-    provider = FoundryLLMProvider(settings=settings)
-    provider._token_provider = lambda: "tok"
+    _clear()
+    provider = _provider()
 
     fake_choice = SimpleNamespace(message=SimpleNamespace(content="ok"))
     fake_resp = SimpleNamespace(choices=[fake_choice])
@@ -111,3 +112,23 @@ def test_foundry_invoke_honors_sampling_knobs():
     assert kwargs["max_completion_tokens"] == 2048
     assert "max_tokens" not in kwargs
     assert "top_k" not in kwargs  # not sent to OpenAI chat completions
+
+
+def test_foundry_invoke_deployment_override_without_endpoint():
+    _clear()
+    provider = _provider()
+    fake_client = MagicMock()
+    fake_client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
+    )
+
+    with patch("openai.OpenAI", return_value=fake_client) as ctor:
+        provider.invoke([("human", "h")], config={"deployment": "other-deployment"})
+
+    assert ctor.call_args.kwargs["base_url"] == (
+        "https://global.example.com/openai/v1"
+    )
+    assert (
+        fake_client.chat.completions.create.call_args.kwargs["model"]
+        == "other-deployment"
+    )
