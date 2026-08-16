@@ -14,6 +14,16 @@ The synthesize step returns free-form JSON. This module:
 The output of ``validate_rca_llm_output`` is what the API projects as
 ``RcaResponse`` (via ``logic.validate_output``).
 
+Evidence citation policy
+------------------------
+We never silently fabricate citations. ``evidence`` holds the model's **own**
+valid refs. If the model cites nothing resolvable but the pack has evidence, we
+attach up to three pack rows purely as a **labeled preview** — each item carries
+``backfilled: true`` and the result sets ``evidence_backfilled: true``. This
+keeps the UI populated without implying the model chose (or that those rows
+support) the summary/recommendations, and lets the quality evaluator score
+genuine citation behavior.
+
 Public API
 ----------
 * ``validate_rca_llm_output`` — sole entry used by the graph validate node
@@ -279,16 +289,27 @@ def validate_rca_llm_output(
             or "Unable to determine a specific root cause from available evidence."
         )
 
-    evidence_refs = [
+    # Only the model's own valid citations count as real evidence. We never
+    # silently invent citations: if the model cites nothing resolvable, the
+    # authoritative `evidence` list stays empty and `evidence_backfilled` marks
+    # any preview rows so the UI (and evaluator) can tell "model-cited" apart
+    # from "pack preview". This avoids showing pack rows that may not match the
+    # summary/recommendations as if the model had chosen them.
+    model_evidence_refs = [
         str(r) for r in (raw.get("evidence_refs") or []) if str(r) in allowed_refs
     ]
-    # If the model forgot citations but pack has refs, surface a few for UX.
-    if not evidence_refs and allowed_refs:
-        evidence_refs = list(allowed_refs)[:3]
+    evidence_backfilled = bool(not model_evidence_refs and allowed_refs)
+    if model_evidence_refs:
+        preview_refs = model_evidence_refs
+    elif evidence_backfilled:
+        # Explicit, labeled preview — not treated as a model citation.
+        preview_refs = list(allowed_refs)[:3]
+    else:
+        preview_refs = []
 
     evidence_out: list[dict[str, Any]] = []
     by_ref = {str(e.get("ref")): e for e in (evidence_pack.get("evidence") or [])}
-    for ref in evidence_refs:
+    for ref in preview_refs:
         item = by_ref.get(ref)
         if item:
             evidence_out.append(
@@ -296,6 +317,8 @@ def validate_rca_llm_output(
                     "source": item.get("source"),
                     "ref": ref,
                     "excerpt": item.get("excerpt"),
+                    # True only for unrequested pack preview rows.
+                    "backfilled": evidence_backfilled,
                 }
             )
 
@@ -356,6 +379,8 @@ def validate_rca_llm_output(
         "recommendations": recommendations,
         "timeline": timeline_out,
         "evidence": evidence_out,
+        # True when `evidence` holds pack preview rows the model did not cite.
+        "evidence_backfilled": evidence_backfilled,
         "contributing_factors": contributing,
         "recommended_actions": actions[:10],
         "raw_anchors": evidence_pack.get("raw_anchors") or {},

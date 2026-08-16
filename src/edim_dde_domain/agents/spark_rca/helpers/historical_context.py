@@ -40,19 +40,24 @@ from edim_dde_domain.agents.spark_rca.helpers.experience_transform import (
 
 
 def _experience_block(
-    state: dict[str, Any], *, corpus: str, top_k: int
+    state: dict[str, Any],
+    *,
+    corpus: str,
+    top_k: int,
+    failure_signals_config: dict[str, Any] | None = None,
 ) -> str:
     """Retrieve and format feature-similar past RCA experience cards.
 
     Tiny indexes can return weakly related neighbors. We therefore require either:
 
-    * shared strong feature labels (category / ``signal_*``), or
+    * shared strong feature labels (category / ``signal_`` / exception / plan), or
     * an independently high similarity score (≥ 0.75).
 
     Args:
         state: Live graph state (evidence_pack, classification_hint).
         corpus: Outcomes corpus name (default ``spark-rca-outcomes``).
         top_k: Max hits to request from the retrieval provider.
+        failure_signals_config: Optional YAML extractors for query features.
 
     Returns:
         Markdown-ish block string, or ``\"\"`` when nothing useful matches.
@@ -63,6 +68,7 @@ def _experience_block(
         infer_failure_features(
             evidence_pack=pack if isinstance(pack, dict) else {},
             classification_hint=hint if isinstance(hint, dict) else {},
+            failure_signals_config=failure_signals_config,
         )
     )
     # Category + signature tokens are the only features we treat as "strong"
@@ -70,11 +76,21 @@ def _experience_block(
     strong_current = {
         feature
         for feature in current_features
-        if feature.startswith(("hint_category_", "root_category_", "signal_"))
+        if feature.startswith(
+            (
+                "hint_category_",
+                "root_category_",
+                "signal_",
+                "exception_class_",
+                "plan_op_",
+            )
+        )
     }
     try:
         hits = search_corpus(
-            build_experience_query(state),
+            build_experience_query(
+                state, failure_signals_config=failure_signals_config
+            ),
             corpus=corpus,
             top_k=top_k,
             search_mode="hybrid",
@@ -174,6 +190,7 @@ def compose_historical_context(
     corpus: str = "spark-rca-outcomes",
     top_k: int = 5,
     same_job_limit: int = 3,
+    failure_signals_config: dict[str, Any] | None = None,
 ) -> str:
     """Return separate similarity and exact-entity history lanes for the prompt.
 
@@ -183,18 +200,20 @@ def compose_historical_context(
         corpus: Experience corpus (must exist in ``config/corpora.yaml``).
         top_k: Max experience hits after filtering.
         same_job_limit: Max exact entity rows to show.
+        failure_signals_config: Optional YAML signal extractors for experience query.
 
     Returns:
         Combined history text, or ``\"None\"`` when disabled / empty.
-
-    Example:
-        >>> compose_historical_context({"job_id": "j-1"}, enabled=False)
-        'None'
     """
     if not enabled:
         return "None"
     blocks = [
-        _experience_block(state, corpus=corpus, top_k=max(1, top_k)),
+        _experience_block(
+            state,
+            corpus=corpus,
+            top_k=max(1, top_k),
+            failure_signals_config=failure_signals_config,
+        ),
         _same_job_block(state, limit=max(1, same_job_limit)),
     ]
     return "\n\n".join(block for block in blocks if block) or "None"

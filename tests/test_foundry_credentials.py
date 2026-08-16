@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from edim_dde_domain.config import DomainSettings, clear_settings_cache
+from edim_dde_domain.llm.foundry import _openai_v1_base_url
 
 
 def test_foundry_sp_prefers_edim_foundry_vars():
@@ -36,3 +37,13 @@ def test_foundry_sp_can_mix_client_with_shared_tenant():
         azure_tenant_id="shared-tenant",
     )
     assert s.foundry_sp_credentials() == ("shared-tenant", "fc", "fs")
+
+
+def test_openai_v1_base_url_strips_responses_and_avoids_double_append():
+    host = "https://example.openai.azure.com"
+    assert _openai_v1_base_url(host) == f"{host}/openai/v1"
+    assert _openai_v1_base_url(f"{host}/openai/v1") == f"{host}/openai/v1"
+    assert _openai_v1_base_url(f"{host}/openai") == f"{host}/openai/v1"
+    assert _openai_v1_base_url(f"{host}/openai/v1/responses") == f"{host}/openai/v1"
+    assert _openai_v1_base_url(f"{host}/responses") == f"{host}/openai/v1"
+    assert _openai_v1_base_url(f"{host}/openai/v1/openai/v1") == f"{host}/openai/v1"

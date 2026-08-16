@@ -152,7 +152,7 @@ curl -s localhost:8080/api/v1/rca/analyze \
   }'
 ```
 
-With `EDIM_RETRIEVAL=faiss` and an indexed corpus, RCA also runs `rag.retrieve` for runbook grounding before the LLM.
+With `EDIM_RETRIEVAL=faiss` and an indexed corpus, RCA also runs `rag.retrieve` for runbook grounding before the LLM. For the deployed default backend, see [Setting up Azure AI Search](../platform/retrieval-and-rag.md#8-setting-up-azure-ai-search-for-a-real-retrievalprovider) (steps 1–6).
 
 ---
 

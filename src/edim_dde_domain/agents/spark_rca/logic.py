@@ -179,12 +179,13 @@ def load_historical_context(
     Args:
         state: Live graph state.
         config: Node YAML knobs — ``enabled``, ``corpus``, ``top_k``,
-            ``same_job_limit``.
+            ``same_job_limit``, optional ``failure_signals``.
 
     Returns:
         ``{\"historical_context\": \"...\"}`` (may be the literal ``\"None\"``).
     """
     policy = config or {}
+    failure_signals = policy.get("failure_signals")
     return {
         "historical_context": compose_historical_context(
             state,
@@ -192,6 +193,9 @@ def load_historical_context(
             corpus=str(policy.get("corpus") or "spark-rca-outcomes"),
             top_k=int(policy.get("top_k", 5)),
             same_job_limit=int(policy.get("same_job_limit", 3)),
+            failure_signals_config=(
+                dict(failure_signals) if isinstance(failure_signals, dict) else None
+            ),
         )
     }
 
@@ -418,6 +422,7 @@ def validate_output(state: dict[str, Any]) -> dict[str, Any]:
         "recommendations": validated.get("recommendations") or {},
         "timeline": validated.get("timeline") or [],
         "evidence": validated.get("evidence") or [],
+        "evidence_backfilled": bool(validated.get("evidence_backfilled")),
         "classification_hint": hint,
         "evidence_pack": pack,
         "runbook_context": state.get("runbook_context"),

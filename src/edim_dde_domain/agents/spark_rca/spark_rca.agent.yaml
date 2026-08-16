@@ -218,6 +218,34 @@ graph:
       corpus: spark-rca-outcomes
       top_k: 5
       same_job_limit: 3
+      # Measurable attrs → signal_* labels (tuning resource_pressure analogue).
+      # Add a signal with attr_keys/min/label — no Python branch required.
+      failure_signals:
+        max_exception_labels: 3
+        max_plan_ops: 5
+        max_msg_tokens: 4
+        include_hint_category_label: true
+        signals:
+          failed_tasks:
+            attr_keys: [num_failed_tasks, numFailedTasks]
+            min: 1
+            label: signal_failed_tasks
+          spill_bytes:
+            attr_keys:
+              - memoryBytesSpilled
+              - memory_bytes_spilled
+              - diskBytesSpilled
+              - disk_bytes_spilled
+            min: 1
+            label: signal_spill_bytes
+          shuffle_bytes:
+            attr_keys:
+              - shuffle_read_bytes
+              - shuffleReadBytes
+              - shuffle_write_bytes
+              - shuffleWriteBytes
+            min: 1
+            label: signal_shuffle_bytes
     - id: build_web_search_query
       type: domain.rca.build_web_search_query
       # Online enrichment is opt-in. It never receives raw logs, SQL, paths,

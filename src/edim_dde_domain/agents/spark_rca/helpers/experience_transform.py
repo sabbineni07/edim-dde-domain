@@ -38,6 +38,13 @@ from typing import Any
 
 from edim_dde_ai.experiences.models import ExperienceDocument
 from edim_dde_ai.recommendations.models import RecommendationRecord
+from edim_dde_domain.agents.spark_rca.helpers.failure_signals import (
+    blob_for_structural_extract,
+    extract_exception_class_labels,
+    extract_plan_op_labels,
+    extract_yaml_signal_labels,
+    normalize_failure_signals_config,
+)
 
 AGENT_ID = "spark_rca"
 CORPUS = "spark-rca-outcomes"
@@ -129,47 +136,41 @@ def infer_failure_features(
     evidence_pack: dict[str, Any],
     classification_hint: dict[str, Any] | None = None,
     result: dict[str, Any] | None = None,
+    failure_signals_config: dict[str, Any] | None = None,
 ) -> list[str]:
     """Derive open evidence features for indexing and live experience queries.
 
     Taxonomy categories (``hint_category_*`` / ``root_category_*``) are
     **descriptive labels only** — they must not be the sole retrieval vocabulary.
-    Structural channels and ``signal_*`` tokens carry similarity across unseen
-    failures.
+    Structural channels, YAML ``failure_signals`` presence bits, and open
+    exception/plan tokens carry similarity across unseen failures.
 
     Args:
         evidence_pack: Current or stored evidence pack (sections, anchors, evidence).
         classification_hint: Optional rule-classifier output from the live run.
         result: Optional stored/validated RCA result (adds root-cause category).
+        failure_signals_config: Optional YAML override (attr_keys / min / label).
 
     Returns:
         Deduped feature label strings, e.g.
-        ``['hint_category_resource', 'evidence_channel_logs', 'signal_outofmemoryerror']``.
+        ``['hint_category_resource', 'signal_spill_bytes', 'exception_class_outofmemoryerror']``.
         Always at least ``failure_signal_unknown`` when nothing else is present.
-
-    Example:
-        >>> infer_failure_features(
-        ...     evidence_pack={
-        ...         "sections": {"logs": {"a": 1}},
-        ...         "evidence": [{"source": "logs", "excerpt": "OutOfMemoryError"}],
-        ...     },
-        ...     classification_hint={"category": "resource"},
-        ... )
-        ['hint_category_resource', 'evidence_source_logs', ...]
     """
+    policy = normalize_failure_signals_config(failure_signals_config)
     hint = classification_hint or {}
     output = result or {}
     root = output.get("root_cause") or {}
     features: list[str] = []
 
-    # Soft taxonomy labels (metadata-like); retrieval also uses signal_* below.
-    for prefix, category in (
-        ("hint", hint.get("category")),
-        ("root", root.get("category")),
-    ):
-        value = str(category or "").strip().lower()
-        if value:
-            features.append(f"{prefix}_category_{value}")
+    # Soft taxonomy labels (optional via YAML; default on for continuity).
+    if bool(policy.get("include_hint_category_label", True)):
+        for prefix, category in (
+            ("hint", hint.get("category")),
+            ("root", root.get("category")),
+        ):
+            value = str(category or "").strip().lower()
+            if value:
+                features.append(f"{prefix}_category_{value}")
 
     evidence = [
         item
@@ -189,7 +190,12 @@ def infer_failure_features(
         if isinstance(section, dict) and any(section.values()):
             features.append(f"evidence_channel_{name}")
 
-    # Open tokens from signature + failure reason + short excerpts.
+    # YAML-configured measurable attributes (tuning resource_pressure analogue).
+    features.extend(
+        extract_yaml_signal_labels(evidence_pack, config=policy)
+    )
+
+    # Open structural tokens from signature + failure reason + short excerpts.
     anchors = evidence_pack.get("raw_anchors") or {}
     signature_text = " ".join(
         [
@@ -199,13 +205,33 @@ def infer_failure_features(
             " ".join(str(item.get("excerpt") or "") for item in evidence[:4]),
         ]
     )
-    features.extend(f"signal_{token}" for token in _signature_tokens(signature_text))
+    features.extend(
+        f"signal_{token}"
+        for token in _signature_tokens(
+            signature_text, limit=int(policy.get("max_msg_tokens") or 4)
+        )
+    )
+    structural = blob_for_structural_extract(evidence_pack)
+    features.extend(
+        extract_exception_class_labels(
+            structural, limit=int(policy.get("max_exception_labels") or 3)
+        )
+    )
+    features.extend(
+        extract_plan_op_labels(
+            structural, limit=int(policy.get("max_plan_ops") or 5)
+        )
+    )
     if not features:
         features.append("failure_signal_unknown")
     return list(dict.fromkeys(features))
 
 
-def build_experience_query(state: dict[str, Any]) -> str:
+def build_experience_query(
+    state: dict[str, Any],
+    *,
+    failure_signals_config: dict[str, Any] | None = None,
+) -> str:
     """Build a feature-based retrieval query from the **live** agent state.
 
     Intentionally omits ``job_id`` / ``job_run_id`` so search is similarity-based
@@ -213,17 +239,11 @@ def build_experience_query(state: dict[str, Any]) -> str:
 
     Args:
         state: Graph state with ``evidence_pack`` and optional ``classification_hint``.
+        failure_signals_config: Optional YAML signal extractors for feature parity
+            with indexed cards.
 
     Returns:
         Free-text query string for the ``spark-rca-outcomes`` corpus.
-
-    Example:
-        >>> q = build_experience_query({
-        ...     "evidence_pack": {"evidence": [{"excerpt": "AnalysisException"}]},
-        ...     "classification_hint": {"category": "sql_error"},
-        ... })
-        >>> "hint_category_sql_error" in q and "job_id" not in q
-        True
     """
     pack = state.get("evidence_pack")
     if not isinstance(pack, dict):
@@ -234,6 +254,7 @@ def build_experience_query(state: dict[str, Any]) -> str:
     features = infer_failure_features(
         evidence_pack=pack,
         classification_hint=hint,
+        failure_signals_config=failure_signals_config,
     )
     return " ".join(
         [
@@ -291,6 +312,17 @@ class SparkRcaExperienceTransform:
         corpus: Always ``spark-rca-outcomes``.
     """
 
+    def __init__(
+        self, failure_signals_config: dict[str, Any] | None = None
+    ) -> None:
+        """Bake YAML failure_signals policy into the transform.
+
+        Args:
+            failure_signals_config: Merged onto packaged defaults when
+                extracting measurable signal labels.
+        """
+        self._failure_signals_config = dict(failure_signals_config or {})
+
     @property
     def agent_id(self) -> str:
         """Agent id this transform is bound to."""
@@ -310,12 +342,6 @@ class SparkRcaExperienceTransform:
         Returns:
             ``ExperienceDocument`` when status is ``accepted`` or ``applied``
             and enough payload exists; otherwise ``None``.
-
-        Example:
-            Only ``accepted`` / ``applied`` produce documents::
-
-                transform(proposed_record)  -> None
-                transform(accepted_record)  -> ExperienceDocument(...)
         """
         # RCA diagnoses should become cross-job precedent only after review or
         # application. Proposed rows remain available in exact entity history.
@@ -333,6 +359,7 @@ class SparkRcaExperienceTransform:
             evidence_pack=pack,
             classification_hint=hint,
             result=result,
+            failure_signals_config=self._failure_signals_config,
         )
         actions = _actions(result)
         analysis = result.get("evidence_analysis") or {}
@@ -374,13 +401,20 @@ class SparkRcaExperienceTransform:
         )
 
 
-def register_spark_rca_experience_transform() -> None:
+def register_spark_rca_experience_transform(
+    failure_signals_config: dict[str, Any] | None = None,
+) -> None:
     """Register this transform with the process-wide experience registry.
 
     Called from ``edim_dde_domain.bootstrap`` during agent bootstrap. Safe to
     call once per process; re-registration replaces the prior transform for
     ``spark_rca``.
+
+    Args:
+        failure_signals_config: Optional YAML policy from the packaged agent.
     """
     from edim_dde_ai.experiences import register_experience_transform
 
-    register_experience_transform(SparkRcaExperienceTransform())
+    register_experience_transform(
+        SparkRcaExperienceTransform(failure_signals_config)
+    )

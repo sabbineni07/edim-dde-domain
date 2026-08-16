@@ -275,6 +275,25 @@ def _cluster_tuning_pressure_config() -> dict[str, Any]:
     return {}
 
 
+def _spark_rca_failure_signals_config() -> dict[str, Any]:
+    """Read packaged RCA failure_signals policy for experience indexing."""
+    path = _AGENTS_DIR / "spark_rca" / "spark_rca.agent.yaml"
+    if not path.is_file():
+        return {}
+    try:
+        import yaml
+
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        nodes = ((payload.get("graph") or {}).get("nodes") or [])
+        for node in nodes:
+            if isinstance(node, dict) and node.get("id") == "load_historical_context":
+                config = node.get("failure_signals")
+                return dict(config) if isinstance(config, dict) else {}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("spark rca failure_signals config load failed: %s", exc)
+    return {}
+
+
 def _register_experience_transforms() -> None:
     """Register domain ExperienceTransforms (feature/action index parsers)."""
     try:
@@ -288,7 +307,9 @@ def _register_experience_transforms() -> None:
         register_cluster_tuning_experience_transform(
             _cluster_tuning_pressure_config()
         )
-        register_spark_rca_experience_transform()
+        register_spark_rca_experience_transform(
+            _spark_rca_failure_signals_config()
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("experience transform registration skipped/failed: %s", exc)
 

@@ -238,6 +238,17 @@ Parse model JSON into structured fields.
 Normalizes categories/shapes, clamps model confidence, drops unknown evidence
 refs and unsupplied web URLs, and writes the stable API `result`.
 
+**Evidence citation policy (no silent backfill).** `evidence` reflects the
+model's **own** valid citations. We never invent citations to make a response
+look complete. If the model cites nothing that resolves to the run's
+`evidence_pack` but the pack does have rows, up to three pack rows are attached
+as a **labeled preview**: each item carries `backfilled: true` and the result
+sets `evidence_backfilled: true`. This keeps the UI populated without implying
+the model chose those rows or that they support the summary / recommendations.
+The quality evaluator ignores backfilled rows so `evidence` scores reflect
+genuine citation behavior (and records `Model did not cite available evidence`).
+See [Evaluation & quality](../framework/evaluation-and-quality.md#evidence-citations-vs-backfilled-preview).
+
 ### Step O — `evaluate_output`
 
 Runs `spark_rca.quality`. Its confidence is deterministic evidence-pack
@@ -261,7 +272,8 @@ has feature material.
 | `recommendations` | Structured buckets (infra / code / …) when present |
 | `contributing_factors` | Secondary factors |
 | `evidence_analysis` | How evidence was weighed |
-| `evidence` | Cited snippets / refs |
+| `evidence` | Model-cited snippets / refs. Each item has `backfilled` (true only for labeled pack preview when the model cited nothing) |
+| `evidence_backfilled` | `true` when `evidence` holds pack-preview rows the model did not cite (never a silent citation) |
 | `timeline` | Normalized timeline |
 | `classification_hint` | Rule-based hint |
 | `context_assessment` | How runbooks/history/web corroborated or conflicted |

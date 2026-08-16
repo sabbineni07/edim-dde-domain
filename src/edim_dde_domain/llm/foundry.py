@@ -47,12 +47,41 @@ class FoundryLLMNotConfiguredError(DomainToolError):
 
 
 def _openai_v1_base_url(endpoint: str) -> str:
+    """Normalize a Foundry/OpenAI endpoint to an ``.../openai/v1`` base URL.
+
+    Accepts common env-value shapes so callers do not double-append paths:
+
+    * bare resource host
+    * already ends with ``/openai`` or ``/openai/v1``
+    * accidentally includes ``/responses``, ``/chat/completions``, etc.
+
+    Args:
+        endpoint: Raw ``EDIM_FOUNDRY_ENDPOINT`` / Azure OpenAI-style URL.
+
+    Returns:
+        Base URL ending in ``/openai/v1``, or ``\"\"`` when empty.
+    """
     base = (endpoint or "").strip().rstrip("/")
     if not base:
         return ""
-    if base.endswith("/openai/v1"):
-        return base
-    if base.endswith("/openai"):
+    # Strip operation suffixes that belong on the client path, not the base.
+    for suffix in (
+        "/responses",
+        "/chat/completions",
+        "/completions",
+        "/embeddings",
+    ):
+        if base.lower().endswith(suffix):
+            base = base[: -len(suffix)].rstrip("/")
+            break
+    # Collapse accidental duplicated /openai/v1 segments.
+    lowered = base.lower()
+    marker = "/openai/v1"
+    if marker in lowered:
+        idx = lowered.index(marker)
+        base = base[: idx + len(marker)]
+        return base.rstrip("/")
+    if base.lower().endswith("/openai"):
         return f"{base}/v1"
     return f"{base}/openai/v1"
 

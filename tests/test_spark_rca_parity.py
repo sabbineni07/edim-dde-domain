@@ -146,3 +146,53 @@ def test_validate_preserves_rich_fields():
     assert validated["root_cause"]["failure_signature"] == "OutOfMemoryError"
     assert validated["recommended_actions"][0].startswith("Increase")
     assert validated["evidence_analysis"]["log_signals"]
+
+
+def _pack_with_refs() -> dict:
+    """Minimal pack with two citable evidence rows."""
+    return {
+        "evidence": [
+            {"ref": "e1", "source": "logs", "excerpt": "OOM here"},
+            {"ref": "e2", "source": "metrics", "excerpt": "spill high"},
+        ]
+    }
+
+
+def test_model_citations_are_authoritative_and_not_backfilled():
+    validated = validate_rca_llm_output(
+        {"summary": "OOM", "evidence_refs": ["e1"]},
+        evidence_pack=_pack_with_refs(),
+        classification_hint={"category": "resource", "confidence": 0.6},
+    )
+    assert validated["evidence_backfilled"] is False
+    refs = [row["ref"] for row in validated["evidence"]]
+    assert refs == ["e1"]
+    assert all(row["backfilled"] is False for row in validated["evidence"])
+
+
+def test_missing_citations_yield_labeled_preview_not_silent_fill():
+    validated = validate_rca_llm_output(
+        {"summary": "OOM", "evidence_refs": []},
+        evidence_pack=_pack_with_refs(),
+        classification_hint={"category": "resource", "confidence": 0.6},
+    )
+    # Preview rows exist for UX, but they are explicitly labeled.
+    assert validated["evidence_backfilled"] is True
+    assert validated["evidence"], "expected preview rows for UX"
+    assert all(row["backfilled"] is True for row in validated["evidence"])
+
+
+def test_backfilled_preview_does_not_count_as_model_citation_in_eval():
+    from edim_dde_domain.evaluation.spark_rca import SparkRcaQualityEvaluator
+
+    pack = _pack_with_refs()
+    validated = validate_rca_llm_output(
+        {"summary": "OOM", "evidence_refs": []},
+        evidence_pack=pack,
+        classification_hint={"category": "resource", "confidence": 0.6},
+    )
+    result = {**validated, "evidence_pack": pack}
+    report = SparkRcaQualityEvaluator().evaluate(
+        inputs={"evidence_pack": pack}, output=result
+    )
+    assert any("did not cite" in f for f in report.findings)

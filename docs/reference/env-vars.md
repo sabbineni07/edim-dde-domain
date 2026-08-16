@@ -29,6 +29,8 @@
 | `EDIM_AZURE_SEARCH_KEY` | Azure AI Search | Key (Key Vault in PROD) |
 | `EDIM_AZURE_SEARCH_INDEX` | Azure AI Search | Default index name |
 | `EDIM_AZURE_SEARCH_CORPUS_MAP` | Azure AI Search | Optional `corpus:index,...` |
+
+Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/retrieval-and-rag.md#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
 | `EDIM_DBX_VS_ENDPOINT` | Databricks VS | Vector Search endpoint name |
 | `EDIM_DBX_VS_INDEX` | Databricks VS | Default index name |
 | `EDIM_DBX_VS_CORPUS_MAP` | Databricks VS | Optional `corpus:index,...` |

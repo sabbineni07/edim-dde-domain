@@ -80,6 +80,44 @@ def test_rca_experience_features_are_open_vocabulary():
     assert any(label.startswith("evidence_channel_") for label in labels)
 
 
+def test_yaml_failure_signals_emit_presence_labels():
+    pack = {
+        "raw_anchors": {
+            "pipeline_end": {
+                "attributes": {
+                    "num_failed_tasks": 4,
+                    "memoryBytesSpilled": 1024,
+                }
+            }
+        },
+        "sections": {"logs": {}, "stage_metrics": {"x": 1}, "sql_plans": {}},
+        "evidence": [],
+    }
+    labels = infer_failure_features(evidence_pack=pack)
+    assert "signal_failed_tasks" in labels
+    assert "signal_spill_bytes" in labels
+
+
+def test_yaml_failure_signal_threshold_override():
+    pack = {
+        "raw_anchors": {
+            "pipeline_end": {"attributes": {"num_failed_tasks": 2}}
+        },
+        "evidence": [],
+    }
+    # Default min=1 → label present
+    assert "signal_failed_tasks" in infer_failure_features(evidence_pack=pack)
+    # Raise threshold via YAML override → label absent
+    labels = infer_failure_features(
+        evidence_pack=pack,
+        failure_signals_config={
+            "signals": {"failed_tasks": {"min": 10, "label": "signal_failed_tasks"}}
+        },
+    )
+    assert "signal_failed_tasks" not in labels
+
+
+
 def test_rca_transform_builds_diagnosis_action_card():
     doc = SparkRcaExperienceTransform().transform(
         _record("rec-1", "job-old", "jr-old")

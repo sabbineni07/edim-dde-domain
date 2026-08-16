@@ -24,7 +24,7 @@ OpenAPI: `http://localhost:8080/docs` when uvicorn is running.
 
 **Breaking (hard cutover):** `/api/v1/recommendations` and unversioned `/api/recommendations` are **not** registered — use `/api/v1/cluster_tuning/recommend`.
 
-Response models project agent state explicitly (RCA requires `result`; no full-state fallback). RCA responses may include richer fields (`job_status`, `evidence_analysis`, structured `recommendations`, cited `evidence`, `request_id`, …).
+Response models project agent state explicitly (RCA requires `result`; no full-state fallback). RCA responses may include richer fields (`job_status`, `evidence_analysis`, structured `recommendations`, cited `evidence`, `request_id`, …). `evidence` rows carry a `backfilled` flag and the response sets `evidence_backfilled`: when the model cites nothing resolvable these are labeled pack-preview rows, not model citations (see the [Spark-RCA agent guide](../domain/spark-rca-agent.md#step-n--validate_output)).
 
 ### Cluster tuning — guardrail retries
 

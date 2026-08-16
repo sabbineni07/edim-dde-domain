@@ -3,7 +3,7 @@
 **Learning path:** C7 · [Guide home](../README.md)  
 **← Previous:** [Recommendation store](recommendation-store.md) · **Next:** [YAML schema](../framework/yaml-schema.md) →
 
-This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProvider`** backends (FAISS · Azure AI Search · Databricks Vector Search), how **`spark_rca`** uses runbook grounding, design patterns, and how engineers operate local vs deployed indexes.
+This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProvider`** backends (FAISS · Azure AI Search · Databricks Vector Search), how **`spark_rca`** uses runbook grounding, design patterns, and how engineers operate local vs deployed indexes. For a hands-on Azure walkthrough, see [§8 Setting up Azure AI Search](#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
 
 ---
 
@@ -114,6 +114,8 @@ export EDIM_AZURE_SEARCH_INDEX=spark-runbooks
 ```
 
 Extras: `[faiss]`, `[azure-search]`, `[databricks-vector]`, or `[retrieval]` for all.
+
+Step-by-step Azure service + index + env + ingest: [§8](#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
 
 ---
 
@@ -359,6 +361,18 @@ as `occurrences=3 also_jobs=['job-1001', …]`. The model sees "this action was
 applied 3 times across jobs" once, instead of three identical paragraphs—or,
 worse, silently losing that it is a common pattern.
 
+### Phase 2 — ranking, entity helpers, backfill
+
+| Capability | API | Notes |
+|------------|-----|--------|
+| **Status boost** | `search_corpus(..., status_boost=True)` (default) | After de-dupe, nudge `applied` (+0.08) / `accepted` (+0.05) so reviewed outcomes win close ties. No-op for runbooks without `metadata.status`. |
+| **Entity store shelf** | `list_recommendations_for_job(job_id, …)` | Exact RecommendationStore history for chat/Q&A (not similarity). |
+| **Entity-filtered search** | `search_experiences_for_entity(query, corpus=…, job_id=…)` | Feature search + metadata post-filter (`job_id` / `status` / …). |
+| **Azure / FAISS backfill** | `python -m edim_dde_ai.experiences.backfill [--agent-id …] [--dry-run]` | Replays store rows through `maybe_index_experience` after index recreate or deploy. |
+
+Pipeline inside `search_corpus`: provider → metadata filters → de-dupe → status
+boost → `top_k`.
+
 ### Migration from the former scenario vocabulary
 
 The outcomes index is derived data. After deploying this change, rebuild or
@@ -447,7 +461,163 @@ Corpus registry (`edim-dde-domain/.../config/corpora.yaml`) maps logical names t
 
 ---
 
-## 8. FAISS local + Databricks Volume
+## 8. Setting up Azure AI Search for a real RetrievalProvider
+
+Use this when you want the **deployed-default** backend on a laptop or in
+DEV/SDBX — not FAISS. EDIM already ships the client
+(`AzureAISearchRetrieval`); you create the **service + indexes**, wire **env**,
+**ingest** documents, then **verify**.
+
+Logical corpora → Azure index names come from domain
+`config/corpora.yaml` (packaged with `edim-dde-domain`):
+
+| Corpus (logical) | Azure index name | Used for |
+|------------------|------------------|----------|
+| `spark-runbooks` | `spark-runbooks` | RCA runbook RAG |
+| `spark-rca-outcomes` | `spark-rca-outcomes` | RCA experience cards |
+| `cluster-tuning-guidance` | `cluster-tuning-guidance` | Tuning playbooks |
+| `cluster-tuning-outcomes` | `cluster-tuning-outcomes` | Tuning experience cards |
+
+### Step 1 — Create the Azure AI Search service
+
+1. Azure Portal → **Create a resource** → **Azure AI Search** (formerly
+   “Cognitive Search”).
+2. Choose subscription, resource group, and region (same region as the API host
+   is fine).
+3. **Pricing:** Basic is enough for DEV smoke; Standard if you need
+   replicas/scale later.
+4. After create, copy:
+   - **Endpoint:** `https://<name>.search.windows.net`
+   - **Keys:** Settings → Keys → primary **admin** key for DEV (PROD: store in
+     Key Vault; prefer a query key for read-only paths when roles are split).
+
+CLI sketch:
+
+```bash
+az search service create \
+  --name <your-edim-search> \
+  --resource-group <rg> \
+  --sku Basic \
+  --location <region>
+```
+
+### Step 2 — Create indexes (schema the code upserts/searches)
+
+Create **four** indexes with the names in the table above (Portal → Indexes →
+**Add index**, or REST/SDK). Minimal fields that match
+`AzureAISearchRetrieval.upsert` / `search`:
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `id` | `Edm.String`, **key** | Doc id / recommendation id |
+| `content` | `Edm.String`, searchable, **retrievable** | Body (provider writes this) — must be retrievable or hits return empty text |
+| `text` | `Edm.String`, searchable, **retrievable** | Same body (provider also writes this) |
+| `source` | `Edm.String`, filterable, retrievable (optional) | Origin path/label |
+| `summary` | `Edm.String`, searchable, retrievable (optional) | Ingest API can prepend this |
+
+**Critical:** searchable-but-not-retrievable fields index tokens for matching but
+**do not return body text** to EDIM. Always set **retrievable = true** on
+`content` / `text` / `summary`. Azure will not let you flip that later — you
+must delete and recreate the index if it was wrong.
+
+For **outcomes** indexes also add filterable/retrievable: `agent_id`, `job_id`,
+`job_run_id`, `cluster_id`, `recommendation_id`, `status`, `action_signature`
+(and optional `feature_labels` as string / JSON).
+
+Start with **keyword search** — no vector field is required yet. The provider
+falls back to text search even when agents request `search_mode: vector`.
+
+**Basic SKU index quota (3):** create `spark-runbooks`,
+`cluster-tuning-guidance`, and one shared **`edim-outcomes`**. Map both logical
+outcomes corpora to that physical index:
+
+```bash
+EDIM_AZURE_SEARCH_CORPUS_MAP=spark-rca-outcomes:edim-outcomes,cluster-tuning-outcomes:edim-outcomes
+```
+
+Upgrade the Search service SKU if you need four separate physical indexes.
+
+### Step 3 — Wire environment and install the extra
+
+In `edim-dde-domain/.env` (and whatever the API process loads):
+
+```bash
+EDIM_RETRIEVAL=azure_ai_search
+EDIM_AZURE_SEARCH_ENDPOINT=https://<your-edim-search>.search.windows.net
+EDIM_AZURE_SEARCH_KEY=<admin-or-query-key>
+EDIM_AZURE_SEARCH_INDEX=spark-runbooks
+
+# Optional explicit map (defaults already match corpora.yaml names):
+# EDIM_AZURE_SEARCH_CORPUS_MAP=spark-runbooks:spark-runbooks,spark-rca-outcomes:spark-rca-outcomes,cluster-tuning-guidance:cluster-tuning-guidance,cluster-tuning-outcomes:cluster-tuning-outcomes
+```
+
+```bash
+pip install 'edim-dde-ai[azure-search]'
+```
+
+Restart the API so lifespan runs `configure_retrieval_from_env()`. `/health`
+should report `"retrieval": "azure_ai_search"`.
+
+### Step 4 — Put documents in (so search is not empty)
+
+**A. Curated ingest API** — good first smoke for runbooks / guidance
+(`accepted` **must** be `true`):
+
+```bash
+curl -s -X POST localhost:8080/api/v1/knowledge/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "corpus": "spark-runbooks",
+    "doc_id": "oom-v1",
+    "summary": "Executor OOM playbook",
+    "text": "Increase executor memory; check spill and GC...",
+    "accepted": true,
+    "source": "ops-review"
+  }'
+```
+
+Use the same pattern for `cluster-tuning-guidance`.
+
+**B. Experience corpora** (`*-outcomes`) — filled automatically when
+RecommendationStore saves / updates status **and** retrieval is Azure (not
+`none`). Run a tuning or RCA recommend, then accept/apply (RCA only indexes
+`accepted` / `applied`) and confirm documents appear in the portal.
+
+**C. Outcomes backfill (Experience Phase 2)** — replay existing
+RecommendationStore rows through the same transform path:
+
+```bash
+# Requires EDIM_RETRIEVAL=azure_ai_search (+ store env) and domain transforms registered
+python -m edim_dde_ai.experiences.backfill --agent-id cluster_tuning --limit 500
+python -m edim_dde_ai.experiences.backfill --agent-id spark_rca --dry-run
+```
+
+Do **not** bulk-upload raw store JSON via `/knowledge/ingest` — that bypasses
+status gates and `ExperienceTransform`.
+
+### Step 5 — Verify
+
+```python
+from edim_dde_ai.retrieval import configure_retrieval_from_env, search_corpus
+
+configure_retrieval_from_env()
+print(search_corpus("OutOfMemoryError executor", corpus="spark-runbooks", top_k=3))
+```
+
+Or invoke live RCA / tuning and confirm `runbook_context` /
+`historical_context` is non-empty when indexes have docs.
+
+### Step 6 — Security (DEV vs PROD)
+
+| Environment | Practice |
+|-------------|----------|
+| **DEV laptop** | Key in gitignored `.env` is acceptable |
+| **Deployed (Apps / ACA)** | Put `EDIM_AZURE_SEARCH_KEY` in **Key Vault**; prefer query key for read-only if roles are split |
+| **All** | Never commit keys; do not put a production admin key on a shared laptop |
+
+---
+
+## 9. FAISS local + Databricks Volume
 
 FAISS stores `{corpus}.faiss` + `{corpus}.meta.json` under `EDIM_FAISS_INDEX_PATH`.
 
@@ -474,7 +644,7 @@ Embeddings for FAISS default to a deterministic **hashing embedder** (no cloud d
 
 ---
 
-## 9. Ingest: Jobs vs API
+## 10. Ingest: Jobs vs API
 
 ### Platform Jobs (primary)
 
@@ -501,9 +671,11 @@ curl -s -X POST localhost:8080/api/v1/knowledge/ingest \
 - `summary` is prepended to `text` to improve retrieval.
 - Works for **FAISS / memory / Azure** upserts; Databricks VS returns **501** (Jobs-owned).
 
+First-time Azure service + index setup: [§8](#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
+
 ---
 
-## 10. Programmatic API
+## 11. Programmatic API
 
 ```python
 from edim_dde_ai.retrieval import (
@@ -521,7 +693,7 @@ Custom backends: implement `RetrievalProvider` and call `set_retrieval_provider(
 
 ---
 
-## 11. Environment variables
+## 12. Environment variables
 
 | Variable | Purpose |
 |----------|---------|
@@ -536,7 +708,8 @@ Custom backends: implement `RetrievalProvider` and call `set_retrieval_provider(
 | `EDIM_DBX_VS_INDEX` | Default VS index |
 | `EDIM_DBX_VS_CORPUS_MAP` | `corpus:index,...` overrides |
 
-Also listed in [Environment variables](../reference/env-vars.md).
+Also listed in [Environment variables](../reference/env-vars.md). Azure setup
+walkthrough: [§8](#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
 
 ---
 

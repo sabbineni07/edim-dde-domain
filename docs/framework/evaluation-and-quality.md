@@ -128,6 +128,30 @@ actions ≥ 0.66, and safety = 1.0.
 
 The two values answer different questions and must not be averaged.
 
+### Evidence citations vs. backfilled preview
+
+The **Evidence** dimension grades the model's *own* citations, not what the UI
+happens to display.
+
+- `validate_output` puts only the model's valid `evidence_refs` into
+  `result.evidence`. It **never silently substitutes** pack rows for missing
+  citations — a fabricated citation would falsely imply the model grounded its
+  diagnosis in that row.
+- When the model cites nothing resolvable but the pack has rows, up to three
+  rows are attached as a **labeled preview** (`backfilled: true` per item and
+  `evidence_backfilled: true` on the result) purely so the client panel is not
+  empty. These rows are *not* asserted to support the summary or actions.
+- The evaluator excludes `backfilled` rows when computing `used_refs`. So a
+  response whose evidence is entirely backfilled scores as "no citations
+  present" and adds the finding **`Model did not cite available evidence`**
+  (with `(only pack preview backfilled)` appended). This keeps the Evidence
+  score honest and prevents the preview from masking a model that skipped
+  citations.
+
+Consumers that need "did the model actually cite something?" should check
+`evidence_backfilled == false` and/or filter `evidence` on `backfilled == false`
+rather than treating a non-empty `evidence` list as proof of grounding.
+
 ## 5. How to prove a prompt improved quality
 
 Use the same **golden cases**, model/deployment, temperature, and retrieval

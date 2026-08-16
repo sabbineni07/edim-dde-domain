@@ -1,5 +1,5 @@
 # Domain package. Install framework + optional Databricks SQL + Foundry LLM:
--e ../edim-dde-ai
+-e ../edim-dde-ai[azure-search,cosmos]
 pydantic>=2.0
 pydantic-settings>=2.0
 PyYAML>=6

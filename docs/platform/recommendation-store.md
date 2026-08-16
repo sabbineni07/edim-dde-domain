@@ -91,6 +91,134 @@ Extras: `pip install 'edim-dde-ai[postgres]'` / `[cosmos]` / `[redis]` (same as 
 
 ---
 
+## 4b. Setting up Cosmos for `EDIM_RECOMMENDATION_STORE=cosmos`
+
+Use this when product history should live in **Azure Cosmos DB (SQL API)** —
+typically the same account as StateStore for deployed Apps / PROD. The SDK
+**creates the database and `recommendations` container if missing** (partition
+key `/recommendation_id`).
+
+### Step 1 — Create (or reuse) a Cosmos DB account
+
+Portal: **Create a resource** → **Azure Cosmos DB** → **Azure Cosmos DB for NoSQL**.
+
+Or CLI:
+
+```bash
+az cosmosdb create \
+  --name <your-edim-cosmos> \
+  --resource-group <rg> \
+  --locations regionName=<region> failoverPriority=0 \
+  --default-consistency-level Session \
+  --enable-free-tier false
+```
+
+Copy:
+
+- **URI** → `EDIM_COSMOS_ENDPOINT` (e.g. `https://<account>.documents.azure.com:443/`)
+- **Primary key** → `EDIM_COSMOS_KEY` (Key Vault in PROD)
+
+### Step 2 — Database id
+
+Default database id is **`edim`**. Create it in the portal, or let the first
+`CosmosRecommendationStore` / `CosmosStateStore` call create it via
+`create_database_if_not_exists`.
+
+Optional: `EDIM_COSMOS_DATABASE=edim` (or another name you prefer).
+
+### Step 3 — Recommendations container
+
+| Setting | Value |
+|---------|--------|
+| Container id | `recommendations` (override with `EDIM_COSMOS_RECOMMENDATIONS_CONTAINER`) |
+| Partition key | `/recommendation_id` (required by EDIM — do not use `/id` alone) |
+| Throughput | Autoscale or 400 RU/s is enough for DEV |
+
+You can create the container manually in the portal **or** leave it to the
+SDK on first connect.
+
+If StateStore also uses Cosmos, keep the same account/database and separate
+containers (`agents` / `sessions` / `audit` / `recommendations`).
+
+### Step 4 — Install the extra and wire `.env`
+
+```bash
+pip install 'edim-dde-ai[cosmos]'
+# or ensure api/domain requirements include the cosmos extra
+```
+
+In `edim-dde-domain/.env` (gitignored):
+
+```bash
+# Recommendation history on Cosmos (can inherit if StateStore is also cosmos)
+EDIM_RECOMMENDATION_STORE=cosmos
+EDIM_COSMOS_ENDPOINT=https://<account>.documents.azure.com:443/
+EDIM_COSMOS_KEY=<primary-or-secondary-key>
+EDIM_COSMOS_DATABASE=edim
+# EDIM_COSMOS_RECOMMENDATIONS_CONTAINER=recommendations
+
+# Optional: also put control-plane catalog on the same account
+# EDIM_STATE_STORE=cosmos
+```
+
+PROD: map the key from Key Vault, e.g.
+
+```bash
+EDIM_KV_SECRET_MAP=...,EDIM_COSMOS_KEY:cosmos-key
+```
+
+### Step 5 — Verify
+
+```python
+from edim_dde_ai.recommendations import (
+    configure_recommendation_store_from_env,
+    get_recommendation_store,
+    RecommendationRecord,
+    new_recommendation_id,
+)
+
+configure_recommendation_store_from_env()
+store = get_recommendation_store()
+assert store.name == "cosmos"
+assert store.ping() is True
+
+rid = new_recommendation_id()
+store.save(
+    RecommendationRecord(
+        recommendation_id=rid,
+        agent_id="cluster_tuning",
+        job_id="cosmos-smoke-job",
+        status="proposed",
+        response={"smoke": True},
+    )
+)
+assert store.get(rid) is not None
+print("cosmos recommendation store OK", rid)
+```
+
+API health should report `"recommendation_store": "cosmos"` after restart.
+
+### Step 6 — Backfill experiences (optional)
+
+With `EDIM_RETRIEVAL=azure_ai_search` and Cosmos filled with real rows:
+
+```bash
+python -m edim_dde_ai.experiences.backfill --agent-id cluster_tuning --dry-run
+python -m edim_dde_ai.experiences.backfill --agent-id spark_rca
+```
+
+### Common pitfalls
+
+| Symptom | Cause / fix |
+|---------|-------------|
+| `RuntimeError: Cosmos backend requires EDIM_COSMOS_ENDPOINT and EDIM_COSMOS_KEY` | Env not loaded by the API process |
+| `ModuleNotFoundError: azure.cosmos` | `pip install 'edim-dde-ai[cosmos]'` |
+| Partition key errors on upsert | Container must use `/recommendation_id` |
+| Empty CLI backfill | Store has no rows yet — run recommend/analyze first, or seed |
+| Cross-partition query RU cost | Normal for `list`; tighten filters (`job_id`, `agent_id`) |
+
+---
+
 ## 5. HTTP surface
 
 On successful `POST /api/v1/cluster_tuning/recommend` or

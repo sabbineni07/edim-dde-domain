@@ -117,16 +117,23 @@ class SparkRcaQualityEvaluator:
 
         # Evidence refs must resolve to the supplied pack; analysis must address
         # available channels without requiring channels that were not collected.
+        # Backfilled preview rows (model cited nothing) do NOT count as genuine
+        # model citations — we grade real citation behavior, not the UI preview.
         allowed_refs = {
             str(item.get("ref"))
             for item in (pack.get("evidence") or [])
             if isinstance(item, dict) and item.get("ref")
         }
-        used_refs = {
+        evidence_backfilled = bool(result.get("evidence_backfilled"))
+        cited_refs = {
             str(item.get("ref"))
             for item in (result.get("evidence") or [])
-            if isinstance(item, dict) and item.get("ref")
+            if isinstance(item, dict)
+            and item.get("ref")
+            and not item.get("backfilled")
         }
+        # If the whole list is a labeled preview, there are no model citations.
+        used_refs = set() if evidence_backfilled else cited_refs
         refs_valid = used_refs <= allowed_refs
         refs_present = bool(used_refs) if allowed_refs else True
         analysis_present = sum(
@@ -143,7 +150,10 @@ class SparkRcaQualityEvaluator:
         if not refs_valid:
             findings.append("Output contains evidence refs absent from evidence_pack")
         if allowed_refs and not refs_present:
-            findings.append("Available evidence was not cited")
+            findings.append(
+                "Model did not cite available evidence"
+                + (" (only pack preview backfilled)" if evidence_backfilled else "")
+            )
 
         # Diagnosis should overlap observed failure signals or agree with a
         # high-confidence deterministic hint.

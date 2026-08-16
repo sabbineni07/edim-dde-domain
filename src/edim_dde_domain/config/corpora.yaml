@@ -17,6 +17,8 @@ corpora:
       Derived failure-feature / diagnosis / action cards from persisted spark_rca
       lifecycle records. Retrieved by evidence-feature similarity across jobs;
       job_id and job_run_id remain metadata for exact entity-history views.
+      On Azure Basic (3-index quota), map azure_index to shared edim-outcomes via
+      EDIM_AZURE_SEARCH_CORPUS_MAP.
     azure_index: spark-rca-outcomes
 
   cluster-tuning-guidance:
@@ -33,4 +35,6 @@ corpora:
       recommendations are saved/status-updated;
       retrieved by feature similarity for cluster_tuning sizing (not by job_id).
       job_id remains in metadata for entity/chat filters.
+      On Azure Basic (3-index quota), map to shared edim-outcomes via
+      EDIM_AZURE_SEARCH_CORPUS_MAP.
     azure_index: cluster-tuning-outcomes
