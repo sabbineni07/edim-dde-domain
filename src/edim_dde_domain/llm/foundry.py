@@ -209,6 +209,7 @@ class FoundryLLMProvider:
                 * ``temperature`` — explicit override (bindings or node); else
                   ``chain == "explanation"`` → ``0.2``, default ``0.0``
                 * ``top_p`` / ``max_tokens`` — optional chat-completion knobs
+                  (``max_tokens`` is sent as ``max_completion_tokens``)
                 * ``endpoint`` / ``deployment`` — Phase 1 agent ``bindings.llm``
                   overrides injected by GraphBuilder (omit → process globals)
                 * ``top_k`` — accepted on config for forward-compat; not sent to
@@ -285,7 +286,8 @@ class FoundryLLMProvider:
         if top_p is not None:
             create_kwargs["top_p"] = top_p
         if max_tokens is not None:
-            create_kwargs["max_tokens"] = max_tokens
+            # Newer Foundry/OpenAI models (e.g. gpt-5.x) require max_completion_tokens.
+            create_kwargs["max_completion_tokens"] = max_tokens
 
         logger.debug(
             "foundry_chat_invoke",

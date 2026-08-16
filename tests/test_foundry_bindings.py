@@ -108,5 +108,6 @@ def test_foundry_invoke_honors_sampling_knobs():
     kwargs = fake_client.chat.completions.create.call_args.kwargs
     assert kwargs["temperature"] == 0.0  # binding wins over explanation 0.2
     assert kwargs["top_p"] == 0.95
-    assert kwargs["max_tokens"] == 2048
+    assert kwargs["max_completion_tokens"] == 2048
+    assert "max_tokens" not in kwargs
     assert "top_k" not in kwargs  # not sent to OpenAI chat completions

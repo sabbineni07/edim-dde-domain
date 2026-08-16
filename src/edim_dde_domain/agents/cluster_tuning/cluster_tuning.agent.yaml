@@ -7,31 +7,27 @@ entry:
 
 content_dir: ./content
 
-# Optional infra bindings (omit → process .env / Key Vault globals).
-# Demo / reference: vars below already exist in edim-dde-domain/.env.
-# Uncomment to bind this agent explicitly (same targets as process defaults).
-# Phase 1 wires bindings.llm (endpoint/deployment + sampling knobs);
-# search / cosmos / sql-warehouse are shape-validated (runtime injection later).
-# Never put API keys or secrets in YAML. Non-secret URLs/names may be literals
-# (e.g. endpoint: https://….openai.azure.com/openai/v1) or ${ENV:…};
-# temperature / top_p / top_k / max_tokens are always literal numbers.
-# bindings:
-#   llm:
-#     endpoint: ${ENV:AZURE_OPENAI_ENDPOINT}
-#     deployment: ${ENV:AZURE_OPENAI_DEPLOYMENT_NAME}
-#     temperature: 0.0
-#     top_p: 1.0
-#     top_k: 40
-#     max_tokens: 4096
-#   search:
-#     endpoint: ${ENV:EDIM_AZURE_SEARCH_ENDPOINT}
-#     index: ${ENV:EDIM_AZURE_SEARCH_INDEX}
-#   cosmos:
-#     endpoint: ${ENV:EDIM_COSMOS_ENDPOINT}
-#     database: ${ENV:EDIM_COSMOS_DATABASE}
-#   sql-warehouse:
-#     host: ${ENV:DATABRICKS_HOST}
-#     http_path: ${ENV:DATABRICKS_HTTP_PATH}
+# Optional Infra bindings (Phase 1): llm is wired at graph build; search / cosmos /
+# sql-warehouse are shape-validated (runtime injection later).
+# Non-secret URLs/names may be literals or ${ENV:…}. Never put API keys here.
+# Sampling knobs are literal numbers. Values match edim-dde-domain/.env (dev).
+#bindings:
+#  llm:
+#    endpoint: https://<project-name>.services.ai.azure.com/openai/v1
+#    deployment: <name>-5.4-model
+#    temperature: 0.0
+#    top_p: 1.0
+#    top_k: 40
+#    max_tokens: 4096
+#  search:
+#    endpoint: https://<ai-search-name>.search.windows.net
+#    index: spark-runbooks
+#  cosmos:
+#    endpoint: https://<cosmos-name>.documents.azure.com:443/
+#    database: edim-dde
+#  sql-warehouse:
+#    host: adb-<workspace-id>.2.azuredatabricks.net
+#    http_path: /sql/1.0/warehouses/<warehouse-id>
 
 # Optional RAG corpus for sizing guidance (EDIM_RETRIEVAL=none → empty hits; still OK)
 rag:

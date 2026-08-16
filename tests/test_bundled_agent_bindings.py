@@ -1,4 +1,4 @@
-"""Bundled agents work with and without optional ``bindings.llm`` (Phase 1)."""
+"""Bundled agents omit ``bindings`` by default; optional overlays still work."""
 
 from __future__ import annotations
 
@@ -21,10 +21,14 @@ _AGENTS_ROOT = (
 )
 _BUNDLED = sorted(_AGENTS_ROOT.rglob("*.agent.yaml"))
 
-_BINDINGS = {
+_ENV_REF_BINDINGS = {
     "llm": {
         "endpoint": "${ENV:EDIM_TEST_FOUNDRY_ENDPOINT}",
         "deployment": "${ENV:EDIM_TEST_FOUNDRY_DEPLOYMENT}",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "top_k": 40,
+        "max_tokens": 4096,
     }
 }
 
@@ -54,26 +58,35 @@ def _capture_llm_chain_configs(definition) -> dict[str, dict]:
 
 @pytest.mark.parametrize("path", _BUNDLED, ids=[p.name for p in _BUNDLED])
 def test_bundled_agents_ship_without_bindings(path: Path) -> None:
-    """Shipped YAML must stay on process globals (no injected LLM target)."""
+    """Shipped YAML keeps bindings commented; llm_chain uses process globals."""
     data = _load(path)
     assert "bindings" not in data
+    validate_agent_dict(data)
+    validate_agent_dict(data, use_jsonschema=True)
+
     defn = parse_agent_definition(data)
     assert defn.bindings is None
-    for cfg in _capture_llm_chain_configs(defn).values():
+    captured = _capture_llm_chain_configs(defn)
+    assert captured, f"{path.name} has no llm_chain nodes"
+    for cfg in captured.values():
         assert "endpoint" not in cfg
         assert "deployment" not in cfg
+        assert "temperature" not in cfg
+        assert "top_p" not in cfg
+        assert "top_k" not in cfg
+        assert "max_tokens" not in cfg
 
 
 @pytest.mark.parametrize("path", _BUNDLED, ids=[p.name for p in _BUNDLED])
-def test_bundled_agents_accept_llm_bindings(
+def test_bundled_agents_accept_env_ref_llm_override(
     path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Adding bindings.llm validates and reaches every llm_chain node config."""
+    """Overlaying bindings.llm validates and injects into llm_chain config."""
     monkeypatch.setenv("EDIM_TEST_FOUNDRY_ENDPOINT", "https://bound.example.com")
     monkeypatch.setenv("EDIM_TEST_FOUNDRY_DEPLOYMENT", "bound-deployment")
 
     data = _load(path)
-    data["bindings"] = copy.deepcopy(_BINDINGS)
+    data["bindings"] = copy.deepcopy(_ENV_REF_BINDINGS)
     validate_agent_dict(data)
     validate_agent_dict(data, use_jsonschema=True)
 
@@ -82,13 +95,20 @@ def test_bundled_agents_accept_llm_bindings(
     for cfg in captured.values():
         assert cfg["endpoint"] == "https://bound.example.com"
         assert cfg["deployment"] == "bound-deployment"
+        assert cfg["temperature"] == 0.0
+        assert cfg["max_tokens"] == 4096
 
 
 @pytest.mark.parametrize("path", _BUNDLED, ids=[p.name for p in _BUNDLED])
 def test_bundled_agents_fail_closed_on_missing_env(path: Path) -> None:
     """A declared ${ENV:…} with no value must stop graph build, not fall back."""
     data = _load(path)
-    data["bindings"] = copy.deepcopy(_BINDINGS)
+    data["bindings"] = {
+        "llm": {
+            "endpoint": "${ENV:EDIM_TEST_FOUNDRY_ENDPOINT}",
+            "deployment": "${ENV:EDIM_TEST_FOUNDRY_DEPLOYMENT}",
+        }
+    }
     defn = parse_agent_definition(data)
     if not _has_llm_chain(defn):
         pytest.skip("agent has no llm_chain node")

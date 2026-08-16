@@ -136,7 +136,7 @@ Optional per-agent infra overrides. **Omit the whole block** (or omit a key) to 
 | `bindings.llm.temperature` | Sampling temperature (**literal**) | Injected; Foundry honors |
 | `bindings.llm.top_p` | Nucleus sampling (**literal**) | Injected; Foundry honors |
 | `bindings.llm.top_k` | Top-k (**literal**, provider-dependent) | Injected on config |
-| `bindings.llm.max_tokens` | Max completion tokens (**literal**) | Injected; Foundry honors |
+| `bindings.llm.max_tokens` | Max completion tokens (**literal**; sent as `max_completion_tokens`) | Injected; Foundry honors |
 | `bindings.search.endpoint` | Azure AI Search service URL | Parsed only (wiring later) |
 | `bindings.search.index` | Physical index name | Parsed only (wiring later) |
 | `bindings.cosmos.endpoint` | Cosmos account URL | Parsed only (wiring later) |
