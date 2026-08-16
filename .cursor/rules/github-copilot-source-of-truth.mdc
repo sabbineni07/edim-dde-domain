@@ -1,0 +1,14 @@
+---
+description: Team AI guidance lives in .github for VS Code Copilot
+alwaysApply: true
+---
+
+# Source of truth for team practices
+
+Other engineers use **VS Code + GitHub Copilot**, not Cursor.
+
+- **Canonical team instructions:** `.github/copilot-instructions.md`
+- **Path-scoped:** `.github/instructions/*.instructions.md`
+- **Reusable prompts:** `.github/prompts/*.prompt.md`
+
+Update `.github/` when changing standards. Cursor rules in this package (if any) must not contradict Copilot instructions.
