@@ -38,9 +38,9 @@ graph:
 
 Compiled agents are **cached** after first `create_agent`; re-registering YAML invalidates that id.
 
-## Optional `bindings` (LLM + Search wired; cosmos/sql-warehouse documented)
+## Optional `bindings` (LLM + Search + SQL + Cosmos wired)
 
-Per-agent infra targets without forking process globals. See [YAML schema — bindings](yaml-schema.md#bindings-llm--search-wired-cosmos--sql-warehouse-documented).
+Per-agent infra targets without forking process globals. See [YAML schema — bindings](yaml-schema.md#bindings-llm--search--sql--cosmos-wired).
 
 ```yaml
 bindings:

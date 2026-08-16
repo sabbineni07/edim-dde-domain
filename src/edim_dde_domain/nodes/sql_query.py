@@ -21,14 +21,19 @@ YAML config keys
 * ``output_key`` — state key to write (default ``rows``)
 * ``on_empty`` — ``error`` / ``empty`` (first_row defaults to ``error``)
 * ``skip_if_key`` — skip SQL when another state key already holds data
+* ``server_hostname`` / ``host`` / ``http_path`` — optional warehouse overlay
+  (from agent ``bindings.sql-warehouse``); token still from named source auth
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from dataclasses import replace
+
 from edim_dde_ai import register_node
 
+from edim_dde_domain.config import normalize_http_path, strip_hostname
 from edim_dde_domain.errors import (
     DatabricksNotConfiguredError,
     DomainToolError,
@@ -77,6 +82,8 @@ def sql_query_factory(config: dict[str, Any]):
     on_empty = str(config.get("on_empty") or ("error" if result_mode == "first_row" else "empty"))
     skip_if_key = config.get("skip_if_key")
     skip_if_key = str(skip_if_key) if skip_if_key else None
+    override_host = config.get("server_hostname") or config.get("host")
+    override_path = config.get("http_path")
 
     def _node(state: dict[str, Any]) -> dict[str, Any]:
         # Override / short-circuit: output already present (tests may inject metrics)
@@ -94,6 +101,26 @@ def sql_query_factory(config: dict[str, Any]):
                 f"Source {source_name!r} is not configured "
                 "(set DATABRICKS_HOST / DATABRICKS_HTTP_PATH and auth via "
                 "Apps user OAuth or `az login`)"
+            )
+
+        # Optional per-agent warehouse overlay (bindings.sql-warehouse).
+        if (
+            isinstance(override_host, str)
+            and override_host.strip()
+        ) or (
+            isinstance(override_path, str)
+            and override_path.strip()
+        ):
+            host = source.server_hostname
+            path = source.http_path
+            if isinstance(override_host, str) and override_host.strip():
+                host = strip_hostname(override_host.strip())
+            if isinstance(override_path, str) and override_path.strip():
+                path = normalize_http_path(override_path.strip())
+            source = replace(
+                source,
+                server_hostname=host,
+                http_path=path,
             )
 
         bound_sql, values = prepare_query(

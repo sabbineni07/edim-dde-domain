@@ -17,6 +17,7 @@
 | **`evidence_pack`** | Structured RCA failure evidence (anchors, excerpts, refs). Built from UC SQL in prod, or supplied in the request / quality JSON for dry/smoke |
 | **`metrics`** | One cluster-tuning telemetry row (SKU, util, workers). Built from UC SQL in prod, or supplied in the request / quality JSON for dry/smoke |
 | **Quality harness** | Offline/live runner over `testdata/quality/`; fixtures score golden JSON; `--live` + `invoke_input` calls Foundry (inputs usually still from JSON unless SQL override omitted) |
+| **Outcome correlation (2c)** | Join persisted `response.quality` bands with RecommendationStore `accepted`/`applied` via `evaluation.correlation` CLI; optional `extra.outcome` labels/reruns |
 | **Plugin** | External agent dir or entry point registered at runtime |
 | **HITL** | Human-in-the-loop — human review/approval in the agent workflow |
 | **LangSmith** | LangChain tracing / eval product used for EDIM observability |

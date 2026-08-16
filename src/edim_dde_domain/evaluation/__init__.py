@@ -23,6 +23,11 @@ from edim_dde_domain.evaluation.corpus import (
     QualityCorpus,
     load_quality_corpus,
 )
+from edim_dde_domain.evaluation.correlation import (
+    correlate_recommendation_outcomes,
+    merge_outcome_extra,
+    quality_snapshot,
+)
 from edim_dde_domain.evaluation.harness import (
     run_harness,
     score_corpus_offline,
@@ -42,4 +47,7 @@ __all__ = [
     "load_quality_corpus",
     "run_harness",
     "score_corpus_offline",
+    "correlate_recommendation_outcomes",
+    "merge_outcome_extra",
+    "quality_snapshot",
 ]

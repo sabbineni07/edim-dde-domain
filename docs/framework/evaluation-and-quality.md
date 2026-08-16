@@ -425,16 +425,49 @@ Golden cases should cover the reasoning axes, not a fixed scenario enum:
 
 Unit tests and the offline corpus are a **quality gate**, not proof of production
 quality. They catch deterministic regressions. Calibrating score bands against
-accepted/applied outcomes is **Quality Phase 2c** (deferred until 2a+2b land).
+accepted/applied outcomes is **Quality Phase 2c** — see [§6](#6-confidence-limitations-and-outcome-correlation-quality-phase-2c).
 
-## 6. Confidence limitations
+## 6. Confidence limitations and outcome correlation (Quality Phase 2c)
 
 Current confidence does **not** mean “probability the recommendation is
 correct.” It means “the evaluator had enough inputs and checks to judge it.”
-Future calibration (Phase 2c) can compare score bands with applied outcomes:
+
+### 6a. Persist quality on recommendations
+
+| Agent | Where quality is attached | Stored on RecommendationStore? |
+|-------|---------------------------|--------------------------------|
+| `spark_rca` | In-graph `evaluate_output` → `result.quality` | Yes (`response.quality`) |
+| `cluster_tuning` | API `_attach_tuning_quality` after invoke → `TuningResponse.quality` | Yes (`response.quality` via full response dump) |
+
+### 6b. Correlate bands vs accepted / applied
+
+After operators PATCH recommendations to `accepted` / `applied` / `rejected`,
+join those statuses to the persisted quality snapshot:
+
+```bash
+python -m edim_dde_domain.evaluation.correlation --configure-store \
+  --agent spark_rca --limit 200 --out /tmp/quality-outcomes.json
+```
+
+Report fields: `by_band_status`, `acceptance_by_band` (acceptance_rate /
+applied_rate per `high`/`medium`/`low` band), counts of rows with/without
+quality.
+
+Optional PATCH scaffolding (same lifecycle endpoints):
+
+```json
+{
+  "status": "applied",
+  "human_label": "correct_root_cause",
+  "labeled_by": "alice",
+  "rerun_success": true,
+  "rerun_job_run_id": "jr-followup-1"
+}
+```
+
+Stored under `RecommendationRecord.extra.outcome` for later calibration
+(successful reruns / human labels). MLflow/LangSmith judges remain optional.
 
 ```text
 predicted quality band → acceptance rate → applied success rate → performance regression rate
 ```
-
-That work is tracked separately because it needs real production labels.

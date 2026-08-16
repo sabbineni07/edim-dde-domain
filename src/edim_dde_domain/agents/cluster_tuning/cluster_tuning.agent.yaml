@@ -7,10 +7,9 @@ entry:
 
 content_dir: ./content
 
-# Optional Infra bindings: llm + search are wired at graph build; cosmos /
-# sql-warehouse are shape-validated (runtime injection later).
-# Non-secret URLs/names may be literals or ${ENV:…}. Never put API keys here.
-# Sampling knobs are literal numbers. Values match edim-dde-domain/.env (dev).
+# Optional Infra bindings: llm + search + sql-warehouse + cosmos are wired
+# at graph build / API lifespan. Non-secret URLs/names may be literals or
+# ${ENV:…}. Never put API keys here. Sampling knobs are literal numbers.
 #bindings:
 #  llm:
 #    endpoint: https://<project-name>.services.ai.azure.com/openai/v1
