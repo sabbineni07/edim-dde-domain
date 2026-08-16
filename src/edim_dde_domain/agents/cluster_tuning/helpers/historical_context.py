@@ -1,6 +1,9 @@
 """Build historical_context for cluster_tuning sizing prompts.
 
-Three complementary sources (feature-first product parity):
+Business purpose
+----------------
+Secondary context lane for the sizing LLM. Three complementary sources
+(feature-first product parity):
 
 1. **Experience index** (primary for cross-job learning) — resource-feature/action
    cards derived from RecommendationStore rows, retrieved by similarity search
@@ -11,6 +14,17 @@ Three complementary sources (feature-first product parity):
 3. **Guidance RAG** — optional ``rag.retrieve`` hits (playbook corpus).
 
 Either source may be empty; sizing still runs with ``historical_context: "None"``.
+Provider failures are swallowed (logged) so history never blocks the request.
+
+Fits the pipeline via ``logic.prepare_sizing_payload`` and
+``logic.build_retrieval_query``.
+
+Public API
+----------
+* ``default_history_config`` / ``merge_history_config`` — YAML history knobs
+* ``build_retrieval_query`` — guidance RAG query text
+* ``format_store_history`` / ``select_history_records`` / ``similarity_score``
+* ``compose_historical_context`` — sole merger used by prepare_sizing
 """
 
 from __future__ import annotations
@@ -46,6 +60,14 @@ def default_history_config() -> dict[str, Any]:
 
 
 def merge_history_config(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """Overlay agent-YAML history knobs onto packaged defaults.
+
+    Args:
+        raw: Partial config from ``prepare_sizing_payload`` node YAML.
+
+    Returns:
+        Complete history config (non-negative ints clamped, statuses lowercased).
+    """
     cfg = default_history_config()
     if not raw:
         return cfg
@@ -69,7 +91,14 @@ def merge_history_config(raw: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
-    """Free-text query for cluster-tuning guidance similarity search."""
+    """Free-text query for cluster-tuning guidance similarity search.
+
+    Args:
+        state: Graph state with ``metrics``.
+
+    Returns:
+        Patch with ``retrieval_query`` for the guidance ``rag.retrieve`` node.
+    """
     metrics = state.get("metrics") or {}
     if not isinstance(metrics, dict):
         metrics = {}
@@ -91,6 +120,7 @@ def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def _rec_attr(rec: Any, key: str, default: Any = None) -> Any:
+    """Read an attribute or dict key from a RecommendationRecord-like object."""
     if hasattr(rec, key) and not key.startswith("_"):
         # Annotated dicts use keys; dataclass attrs for real records.
         val = getattr(rec, key, default)
@@ -102,11 +132,13 @@ def _rec_attr(rec: Any, key: str, default: Any = None) -> Any:
 
 
 def _rec_response(rec: Any) -> dict[str, Any]:
+    """Unwrap ``response`` to a dict (empty when missing/non-dict)."""
     response = _rec_attr(rec, "response") or {}
     return response if isinstance(response, dict) else {}
 
 
 def _rec_request(rec: Any) -> dict[str, Any]:
+    """Unwrap ``request`` to a dict (empty when missing/non-dict)."""
     request = _rec_attr(rec, "request") or {}
     return request if isinstance(request, dict) else {}
 
@@ -131,7 +163,16 @@ def format_store_history(
     max_rows: int | None = None,
     title: str = "### Prior recommendations",
 ) -> str:
-    """Render RecommendationRecord-like rows for the sizing prompt."""
+    """Render RecommendationRecord-like rows for the sizing prompt.
+
+    Args:
+        records: Selected / annotated store rows.
+        max_rows: Optional hard cap (default: all).
+        title: Markdown heading for the block.
+
+    Returns:
+        Multi-line prompt section, or ``\"\"`` when ``records`` is empty.
+    """
     if not records:
         return ""
     limit = len(records) if max_rows is None else max_rows
@@ -169,6 +210,7 @@ def format_store_history(
 
 
 def _as_float(value: Any) -> float | None:
+    """Parse a numeric metric; empty/invalid → ``None``."""
     try:
         if value is None or value == "":
             return None
@@ -178,6 +220,7 @@ def _as_float(value: Any) -> float | None:
 
 
 def _token_set(text: str) -> set[str]:
+    """Lowercased alphanumeric tokens (len > 2) for cheap overlap scoring."""
     return {t for t in re.findall(r"[a-z0-9_]+", text.lower()) if len(t) > 2}
 
 
@@ -185,6 +228,13 @@ def similarity_score(state: dict[str, Any], rec: Any) -> float:
     """Heuristic similarity: SKU match + numeric closeness + token overlap.
 
     Not embeddings — ranks RecommendationStore rows without requiring RAG.
+
+    Args:
+        state: Live graph state (reads ``metrics``).
+        rec: Candidate RecommendationRecord-like row.
+
+    Returns:
+        Higher is more similar; used only for cold-start peer ranking.
     """
     metrics = state.get("metrics") or {}
     if not isinstance(metrics, dict):
@@ -244,6 +294,7 @@ def similarity_score(state: dict[str, Any], rec: Any) -> float:
 
 
 def _annotate(rec: Any, *, match_kind: str, score: float | None = None) -> dict[str, Any]:
+    """Copy a record to a dict and stamp match metadata for prompt rendering."""
     data = rec.to_dict() if hasattr(rec, "to_dict") else dict(rec)
     data["_match_kind"] = match_kind
     if score is not None:
@@ -252,6 +303,7 @@ def _annotate(rec: Any, *, match_kind: str, score: float | None = None) -> dict[
 
 
 def _rec_id(rec: Any) -> str:
+    """Stable-ish id for de-dupe across same-job and similar selections."""
     rid = _rec_attr(rec, "recommendation_id")
     return str(rid) if rid else str(id(rec))
 
@@ -268,6 +320,15 @@ def select_history_records(
     - ``history_job_top_n``: max rows with matching job_id (status preference applied)
     - ``history_similar_top_n``: max additional similar rows when ``include_similar``
       is True (heuristic fallback when the experience index is cold).
+
+    Args:
+        state: Live graph state (needs ``job_id`` + ``metrics``).
+        records: Candidate RecommendationStore rows.
+        config: History YAML knobs (merged with defaults).
+        include_similar: When False, only same-job shelf rows are returned.
+
+    Returns:
+        Annotated dict rows ready for ``format_store_history``.
     """
     cfg = merge_history_config(config)
     job_top_n = int(cfg["history_job_top_n"])
@@ -429,7 +490,19 @@ def compose_historical_context(
     config: dict[str, Any] | None = None,
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> str:
-    """Merge experience hits + store history + optional RAG guidance."""
+    """Merge experience hits + store history + optional RAG guidance.
+
+    Heuristic peer ranking runs only when the experience index is cold/disabled
+    and ``history_heuristic_fallback`` is True. Truncates to ``_MAX_CHARS``.
+
+    Args:
+        state: Graph state with metrics and optional ``guidance_context``.
+        config: History YAML knobs from the prepare_sizing node.
+        resource_pressure_config: Forwarded into experience query feature labels.
+
+    Returns:
+        Prompt-ready markdown string, or ``\"None\"`` when all sources are empty.
+    """
     cfg = merge_history_config(config)
     parts: list[str] = []
 

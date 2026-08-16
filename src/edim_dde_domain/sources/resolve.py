@@ -1,4 +1,17 @@
-"""Resolve SourceSpec → ResolvedSource (${ENV} + runtime token)."""
+"""Resolve SourceSpec → ResolvedSource (${ENV} + runtime token).
+
+Business purpose
+----------------
+Turn YAML ``SourceSpec`` (possibly with ``${ENV}`` placeholders) into a
+connection-ready ``ResolvedSource``: normalize host/path, then mint a
+Databricks access token via :func:`resolve_access_token`.
+
+Public API
+----------
+* ``interpolate_env`` — substitute ``${VAR}`` (empty if unset; not SQL-safe)
+* ``resolve_source`` — raise if host/path/token incomplete
+* ``try_resolve_source`` — return ``None`` instead of raising not-configured
+"""
 
 from __future__ import annotations
 
@@ -18,7 +31,15 @@ def interpolate_env(text: str, environ: Optional[Mapping[str, str]] = None) -> s
     """Replace ``${VAR}`` with environment values (empty string if unset).
 
     Matches ``${NAME}`` where ``NAME`` starts with a letter or ``_``, then
-    letters, digits, or ``_``.
+    letters, digits, or ``_``. Unlike SQL FQN interpolation, unset vars become
+    ``""`` (callers detect incomplete host/path afterward).
+
+    Args:
+        text: Input string that may contain ``${VAR}`` placeholders.
+        environ: Mapping to read; defaults to ``os.environ``.
+
+    Returns:
+        String with substitutions applied; invalid placeholder shapes unchanged.
 
     Examples::
 
@@ -44,7 +65,19 @@ def resolve_source(
     *,
     environ: Optional[Mapping[str, str]] = None,
 ) -> ResolvedSource:
-    """Resolve host/path/token for a source. Raises if incomplete."""
+    """Resolve host/path/token for a source.
+
+    Args:
+        spec: Unresolved source from ``sources.yaml``.
+        environ: Optional env mapping for ``${VAR}`` and host/path fallbacks.
+
+    Returns:
+        ``ResolvedSource`` with normalized hostname, HTTP path, and access token.
+
+    Raises:
+        DatabricksNotConfiguredError: Unsupported type, incomplete host/path,
+            or token resolution failure.
+    """
     env = environ if environ is not None else os.environ
     if spec.type != "databricks_sql":
         raise DatabricksNotConfiguredError(
@@ -85,6 +118,15 @@ def try_resolve_source(
     *,
     environ: Optional[Mapping[str, str]] = None,
 ) -> ResolvedSource | None:
+    """Like ``resolve_source`` but returns ``None`` on not-configured errors.
+
+    Args:
+        spec: Unresolved source.
+        environ: Optional env mapping.
+
+    Returns:
+        ``ResolvedSource`` or ``None``.
+    """
     try:
         return resolve_source(spec, environ=environ)
     except DatabricksNotConfiguredError:

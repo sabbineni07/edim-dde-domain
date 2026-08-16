@@ -1,6 +1,14 @@
 """Azure AI Foundry (OpenAI v1) LLM provider for edim-dde-ai ``llm_chain``.
 
-Auth:
+Business purpose
+----------------
+Adapter that hosts call via ``set_llm_provider(get_foundry_llm_provider())``.
+Uses Azure AD tokens (not API keys) against Foundry's OpenAI-compatible
+``/openai/v1`` surface. Keeps Foundry SP on ``EDIM_FOUNDRY_*`` so SQL's
+``DefaultAzureCredential`` is not polluted by ``AZURE_CLIENT_*``.
+
+Auth order
+----------
 1. ``EDIM_FOUNDRY_TENANT_ID`` + ``EDIM_FOUNDRY_CLIENT_ID`` +
    ``EDIM_FOUNDRY_CLIENT_SECRET`` → ``ClientSecretCredential``
    (prod: inject from Key Vault into these env names — not ``AZURE_CLIENT_*``)
@@ -9,6 +17,14 @@ Auth:
 3. Else ``DefaultAzureCredential`` (local ``az login`` / Managed Identity)
 
 Scope: ``https://ai.azure.com/.default``
+
+Public API
+----------
+* ``AZURE_FOUNDRY_AAD_SCOPE``
+* ``FoundryLLMNotConfiguredError``
+* ``get_foundry_access_token`` / ``foundry_token_provider``
+* ``FoundryLLMProvider`` — ``invoke(messages, config=...)``
+* ``get_foundry_llm_provider`` / ``clear_foundry_llm_provider_cache``
 """
 
 from __future__ import annotations
@@ -77,7 +93,18 @@ def _azure_credential(settings: DomainSettings):
 
 
 def get_foundry_access_token(settings: Optional[DomainSettings] = None) -> str:
-    """Mint an Azure AD token for Foundry (SP secret or az login)."""
+    """Mint an Azure AD token for Foundry (SP secret or az login).
+
+    Args:
+        settings: Optional settings; defaults to ``get_settings()``.
+
+    Returns:
+        Non-empty access token string.
+
+    Raises:
+        FoundryLLMNotConfiguredError: Missing azure-identity, empty token, or
+            credential failure.
+    """
     cfg = settings or get_settings()
     try:
         token = _azure_credential(cfg).get_token(AZURE_FOUNDRY_AAD_SCOPE)
@@ -101,6 +128,14 @@ def get_foundry_access_token(settings: Optional[DomainSettings] = None) -> str:
 def foundry_token_provider(
     settings: Optional[DomainSettings] = None,
 ) -> Callable[[], str]:
+    """Return a zero-arg callable that mints a fresh Foundry access token.
+
+    Args:
+        settings: Settings snapshot closed over by the provider.
+
+    Returns:
+        Callable suitable as OpenAI ``api_key`` (refreshed per invoke).
+    """
     cfg = settings or get_settings()
 
     def _provider() -> str:
@@ -110,7 +145,11 @@ def foundry_token_provider(
 
 
 class FoundryLLMProvider:
-    """``LLMProvider`` adapter: Foundry chat completions via OpenAI v1 API."""
+    """``LLMProvider`` adapter: Foundry chat completions via OpenAI v1 API.
+
+    Raises ``FoundryLLMNotConfiguredError`` at construction if
+    ``AZURE_OPENAI_ENDPOINT`` is unset. Deployment defaults to ``gpt-4o``.
+    """
 
     def __init__(self, settings: Optional[DomainSettings] = None) -> None:
         self._settings = settings or get_settings()
@@ -133,6 +172,19 @@ class FoundryLLMProvider:
         *,
         config: dict[str, Any] | None = None,
     ) -> str:
+        """Run a chat completion and return assistant text.
+
+        Args:
+            messages: ``(role, content)`` pairs (``system`` / ``human`` / ``ai``).
+            config: Optional knobs; ``chain == "explanation"`` raises temperature
+                to ``0.2`` (default ``0.0``).
+
+        Returns:
+            Stripped assistant message content, or ``""`` if empty.
+
+        Raises:
+            FoundryLLMNotConfiguredError: ``openai`` package missing.
+        """
         try:
             from openai import OpenAI
         except ImportError as exc:
@@ -176,9 +228,14 @@ class FoundryLLMProvider:
 
 @lru_cache(maxsize=1)
 def get_foundry_llm_provider() -> FoundryLLMProvider:
-    """Process-wide Foundry provider (uses cached DomainSettings)."""
+    """Process-wide Foundry provider (uses cached DomainSettings).
+
+    Returns:
+        Singleton ``FoundryLLMProvider``.
+    """
     return FoundryLLMProvider(get_settings())
 
 
 def clear_foundry_llm_provider_cache() -> None:
+    """Drop the cached provider (tests / after settings change)."""
     get_foundry_llm_provider.cache_clear()

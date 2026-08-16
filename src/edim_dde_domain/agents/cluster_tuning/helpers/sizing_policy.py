@@ -1,4 +1,32 @@
-"""Deterministic sizing hints from configurable resource-pressure dimensions."""
+"""Deterministic sizing hints from configurable resource-pressure dimensions.
+
+Business purpose
+----------------
+Before the sizing LLM runs, this module turns the live metrics row into:
+
+* **Resource pressure facts** — per-dimension level (low/moderate/high/saturated)
+  from YAML-configured metric keys or numerator/denominator ratios
+* **Sizing hints** — limiting resource, suggested VM family, worker min/max floor
+* **Reason codes** — machine-readable codes for the API recommendation
+
+Dimensions are **data**, not scenario branches: add another dimension in agent
+YAML (metric_keys or a ratio) without changing this engine. Scenario vocabulary
+(``over_provisioned``, ``oom``, …) is intentionally absent.
+
+Fits the pipeline via ``prepare_sizing_payload`` (hints for the prompt),
+``assess_risks`` / ``generate_recommendation`` (pressure + reason codes), and
+experience / evaluation modules that reuse ``compute_resource_pressure``.
+
+Public API
+----------
+* ``DEFAULT_RESOURCE_PRESSURE_CONFIG`` / ``default_sizing_policy`` /
+  ``normalize_resource_pressure_config`` — packaged defaults + YAML merge
+* ``compute_resource_pressure`` — dimension levels + limiting resource
+* ``recommended_min_max_workers`` — ingest-derived worker floor/ceiling hint
+* ``compute_sizing_hints`` / ``sizing_hints_for_llm`` — full vs prompt-narrow hints
+* ``infer_reason_codes`` — API reason codes from metrics + recommendation
+* ``parse_vcpus_from_node_type`` / ``parse_family_from_node_type`` — SKU parsers
+"""
 
 from __future__ import annotations
 
@@ -49,6 +77,7 @@ _LEVEL_RANK = {"unknown": -1, "low": 0, "moderate": 1, "high": 2, "saturated": 3
 
 
 def _deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge ``overrides`` onto a deep copy of ``base``."""
     out = deepcopy(base)
     for key, value in overrides.items():
         if isinstance(value, dict) and isinstance(out.get(key), dict):
@@ -66,11 +95,20 @@ def default_sizing_policy() -> dict[str, Any]:
 def normalize_resource_pressure_config(
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Merge an agent-YAML override onto safe packaged defaults."""
+    """Merge an agent-YAML override onto safe packaged defaults.
+
+    Args:
+        config: Optional partial override (e.g. from
+            ``prepare_sizing_payload.resource_pressure``).
+
+    Returns:
+        Full policy dict with defaults filled for omitted keys.
+    """
     return _deep_merge(DEFAULT_RESOURCE_PRESSURE_CONFIG, dict(config or {}))
 
 
 def _number(value: Any) -> float | None:
+    """Parse a metric value to float; empty/invalid → ``None``."""
     try:
         if value is None or value == "":
             return None
@@ -82,6 +120,11 @@ def _number(value: Any) -> float | None:
 def _dimension_value(
     metrics: dict[str, Any], dimension: dict[str, Any]
 ) -> tuple[float | None, list[str]]:
+    """Resolve one dimension to a percent-like value and its source metric keys.
+
+    Supports either a ``ratio`` (numerator/denominator × scale) or a list of
+    ``metric_keys`` aggregated by max (default) or mean.
+    """
     ratio = dimension.get("ratio")
     if isinstance(ratio, dict):
         numerator_key = str(ratio.get("numerator_key") or "")
@@ -108,6 +151,7 @@ def _dimension_value(
 
 
 def _pressure_level(value: float | None, thresholds: dict[str, Any]) -> str:
+    """Map a percent value onto low/moderate/high/saturated (or unknown)."""
     if value is None:
         return "unknown"
     low_below = _number(thresholds.get("low_below"))
@@ -135,7 +179,18 @@ def compute_resource_pressure(
     *,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Compute generic pressure facts; scenario names are intentionally absent."""
+    """Compute generic pressure facts; scenario names are intentionally absent.
+
+    Args:
+        metrics: Job-cluster metrics row (SQL or override).
+        config: Optional resource_pressure YAML override.
+
+    Returns:
+        Dict with ``dimensions`` (per-name level/value/role), ``limiting_resource``,
+        ``limiting_level``, ``capacity_headroom``, and ``preferred_families``.
+        ``limiting_resource`` is ``\"none\"`` when the top resource dimension is
+        below ``shape_change_min_level``.
+    """
     policy = normalize_resource_pressure_config(config)
     dimensions: dict[str, dict[str, Any]] = {}
     for name, raw_dimension in (policy.get("dimensions") or {}).items():
@@ -207,7 +262,18 @@ def recommended_min_max_workers(
     *,
     buffer_pct: float = 10.0,
 ) -> tuple[int, int]:
-    """Floor/ceiling hint for max_workers from observed worker nodes."""
+    """Floor/ceiling hint for max_workers from observed worker nodes.
+
+    Prefers p95, then p99, then avg worker nodes consumed; applies
+    ``buffer_pct`` and caps at the provisioned ceiling.
+
+    Args:
+        ingest: Metrics row with worker consumption fields.
+        buffer_pct: Headroom percent above the base node estimate.
+
+    Returns:
+        ``(min_workers, max_workers)`` integers.
+    """
     p95 = float(ingest.get("p95_worker_nodes_consumed") or 0)
     p99 = float(ingest.get("p99_worker_nodes_consumed") or p95)
     ceiling = int(ingest.get("max_worker_nodes_provisioned") or 1)
@@ -230,7 +296,17 @@ def compute_sizing_hints(
     *,
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Hints for LLM and guardrails: limiting resource, suggested family, worker bounds."""
+    """Hints for LLM and guardrails: limiting resource, suggested family, worker bounds.
+
+    Args:
+        ingest: Live metrics row.
+        resource_pressure_config: Optional YAML pressure overrides.
+
+    Returns:
+        Full hints dict including ``resource_pressure``, utilization ratios,
+        driver/worker underutilization flags, and recommended worker bounds.
+        Pass through ``sizing_hints_for_llm`` before dumping into the prompt.
+    """
     policy = normalize_resource_pressure_config(resource_pressure_config)
     target = float(policy["target_utilization_pct"])
     buffer = float(policy["capacity_buffer_pct"])
@@ -291,7 +367,14 @@ def compute_sizing_hints(
 
 
 def sizing_hints_for_llm(hints: dict[str, Any]) -> dict[str, Any]:
-    """Narrow hints for the sizing LLM prompt."""
+    """Narrow hints for the sizing LLM prompt.
+
+    Args:
+        hints: Full dict from ``compute_sizing_hints``.
+
+    Returns:
+        Subset of keys the human prompt template expects (drops internal flags).
+    """
     return {
         k: hints[k]
         for k in (
@@ -322,6 +405,7 @@ _REASON_CODE_SIGNAL_KEYS = (
 
 
 def _has_sizing_signal(ingest: dict[str, Any]) -> bool:
+    """True when the metrics row has at least one usable sizing evidence field."""
     return any(ingest.get(key) not in (None, "") for key in _REASON_CODE_SIGNAL_KEYS)
 
 
@@ -337,6 +421,15 @@ def infer_reason_codes(
     ``INSUFFICIENT_EVIDENCE`` means the metrics row has no usable utilization,
     capacity, or SKU signal — not that ``job_id`` / ``cluster_id`` were missing.
     Identifiers may live on the request while ``metrics`` is an override blob.
+
+    Args:
+        ingest: Metrics view (may have request ids copied in by logic).
+        recommendation: Applied sizing / recommendation blob.
+        change_required: Whether SKU or worker counts actually change.
+        resource_pressure_config: Optional pressure overrides.
+
+    Returns:
+        Ordered list of reason-code strings (at least one entry).
     """
     if not _has_sizing_signal(ingest):
         return ["INSUFFICIENT_EVIDENCE"]
@@ -375,6 +468,14 @@ def infer_reason_codes(
 
 
 def parse_vcpus_from_node_type(node_type: str) -> int:
+    """Extract vCPU count from a ``Standard_{D|E|F|L}{N}…`` SKU string.
+
+    Args:
+        node_type: Azure VM size name.
+
+    Returns:
+        Parsed vCPUs (minimum 4), or ``8`` when the pattern does not match.
+    """
     m = re.search(r"Standard_[DEFL](\d+)", str(node_type or ""), re.IGNORECASE)
     if m:
         try:
@@ -385,5 +486,13 @@ def parse_vcpus_from_node_type(node_type: str) -> int:
 
 
 def parse_family_from_node_type(node_type: str) -> str:
+    """Extract letter family (D/E/F/L) from an Azure worker SKU.
+
+    Args:
+        node_type: Azure VM size name.
+
+    Returns:
+        Uppercase family letter, or ``\"\"`` when unmatched.
+    """
     m = re.search(r"Standard_([DEFL])", str(node_type or ""), re.IGNORECASE)
     return m.group(1).upper() if m else ""

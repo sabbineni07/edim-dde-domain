@@ -1,6 +1,18 @@
 """Rule-based performance fitness check for a sizing recommendation.
 
-Legacy parity: after sizing/guardrails, before risk assessment. No LLM.
+Business purpose
+----------------
+After sizing/guardrails settle (and before risk assessment), this module answers:
+"Is the recommended capacity likely to meet observed peak load?" It is
+deterministic — **no LLM** — and mirrors legacy capacity-floor rules.
+
+Fits the pipeline via ``logic.validate_performance`` →
+``domain.tuning.validate_performance``.
+
+Public API
+----------
+* ``CAPACITY_FLOOR_RATIO`` / ``HIGH_PEAK_CAPACITY_RATIO`` — legacy thresholds
+* ``validate_performance`` — sole entry used by the graph
 """
 
 from __future__ import annotations
@@ -36,6 +48,21 @@ def validate_performance(
     - recommended max_workers ≥ sizing floor from ingest (when ingest present)
     - if peak CPU/mem is above the configured target, avoid cutting below ~90%
       of current capacity
+
+    Args:
+        current_vcpus: Current worker SKU vCPUs.
+        current_max_workers: Current max workers.
+        recommended_vcpus: Recommended SKU vCPUs.
+        recommended_max_workers: Recommended max workers.
+        peak_cpu_pct: Fallback peak CPU when ingest omits the metric.
+        peak_memory_pct: Fallback peak memory when ingest omits the metric.
+        job_run_ingest: Live metrics row (preferred source for peaks + floor).
+        resource_pressure_config: Optional target/buffer overrides.
+
+    Returns:
+        Dict with ``meets_peak_requirements``, capacity fields, ``reduction_pct``,
+        ``reduction_risk_level``, ``estimated_impact``, peak values, and
+        ``reasons`` (empty when all checks pass).
     """
     policy = normalize_resource_pressure_config(resource_pressure_config)
     peak_target = float(policy["target_utilization_pct"])

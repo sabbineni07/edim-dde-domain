@@ -1,5 +1,10 @@
 """Databricks SQL access tokens — host-agnostic resolution.
 
+Business purpose
+----------------
+Pick the right identity for warehouse SQL without confusing Foundry SP env
+with SQL credentials:
+
 1. **Databricks Apps:** API middleware reads user OAuth from
    ``X-Forwarded-Access-Token`` and calls ``set_request_databricks_token``.
 2. **Else (local, ACA, Docker, …):** ``DefaultAzureCredential``
@@ -10,6 +15,16 @@
 added later) is never forwarded to Databricks SQL as the user token.
 
 See docs/platform/access-and-permissions.md for per-host identity matrix.
+
+Public API
+----------
+* ``DATABRICKS_AAD_SCOPE`` — Azure AD scope for Databricks tokens
+* ``is_databricks_apps_runtime`` — detect Apps host env
+* ``extract_forwarded_databricks_token`` — read Apps gateway header
+* ``set_request_databricks_token`` / ``reset_request_databricks_token`` /
+  ``get_request_databricks_token`` — request-scoped ContextVar
+* ``get_azure_databricks_token`` — DefaultAzureCredential path
+* ``resolve_access_token`` — preferred entry for SQL (Apps then Azure)
 """
 
 from __future__ import annotations
@@ -37,7 +52,11 @@ _request_databricks_token: ContextVar[Optional[str]] = ContextVar(
 
 
 def is_databricks_apps_runtime() -> bool:
-    """True when process env looks like a Databricks Apps host."""
+    """True when process env looks like a Databricks Apps host.
+
+    Returns:
+        True if ``DATABRICKS_APP_PORT`` or Apps client id/secret pair is set.
+    """
     if (os.environ.get("DATABRICKS_APP_PORT") or "").strip():
         return True
     # Apps injects these for the app service principal
@@ -63,6 +82,12 @@ def extract_forwarded_databricks_token(headers: Mapping[str, Any]) -> Optional[s
 
     Does not read ``Authorization`` — that header is reserved for API auth.
     Used by API middleware before ``set_request_databricks_token``.
+
+    Args:
+        headers: Request header mapping (case-insensitive lookup).
+
+    Returns:
+        Non-empty token string, or ``None`` if absent.
     """
     for name in _FORWARDED_TOKEN_HEADERS:
         token = _header_value(headers, name)
@@ -72,20 +97,37 @@ def extract_forwarded_databricks_token(headers: Mapping[str, Any]) -> Optional[s
 
 
 def set_request_databricks_token(token: Optional[str]) -> Token:
-    """Bind a request-scoped user token (Apps middleware)."""
+    """Bind a request-scoped user token (Apps middleware).
+
+    Args:
+        token: Forwarded access token, or ``None`` / blank to clear.
+
+    Returns:
+        ContextVar token for ``reset_request_databricks_token``.
+    """
     return _request_databricks_token.set((token or "").strip() or None)
 
 
 def reset_request_databricks_token(ctx: Token) -> None:
+    """Restore the previous request-scoped token (call in middleware ``finally``)."""
     _request_databricks_token.reset(ctx)
 
 
 def get_request_databricks_token() -> Optional[str]:
+    """Return the current request-scoped Databricks user token, if any."""
     return _request_databricks_token.get()
 
 
 def get_azure_databricks_token() -> str:
-    """Token via DefaultAzureCredential (``az login``, Managed Identity, etc.)."""
+    """Token via DefaultAzureCredential (``az login``, Managed Identity, etc.).
+
+    Returns:
+        Non-empty access token string.
+
+    Raises:
+        DatabricksNotConfiguredError: Missing azure-identity, empty token, or
+            credential failure (message includes host-specific hints).
+    """
     try:
         from azure.identity import DefaultAzureCredential
 
@@ -119,11 +161,19 @@ def get_azure_databricks_token() -> str:
 def resolve_access_token(*, source_name: str = "") -> str:
     """Resolve a SQL warehouse access token.
 
+    Order:
+
     1. Request-scoped user OAuth (Databricks Apps → API middleware)
     2. Else DefaultAzureCredential (local ``az login``, ACA MI)
 
     On Databricks Apps, missing ``X-Forwarded-Access-Token`` is a hard error
     unless ``EDIM_ALLOW_APPS_AZURE_SQL_FALLBACK=1`` (debug only).
+
+    Args:
+        source_name: Logical source label for error messages / debug logs.
+
+    Returns:
+        Access token string ready for the SQL connector.
     """
     label = source_name or "source"
 

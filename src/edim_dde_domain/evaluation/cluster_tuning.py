@@ -1,4 +1,20 @@
-"""Deterministic cluster-tuning quality rubric and golden-case support."""
+"""Deterministic cluster-tuning quality rubric and golden-case support.
+
+Business purpose
+----------------
+Score sizing recommendations without calling an LLM judge: contract/legality,
+evidence grounding, directional correctness vs resource pressure, history
+handling, and safety (no invented $, no unsupported failure claims). Used by
+bootstrap via ``register_cluster_tuning_evaluator`` and by golden-case CI.
+
+Public API
+----------
+* ``ClusterTuningQualityEvaluator`` — ``name == "cluster_tuning.quality"``
+* ``register_cluster_tuning_evaluator`` — register with edim-dde-ai
+
+Pass threshold: overall score ≥ 0.75 **and** contract dimension == 1.0.
+Confidence is input completeness + rubric coverage — never the model's claim.
+"""
 
 from __future__ import annotations
 
@@ -45,7 +61,16 @@ def _family_from_sku(sku: str) -> str:
 
 
 class ClusterTuningQualityEvaluator:
-    """Score legality, evidence grounding, direction, history use, and safety."""
+    """Score legality, evidence grounding, direction, history use, and safety.
+
+    Weighted dimensions: contract 25%, evidence 20%, direction 25%, history 15%,
+    safety 15%.
+
+    Args:
+        resource_pressure_config: Optional pressure policy from agent YAML
+            (``prepare_sizing_payload.resource_pressure``); used when the
+            output does not already embed ``resource_pressure``.
+    """
 
     def __init__(
         self, resource_pressure_config: dict[str, Any] | None = None
@@ -54,6 +79,7 @@ class ClusterTuningQualityEvaluator:
 
     @property
     def name(self) -> str:
+        """Registry id: ``cluster_tuning.quality``."""
         return "cluster_tuning.quality"
 
     def evaluate(
@@ -63,6 +89,18 @@ class ClusterTuningQualityEvaluator:
         output: dict[str, Any],
         context: dict[str, Any] | None = None,
     ) -> EvaluationResult:
+        """Run the deterministic rubric over one agent I/O pair.
+
+        Args:
+            inputs: Request/metrics payload (``metrics`` or ``job_run_ingest``).
+            output: Agent output (flat or nested ``recommendation``).
+            context: Optional extras (``historical_context``,
+                ``resource_pressure_config``).
+
+        Returns:
+            ``EvaluationResult`` with score, confidence, pass flag, dimensions,
+            and human-readable findings.
+        """
         metrics = inputs.get("metrics") or inputs.get("job_run_ingest") or {}
         if not isinstance(metrics, dict):
             metrics = {}
@@ -255,4 +293,10 @@ class ClusterTuningQualityEvaluator:
 def register_cluster_tuning_evaluator(
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> None:
+    """Register ``ClusterTuningQualityEvaluator`` with the framework registry.
+
+    Args:
+        resource_pressure_config: Optional pressure policy forwarded to the
+            evaluator constructor (typically from agent YAML at bootstrap).
+    """
     register_evaluator(ClusterTuningQualityEvaluator(resource_pressure_config))

@@ -1,4 +1,29 @@
-"""Output guardrails: validate and clamp LLM sizing JSON."""
+"""Output guardrails: validate and clamp LLM sizing JSON.
+
+Business purpose
+----------------
+The sizing LLM returns free-form JSON. This module:
+
+* Clamps ``node_family``, ``vcpus``, ``min_workers``, ``max_workers`` to policy
+* Enforces min ≤ max and ingest-derived floor/ceiling for max_workers
+* Maps family/vCPU onto an allow-listed ``azure_node_type``
+* Forces ``auto_termination_minutes`` to the product default (0 today)
+* Records every clamp as a structured adjustment for observability + retry
+
+Retryable adjustments (not ``sku_mapped``) drive a single re-prompt via
+``should_retry_sizing`` / ``format_guardrail_feedback`` so the model can fix
+illegal fields before performance validation.
+
+Fits the pipeline via ``logic.parse_sizing`` after ``run_sizing``.
+
+Public API
+----------
+* ``MAX_SIZING_ATTEMPTS`` / ``RETRYABLE_ADJUSTMENT_REASONS`` — retry policy
+* ``retryable_adjustments`` — filter clamps worth a re-prompt
+* ``format_guardrail_feedback`` — human text for the sizing prompt slot
+* ``should_retry_sizing`` — gate for the YAML route back to prepare_sizing
+* ``validate_and_clamp_with_adjustments`` — sole clamp entry used by the graph
+"""
 
 from __future__ import annotations
 
@@ -40,7 +65,14 @@ RETRYABLE_ADJUSTMENT_REASONS = frozenset(
 def retryable_adjustments(
     adjustments: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Return adjustments worth a sizing LLM re-prompt."""
+    """Return adjustments worth a sizing LLM re-prompt.
+
+    Args:
+        adjustments: Full list from ``validate_and_clamp_with_adjustments``.
+
+    Returns:
+        Subset whose ``reason`` is in ``RETRYABLE_ADJUSTMENT_REASONS``.
+    """
     return [
         a
         for a in adjustments
@@ -49,7 +81,15 @@ def retryable_adjustments(
 
 
 def format_guardrail_feedback(adjustments: list[dict[str, Any]]) -> str:
-    """Human-readable violation list for the sizing prompt ``guardrail_feedback`` slot."""
+    """Human-readable violation list for the sizing prompt ``guardrail_feedback`` slot.
+
+    Args:
+        adjustments: Guardrail adjustment records (retryable subset used).
+
+    Returns:
+        ``\"None\"`` when nothing retryable; otherwise an instruction block the
+        model can fix on the next attempt.
+    """
     lines: list[str] = []
     for a in retryable_adjustments(adjustments):
         field = a.get("field", "?")
@@ -72,7 +112,16 @@ def should_retry_sizing(
     sizing_attempts: int,
     max_attempts: int = MAX_SIZING_ATTEMPTS,
 ) -> bool:
-    """True when retryable clamps remain and another LLM attempt is allowed."""
+    """True when retryable clamps remain and another LLM attempt is allowed.
+
+    Args:
+        adjustments: Clamp records from the latest parse.
+        sizing_attempts: Attempts **including** the one just completed.
+        max_attempts: Cap (default ``MAX_SIZING_ATTEMPTS`` = 2).
+
+    Returns:
+        Whether the graph should route back to ``prepare_sizing_payload``.
+    """
     if sizing_attempts >= max_attempts:
         return False
     return bool(retryable_adjustments(adjustments))
@@ -86,6 +135,7 @@ def _record_adjustment(
     applied_value: Any,
     reason: str,
 ) -> None:
+    """Append an adjustment only when the applied value differs from the LLM."""
     if llm_value == applied_value:
         return
     adjustments.append(
@@ -99,6 +149,7 @@ def _record_adjustment(
 
 
 def _default_recommendation(reason: str) -> dict[str, Any]:
+    """Conservative E8-shaped fallback when the LLM payload is unusable."""
     return {
         "node_family": "E",
         "vcpus": 8,
@@ -117,7 +168,22 @@ def validate_and_clamp_with_adjustments(
     auto_termination_minutes: int = DEFAULT_AUTO_TERMINATION_MINUTES,
     resource_pressure_config: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Clamp recommendation and return (applied_config, guardrail_adjustments)."""
+    """Clamp recommendation and return ``(applied_config, guardrail_adjustments)``.
+
+    When ``job_run_ingest`` is present, also enforces sizing floor/ceiling from
+    observed worker consumption and maps SKU via the allow-list.
+
+    Args:
+        rec: Parsed LLM recommendation object (may be incomplete/illegal).
+        job_run_ingest: Live metrics row used for floor/ceiling + current SKU.
+        auto_termination_minutes: Authoritative policy value (default 0).
+        resource_pressure_config: Optional buffer overrides for the worker floor.
+
+    Returns:
+        Tuple of (clamped recommendation dict including ``azure_node_type``,
+        list of adjustment records). Invalid/missing ``rec`` yields a default
+        E8 recommendation and a single ``invalid_recommendation_object`` note.
+    """
     if not rec or not isinstance(rec, dict):
         out = _default_recommendation("Missing or invalid recommendation object")
         return out, [

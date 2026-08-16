@@ -1,4 +1,18 @@
-"""Register domain node types and load agent YAML graphs once."""
+"""Register domain node types and load agent YAML graphs once.
+
+Business purpose
+----------------
+One-shot process bootstrap for API / hosts: load ``sources.yaml``, corpora,
+experience transforms, quality evaluators, shared ``domain.sql.query``, then
+discover packaged (and optional external) ``*.agent.yaml`` graphs. Does **not**
+set an LLM provider — hosts must call ``set_llm_provider(...)``.
+
+Public API
+----------
+* ``bootstrap_agents`` — idempotent full registration (thread-safe)
+* ``load_external_agents`` — dirs / ``EDIM_AGENT_DIRS`` + entry points
+* ``reset_bootstrap`` — test helper to allow a fresh bootstrap
+"""
 
 from __future__ import annotations
 
@@ -38,7 +52,14 @@ def _import_packaged_agent_nodes() -> None:
 
 
 def _import_nodes_py_files(root: Path) -> list[str]:
-    """Load every ``nodes.py`` under ``root`` via file location (external trees)."""
+    """Load every ``nodes.py`` under ``root`` via file location (external trees).
+
+    Args:
+        root: Directory tree that may contain nested ``nodes.py`` files.
+
+    Returns:
+        Paths of modules successfully loaded (skipping already-imported names).
+    """
     loaded: list[str] = []
     for nodes_py in sorted(root.rglob("nodes.py")):
         if any(part.startswith(".") or part == "__pycache__" for part in nodes_py.parts):
@@ -60,6 +81,7 @@ def _import_nodes_py_files(root: Path) -> list[str]:
 def _parse_agent_dirs(
     dirs: Sequence[str | Path] | None,
 ) -> list[Path]:
+    """Resolve external agent directory list from args or ``EDIM_AGENT_DIRS``."""
     if dirs is not None:
         raw = [str(d).strip() for d in dirs if str(d).strip()]
     else:
@@ -81,7 +103,14 @@ def _parse_agent_dirs(
 
 
 def _load_entry_point_plugins(group: str = _ENTRY_POINT_GROUP) -> list[str]:
-    """Load ``edim_dde.agents`` entry points (callables register agents/nodes)."""
+    """Load ``edim_dde.agents`` entry points (callables register agents/nodes).
+
+    Args:
+        group: Packaging entry-point group name.
+
+    Returns:
+        Entry-point names that were invoked.
+    """
     try:
         from importlib.metadata import entry_points
     except ImportError:  # pragma: no cover
@@ -125,8 +154,15 @@ def load_external_agents(
     ``entry_point_group``). Each entry point must be a zero-arg callable that
     registers nodes/YAML (typically ``register_from_directory`` + imports).
 
-    Returns registered agent ids from directory scans (entry-point plugins
-    register themselves and are listed only by entry-point name in logs).
+    Args:
+        dirs: Explicit agent roots; ``None`` → env ``EDIM_AGENT_DIRS``.
+        entry_points: When true, also load packaging plugins.
+        entry_point_group: Override for the entry-point group name.
+        overwrite: Passed to ``register_from_directory``.
+
+    Returns:
+        Registered agent ids from directory scans (entry-point plugins
+        register themselves and are listed only by entry-point name in logs).
     """
     agent_ids: list[str] = []
     for root in _parse_agent_dirs(dirs):
@@ -169,6 +205,9 @@ def bootstrap_agents(*, load_external: bool = True) -> None:
 
     Thread-safe. After the first successful registration, later calls are no-ops.
     Call ``reset_bootstrap()`` in tests to allow a fresh load.
+
+    Args:
+        load_external: When false, skip external dirs / entry points (unit tests).
     """
     global _READY
     with _LOCK:
@@ -269,7 +308,11 @@ def _register_evaluators() -> None:
 
 
 def reset_bootstrap() -> None:
-    """Allow re-bootstrap after clearing sources (tests)."""
+    """Allow re-bootstrap after clearing sources (tests).
+
+    Clears the in-process sources registry and the ``_READY`` latch so the
+    next ``bootstrap_agents()`` runs the full registration path again.
+    """
     global _READY
     with _LOCK:
         _READY = False

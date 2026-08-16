@@ -1,9 +1,17 @@
 """Azure Key Vault secret bootstrap (BL-013).
 
-Loads mapped secrets into ``os.environ``. Credential used to *open* the vault
-is chosen separately from Foundry ``EDIM_FOUNDRY_*`` values written *from* the
-vault (see ``_vault_credential``) so Apps SP / MI, Foundry SP, and SQL auth
-do not collide via ``AZURE_CLIENT_*``.
+Business purpose
+----------------
+At process start, fetch mapped vault secrets into ``os.environ`` so Foundry
+and other clients see credentials without baking secrets into images. The
+credential used to *open* the vault is chosen separately from Foundry
+``EDIM_FOUNDRY_*`` values written *from* the vault (see ``_vault_credential``)
+so Apps SP / MI, Foundry SP, and SQL auth do not collide via ``AZURE_CLIENT_*``.
+
+Public API
+----------
+* ``parse_secret_map`` — parse ``EDIM_KV_SECRET_MAP`` or return defaults
+* ``load_key_vault_secrets`` — fetch + set env (no-op if vault URL unset)
 """
 
 from __future__ import annotations
@@ -27,7 +35,14 @@ _DEFAULT_SECRET_MAP: dict[str, str] = {
 def parse_secret_map(raw: str | None) -> dict[str, str]:
     """Parse ``ENV_VAR:vaultSecret,OTHER_ENV:otherSecret`` pairs.
 
-    Returns ``{env_name: vault_secret_name}``.
+    Args:
+        raw: Comma-separated map string, or empty/None for the built-in default.
+
+    Returns:
+        ``{env_name: vault_secret_name}``.
+
+    Raises:
+        ValueError: Malformed entry (missing ``:`` or empty names).
     """
     if not raw or not raw.strip():
         return dict(_DEFAULT_SECRET_MAP)
@@ -98,7 +113,10 @@ def _vault_credential() -> tuple[Any, str]:
 
 
 def _should_set_env(env_name: str) -> bool:
-    """Whether to write ``env_name`` from a vault secret."""
+    """Whether to write ``env_name`` from a vault secret.
+
+    Existing local ``.env`` / explicit inject wins unless ``EDIM_KV_FORCE=1``.
+    """
     existing = (os.environ.get(env_name) or "").strip()
     if not existing:
         return True
@@ -117,7 +135,17 @@ def load_key_vault_secrets(
     """Fetch secrets and set env vars.
 
     ``secret_map`` / ``EDIM_KV_SECRET_MAP`` use ``{env_name: vault_secret_name}``.
-    Returns ``{env_name: vault_secret_name}`` for secrets actually loaded.
+    No-ops (returns ``{}``) when ``AZURE_KEY_VAULT_URL`` is unset.
+
+    Args:
+        vault_url: Override vault URL; default ``AZURE_KEY_VAULT_URL``.
+        secret_map: Override map; default parsed from ``EDIM_KV_SECRET_MAP``.
+
+    Returns:
+        ``{env_name: vault_secret_name}`` for secrets actually loaded.
+
+    Raises:
+        RuntimeError: azure-keyvault-secrets / azure-identity not installed.
     """
     url = (vault_url or os.environ.get("AZURE_KEY_VAULT_URL") or "").strip()
     if not url:

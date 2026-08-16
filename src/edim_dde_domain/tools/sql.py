@@ -1,4 +1,19 @@
-"""SQL helpers: named-param binding + execute against a ResolvedSource."""
+"""SQL helpers: named-param binding + execute against a ResolvedSource.
+
+Business purpose
+----------------
+Safe SQL for YAML collectors: interpolate ``${ENV}`` only when values look
+like Unity Catalog FQNs, bind ``:name`` placeholders from state/static params
+to ``?``, and run against a resolved Databricks SQL warehouse.
+
+Public API
+----------
+* ``rows_to_dicts`` — cursor rows → list of dicts (dates → ISO)
+* ``bind_named_query`` — ``:name`` → ``?`` + ordered values
+* ``interpolate_sql_env`` — fail-closed ``${VAR}`` FQN substitution
+* ``prepare_query`` — env interpolate then named bind
+* ``execute_sql`` — run against ``ResolvedSource``
+"""
 
 from __future__ import annotations
 
@@ -34,6 +49,15 @@ def _normalize_sql_value(value: Any) -> Any:
 
 
 def rows_to_dicts(columns: list[str], rows: list[Any]) -> list[dict[str, Any]]:
+    """Zip column names with row tuples into dicts; ISO-format date/datetime.
+
+    Args:
+        columns: Column names from cursor description.
+        rows: Sequence of row tuples/sequences.
+
+    Returns:
+        List of ``{column: value}`` dicts.
+    """
     return [
         {col: _normalize_sql_value(val) for col, val in zip(columns, row)} for row in rows
     ]
@@ -49,6 +73,19 @@ def bind_named_query(
     """Convert ``:name`` placeholders to ``?`` and collect values in appearance order.
 
     Only names listed in ``params_from_state`` or ``static_params`` are allowed.
+    Blank string state values become ``None`` (SQL NULL) for optional filters.
+
+    Args:
+        query: SQL text with ``:param`` markers (not ``::`` casts).
+        state: Agent state mapping for dynamic params.
+        params_from_state: Allowlisted state keys.
+        static_params: Constant binds from YAML ``params:``.
+
+    Returns:
+        ``(bound_sql, values)`` ready for the connector.
+
+    Raises:
+        DomainToolError: Query references a name not in the allowlist.
     """
     static = dict(static_params or {})
     allowed = set(params_from_state) | set(static)
@@ -84,6 +121,16 @@ def interpolate_sql_env(
     Each substituted value must match ``catalog.schema.table`` or
     ``schema.table`` (letters, digits, underscore only). Unset/empty or
     unsafe values raise ``DomainToolError`` (fail closed).
+
+    Args:
+        text: SQL that may contain ``${TABLE_ENV}`` placeholders.
+        environ: Env mapping; defaults to ``os.environ``.
+
+    Returns:
+        SQL with FQNs substituted.
+
+    Raises:
+        DomainToolError: Unset, empty, or non-FQN substitution value.
     """
     env = environ if environ is not None else os.environ
 
@@ -113,7 +160,18 @@ def prepare_query(
     static_params: Optional[Mapping[str, Any]] = None,
     environ: Optional[Mapping[str, str]] = None,
 ) -> tuple[str, list[Any]]:
-    """Interpolate validated ``${ENV}`` FQNs in SQL, then bind ``:name`` params."""
+    """Interpolate validated ``${ENV}`` FQNs in SQL, then bind ``:name`` params.
+
+    Args:
+        query: Raw SQL from agent YAML.
+        state: Agent state for dynamic binds.
+        params_from_state: Allowlisted state keys.
+        static_params: Constant YAML params.
+        environ: Optional env for FQN interpolation.
+
+    Returns:
+        ``(bound_sql, values)``.
+    """
     text = interpolate_sql_env(query, environ)
     return bind_named_query(
         text,
@@ -129,7 +187,20 @@ def execute_sql(
     *,
     source: ResolvedSource,
 ) -> list[dict[str, Any]]:
-    """Run a parameterized query against a resolved Databricks SQL source."""
+    """Run a parameterized query against a resolved Databricks SQL source.
+
+    Args:
+        query: SQL with ``?`` placeholders (after ``prepare_query``).
+        params: Positional bind values, or ``None`` / empty for no binds.
+        source: Connection-ready source from the registry.
+
+    Returns:
+        List of row dicts (dates/datetimes ISO-formatted).
+
+    Raises:
+        DomainToolError: Connector / auth / network failure (message includes
+            Apps troubleshooting hints).
+    """
     from databricks import sql
 
     try:

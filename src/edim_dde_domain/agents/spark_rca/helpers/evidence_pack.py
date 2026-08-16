@@ -1,4 +1,22 @@
-"""Bounded evidence pack builder for spark_rca (pure, no IO)."""
+"""Bounded evidence pack builder for ``spark_rca`` (pure, no IO).
+
+Business purpose
+----------------
+Turn five SQL collector outputs (failure anchors, stage pressure, error logs,
+timeline, SQL plans) into a single ``evidence_pack`` dict that:
+
+* Feeds the LLM prompt (sections + evidence refs/excerpts)
+* Seeds rule classification and experience features
+* Anchors citation allowlists in validate / quality
+
+This module performs **no** Databricks calls — collectors run earlier via
+``domain.sql.query``. Client-supplied packs skip collectors and this builder.
+
+Public API
+----------
+* ``rank_stage_pressure`` — prioritize failed / failed-task metric rows
+* ``build_evidence_pack`` — main assembler used by ``logic.assemble_evidence``
+"""
 
 from __future__ import annotations
 
@@ -36,7 +54,15 @@ def _parse_attributes(raw: Any) -> Dict[str, Any]:
 def rank_stage_pressure(
     rows: List[Dict[str, Any]], *, limit: int = 40
 ) -> List[Dict[str, Any]]:
-    """Prefer failed / failed-task rows (legacy SparkTelemetryCollector parity)."""
+    """Prefer failed / failed-task rows (legacy SparkTelemetryCollector parity).
+
+    Args:
+        rows: Raw stage/task metric events from the collector.
+        limit: Max rows retained after prioritization.
+
+    Returns:
+        Failed-ish rows first, then others, truncated to ``limit``.
+    """
     prioritized: List[Dict[str, Any]] = []
     other: List[Dict[str, Any]] = []
     for row in rows or []:
@@ -125,6 +151,22 @@ def build_evidence_pack(
     timeline: Optional[List[Dict[str, Any]]] = None,
     sql_plans: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
+    """Assemble the bounded ``evidence_pack`` consumed by classify / LLM / API.
+
+    Args:
+        job_run_id: Required run identity (``unknown-run`` allowed for stubs).
+        job_id / job_run_date / task_key / workspace_id: Optional entity dims.
+        failure_anchors: Pipeline-end / SQL error / exception anchor rows.
+        stage_pressure: Stage/task metric rows (ranked for failures).
+        error_logs: ERROR/WARN log excerpts.
+        timeline: Chronological event rows.
+        sql_plans: SQL text / physical plan / error attribute rows.
+
+    Returns:
+        Pack with ``raw_anchors``, ``sections`` (logs / stage_metrics /
+        sql_plans), ``evidence`` (ref + excerpt items), and identity fields.
+        Long plans/excerpts are truncated to keep prompts and store rows bounded.
+    """
     anchors = list(failure_anchors or [])
     stages = rank_stage_pressure(list(stage_pressure or []), limit=40)
     logs = error_logs or []

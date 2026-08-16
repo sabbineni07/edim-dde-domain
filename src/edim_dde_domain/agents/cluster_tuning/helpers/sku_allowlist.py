@@ -1,4 +1,20 @@
-"""Subset of Databricks-efficiency allow-list for SKU validation."""
+"""Subset of Databricks-efficiency allow-list for SKU validation.
+
+Business purpose
+----------------
+The sizing LLM proposes ``node_family`` + ``vcpus`` (not a free-form Azure SKU).
+Guardrails map that intent onto a concrete ``azure_node_type`` from this curated
+allow-list so recommendations stay within approved worker shapes.
+
+Used exclusively by ``guardrails.validate_and_clamp_with_adjustments`` after
+family/vCPU clamps.
+
+Public API
+----------
+* ``ALLOWED_AZURE_NODE_TYPES`` — set of permitted SKU strings
+* ``compose_node_type`` — synthesize a Standard_* name when no allow-list hit
+* ``nearest_allowed_node_type`` — map family/vCPU (+ optional current) to SKU
+"""
 
 from __future__ import annotations
 
@@ -46,6 +62,19 @@ ALLOWED_AZURE_NODE_TYPES: set[str] = {
 
 
 def compose_node_type(node_family: str, vcpus: int, generation: str = "v5") -> str:
+    """Build a synthetic ``Standard_{family}{vcpus}s_{gen}`` name.
+
+    Fallback when the allow-list has no family match. Prefer
+    ``nearest_allowed_node_type`` for production recommendations.
+
+    Args:
+        node_family: Letter family (D/E/F/L); invalid → ``E``.
+        vcpus: Desired vCPU count (floored at 4).
+        generation: Azure generation suffix (e.g. ``v5``).
+
+    Returns:
+        Synthetic SKU string (may not be in ``ALLOWED_AZURE_NODE_TYPES``).
+    """
     family = str(node_family).strip().upper()[:1]
     if family not in ("D", "E", "F", "L"):
         family = "E"
@@ -59,7 +88,21 @@ def nearest_allowed_node_type(
     vcpus: int,
     current_node_type: Optional[str] = None,
 ) -> str:
-    """Pick allow-listed SKU matching family and vCPU size intent."""
+    """Pick allow-listed SKU matching family and vCPU size intent.
+
+    Prefer keeping the current SKU when it is already allow-listed and matches
+    the target family (avoids churn for no-op shape recommendations). Otherwise
+    prefer newer generations (v6/v5) and denser suffixes (ds/ads) among matches.
+
+    Args:
+        node_family: Target letter family (D/E/F/L).
+        vcpus: Target vCPU size intent.
+        current_node_type: Live worker SKU from metrics, if known.
+
+    Returns:
+        An allow-listed SKU, or a composed fallback / current SKU when no
+        family candidates exist.
+    """
     family = str(node_family).strip().upper()[:1]
     v = max(4, int(vcpus))
     if current_node_type and current_node_type in ALLOWED_AZURE_NODE_TYPES:

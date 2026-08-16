@@ -1,4 +1,27 @@
-"""Generic ``domain.sql.query`` node — YAML SQL against a named source."""
+"""Generic ``domain.sql.query`` node — YAML SQL against a named source.
+
+Business purpose
+----------------
+Declarative collector used by agent YAML: prepare + execute SQL via the
+shared sources registry, write rows (or first row) into agent state. Supports
+skip/override when callers already injected metrics or an evidence pack
+(offline tests / API overrides).
+
+Public API
+----------
+* ``sql_query_factory`` — ``@register_node("domain.sql.query")`` factory
+
+YAML config keys
+----------------
+* ``source`` (required) — named source from ``sources.yaml``
+* ``query`` (required) — SQL with ``:params`` / ``${ENV}`` FQNs
+* ``params_from_state`` — allowlisted state keys for ``:name`` binds
+* ``params`` — static binds
+* ``result_mode`` — ``rows`` (default) or ``first_row``
+* ``output_key`` — state key to write (default ``rows``)
+* ``on_empty`` — ``error`` / ``empty`` (first_row defaults to ``error``)
+* ``skip_if_key`` — skip SQL when another state key already holds data
+"""
 
 from __future__ import annotations
 
@@ -17,6 +40,17 @@ from edim_dde_domain.tools.sql import execute_sql, prepare_query
 
 @register_node("domain.sql.query")
 def sql_query_factory(config: dict[str, Any]):
+    """Build a LangGraph node that runs parameterized SQL into state.
+
+    Args:
+        config: Node config from agent YAML (see module docstring for keys).
+
+    Returns:
+        Callable ``(state) -> partial_state`` that writes ``output_key``.
+
+    Raises:
+        DomainToolError: Invalid config shape at graph build time.
+    """
     source_name = config.get("source")
     query = config.get("query")
     if not isinstance(source_name, str) or not source_name.strip():

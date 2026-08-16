@@ -1,4 +1,15 @@
-"""Deterministic LLM stand-in for offline tests (not used in production)."""
+"""Deterministic LLM stand-in for offline tests (not used in production).
+
+Business purpose
+----------------
+Fake ``LLMProvider`` that inspects the human prompt + ``config.chain`` and
+returns JSON shaped like live sizing / RCA / explanation outputs. Enables
+graph and API tests without Foundry or network.
+
+Public API
+----------
+* ``DomainStubLLM`` — ``invoke(messages, config=...)`` stub
+"""
 
 from __future__ import annotations
 
@@ -201,7 +212,15 @@ def _explanation_from_text(text: str) -> str:
 
 
 class DomainStubLLM:
-    """Fake LLMProvider for offline tests (import from edim_dde_domain.testing)."""
+    """Fake LLMProvider for offline tests (import from edim_dde_domain.testing).
+
+    Dispatches on ``config["chain"]``:
+
+    * ``sizing`` — JSON recommendation from utilization heuristics in the prompt
+    * ``rca`` — JSON RCA payload from keyword cues + evidence refs
+    * ``explanation`` — markdown explanation sections
+    * otherwise — minimal stub JSON
+    """
 
     def invoke(
         self,
@@ -209,6 +228,15 @@ class DomainStubLLM:
         *,
         config: dict[str, Any] | None = None,
     ) -> str:
+        """Return deterministic chain-specific text for the given messages.
+
+        Args:
+            messages: ``(role, content)`` prompt messages.
+            config: Optional; ``chain`` selects sizing / rca / explanation.
+
+        Returns:
+            JSON or markdown string mimicking the live Foundry provider.
+        """
         chain = str((config or {}).get("chain") or "")
         text = _human_text(messages)
         if chain == "sizing":

@@ -1,4 +1,38 @@
-"""Cluster tuning analysis steps (post-collect)."""
+"""Cluster Tuning graph business logic (pure state → state patches).
+
+Business purpose
+----------------
+Each public function here is the body of a ``domain.tuning.*`` LangGraph node
+(see ``nodes.py``). Together they implement the product pipeline::
+
+    SQL collect_metrics (framework) → normalize_metrics
+      → build_retrieval_query → rag.retrieve (guidance)
+      → prepare_sizing_payload → run_sizing (llm_chain)
+      → parse_sizing ⇄ prepare_sizing_payload (guardrail retry)
+      → validate_performance → assess_risks → generate_recommendation
+      → [optional] prepare_explanation_payload → generate_explanation → END
+
+Authoritative signal is always the live ``metrics`` row (SQL or client override).
+History (experiences, same-job shelf, guidance RAG) is a **secondary** context
+lane and must never block the request when empty or when providers fail.
+
+SQL collection itself lives in a ``domain.sql.query`` node configured in
+``cluster_tuning.agent.yaml``; this module only normalizes / prepares /
+validates / assembles around those metrics.
+
+Public API
+----------
+* ``normalize_metrics`` — seed ids after collect / override
+* ``build_retrieval_query`` — guidance RAG query text
+* ``prepare_sizing_payload`` — flatten metrics + history for sizing prompt
+* ``parse_sizing`` — parse LLM JSON, guardrails, retry flags
+* ``validate_performance`` — peak-load fitness (no LLM)
+* ``assess_risks`` — capacity-change risk level
+* ``generate_recommendation`` — API-shaped recommendation + comparison
+* ``prepare_explanation_payload`` — string fields for explanation prompt
+
+Public entry points mirror node type ids without the ``domain.tuning.`` prefix.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +65,19 @@ from edim_dde_domain.llm.json_util import dumps, parse_json_object
 
 
 def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:
-    """Ensure job_run_id and ids are set after sql.query / metrics override."""
+    """Ensure ``job_run_id`` and identity fields are set after SQL / override.
+
+    Prefer request-level ids; fall back to values embedded in the metrics row
+    (common when the client posts a metrics override blob).
+
+    Args:
+        state: Graph state after ``collect_metrics`` (or metrics override).
+            Expected keys: ``metrics``, optional ``job_id`` / ``cluster_id`` /
+            ``job_run_id``.
+
+    Returns:
+        Patch with ``job_id``, ``cluster_id``, ``job_run_id``, and ``metrics``.
+    """
     metrics = dict(state.get("metrics") or {})
     job_run_id = state.get("job_run_id") or metrics.get("job_run_id") or "unknown-run"
     return {
@@ -43,7 +89,14 @@ def normalize_metrics(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
-    """Build free-text query for cluster-tuning guidance RAG."""
+    """Build free-text query for cluster-tuning guidance RAG.
+
+    Args:
+        state: Graph state with ``metrics``.
+
+    Returns:
+        Patch with ``retrieval_query`` for the ``rag.retrieve`` node.
+    """
     return _build_retrieval_query(state)
 
 
@@ -55,8 +108,25 @@ def prepare_sizing_payload(
 ) -> dict[str, Any]:
     """Flatten metrics into string fields for the sizing human prompt.
 
-    On guardrail retry, preserves ``guardrail_feedback`` set by ``parse_sizing``.
-    Fills ``historical_context`` from RecommendationStore + optional RAG hits.
+    On guardrail retry, preserves ``guardrail_feedback`` set by ``parse_sizing``
+    and reuses prior ``historical_context`` to avoid re-fetch churn. Otherwise
+    fills history from RecommendationStore + optional RAG hits.
+
+    Args:
+        state: Graph state after guidance retrieve (and optionally after a
+            prior sizing attempt). Reads ``metrics``, ``guardrail_feedback``,
+            ``historical_context``, ``sizing_attempts``.
+        history_config: YAML history knobs forwarded from the node factory.
+        resource_pressure_config: Optional dimension/threshold overrides.
+
+    Returns:
+        Patch with ``current_config``, ``job_run_ingest``, ``sizing_hints``,
+        ``guardrail_feedback``, ``historical_context``, ``sizing_hints_full``,
+        and ``resource_pressure_config``.
+
+    Example:
+        First pass yields ``guardrail_feedback="None"``; after a clamp retry the
+        same key carries the violation list for the re-prompt.
     """
     metrics = state.get("metrics") or {}
     current_config = {
@@ -100,8 +170,19 @@ def prepare_sizing_payload(
 def parse_sizing(state: dict[str, Any]) -> dict[str, Any]:
     """Parse sizing LLM JSON, apply guardrails + SKU allow-list.
 
-    When retryable clamps remain and attempts < max, sets ``sizing_needs_retry``
+    Accepts both the current schema (``node_family`` / ``vcpus`` / …) and a
+    legacy simplified shape that only had ``recommended_node_type``. When
+    retryable clamps remain and attempts < max, sets ``sizing_needs_retry``
     and ``guardrail_feedback`` so the graph can re-run sizing.
+
+    Args:
+        state: After ``run_sizing``. Expected: ``sizing_raw``, ``metrics``,
+            optional ``resource_pressure_config``, ``sizing_attempts``.
+
+    Returns:
+        Patch with ``pattern_analysis``, ``sizing``, ``guardrail_adjustments``,
+        ``llm_recommendation``, attempt counters, ``sizing_needs_retry``, and
+        ``guardrail_feedback``.
     """
     raw = parse_json_object(state.get("sizing_raw"))
     metrics = state.get("metrics") or {}
@@ -160,7 +241,15 @@ def parse_sizing(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_performance(state: dict[str, Any]) -> dict[str, Any]:
-    """Rule-based peak-load fitness check (no LLM). Runs after sizing settles."""
+    """Rule-based peak-load fitness check (no LLM). Runs after sizing settles.
+
+    Args:
+        state: After ``parse_sizing`` (retry loop exited). Reads ``sizing``,
+            ``metrics``, optional ``resource_pressure_config``.
+
+    Returns:
+        Patch with ``performance_validation`` (meets_peak, reduction risk, …).
+    """
     sizing = state.get("sizing") or {}
     metrics = state.get("metrics") or {}
 
@@ -188,7 +277,16 @@ def validate_performance(state: dict[str, Any]) -> dict[str, Any]:
 def assess_risks(state: dict[str, Any]) -> dict[str, Any]:
     """Capacity-change risk from current vs recommended vCPU × workers.
 
-    Incorporates ``performance_validation`` when present (legacy fold-in).
+    Incorporates ``performance_validation`` when present (legacy fold-in):
+    elevated resource pressure while shrinking, peak-requirement failures, and
+    aggressive reduction risk all escalate the level and append mitigations.
+
+    Args:
+        state: After ``validate_performance``. Reads ``sizing``, ``metrics``,
+            ``performance_validation``, optional ``resource_pressure_config``.
+
+    Returns:
+        Patch with ``risk_assessment`` (level, magnitude %, capacities, mitigations).
     """
     sizing = state.get("sizing") or {}
     metrics = state.get("metrics") or {}
@@ -278,6 +376,21 @@ def assess_risks(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
+    """Assemble the API-facing recommendation, comparison, and reason codes.
+
+    Merges sizing + resource optimization + risk level + pressure snapshot.
+    Copies request ``job_id`` / ``cluster_id`` into a local metrics view so
+    reason-code consumers see a complete row without mutating agent state.
+
+    Args:
+        state: After ``assess_risks``. Reads ``sizing``, ``risk_assessment``,
+            ``metrics``, ``sizing_hints_full``, ``performance_validation``,
+            optional ``resource_pressure_config``.
+
+    Returns:
+        Patch with ``recommendation``, ``comparison``, ``reason_codes``, and
+        ``current_configuration``.
+    """
     sizing = state.get("sizing") or {}
     risk = state.get("risk_assessment") or {}
     # Metrics override blobs often omit job_id/cluster_id (those live on the
@@ -360,7 +473,20 @@ def generate_recommendation(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def prepare_explanation_payload(state: dict[str, Any]) -> dict[str, Any]:
-    """Stringify fields for the explanation human prompt (non-colliding keys)."""
+    """Stringify fields for the explanation human prompt (non-colliding keys).
+
+    Truncates ``historical_context`` so the explanation chain gets provenance
+    without the full sizing-prompt budget.
+
+    Args:
+        state: After ``generate_recommendation`` when ``include_explanation``.
+            Reads ``recommendation``, ``metrics``, ``pattern_analysis``,
+            ``risk_assessment``, ``historical_context``.
+
+    Returns:
+        Patch with ``recommendation_text``, ``job_run_ingest``,
+        ``pattern_analysis``, ``risk_assessment_text``, ``historical_context``.
+    """
     history = str(state.get("historical_context") or "None")
     # Explanations need provenance, not the full sizing prompt budget.
     if len(history) > 3000:

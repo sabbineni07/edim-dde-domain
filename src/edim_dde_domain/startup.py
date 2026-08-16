@@ -1,8 +1,18 @@
 """Runtime environment checks for API / host startup (product P1).
 
-Default mode **warns** so ``/health`` and offline tests still work (Lazy Foundry).
-Set ``EDIM_STRICT_STARTUP=1`` to fail fast when Foundry is incomplete.
-Also set ``EDIM_REQUIRE_SQL=1`` with strict mode to require warehouse host/path.
+Business purpose
+----------------
+Fail-soft (default) or fail-fast validation of Foundry + Databricks SQL env
+**without** contacting remote services. Default mode **warns** so ``/health``
+and offline tests still work (Lazy Foundry). Set ``EDIM_STRICT_STARTUP=1`` to
+fail fast when Foundry is incomplete; with strict mode also set
+``EDIM_REQUIRE_SQL=1`` to require warehouse host/path.
+
+Public API
+----------
+* ``StartupCheckResult`` — collected warnings / errors
+* ``inspect_runtime_env`` — report gaps as warnings only
+* ``validate_runtime_env`` — log + optionally raise on strict failures
 """
 
 from __future__ import annotations
@@ -23,13 +33,19 @@ def _truthy(name: str) -> bool:
 
 @dataclass
 class StartupCheckResult:
-    """Collected warnings / errors from env inspection."""
+    """Collected warnings / errors from env inspection.
+
+    Attributes:
+        warnings: Non-fatal gaps (always populated by ``inspect_runtime_env``).
+        errors: Fatal gaps when strict mode promotes missing Foundry/SQL.
+    """
 
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
+        """True when no fatal ``errors`` were recorded."""
         return not self.errors
 
 
@@ -40,6 +56,12 @@ def inspect_runtime_env(
 
     Always reports gaps as ``warnings``. Callers that need fail-fast should use
     ``validate_runtime_env(..., strict=True)``.
+
+    Args:
+        settings: Optional pre-built settings; defaults to ``get_settings()``.
+
+    Returns:
+        ``StartupCheckResult`` with warnings (and empty errors).
     """
     cfg = settings or get_settings()
     result = StartupCheckResult()
@@ -82,6 +104,16 @@ def validate_runtime_env(
     """Log warnings; raise ``RuntimeError`` when strict and required env missing.
 
     ``strict`` defaults to ``EDIM_STRICT_STARTUP`` truthy.
+
+    Args:
+        settings: Optional pre-built settings; defaults to ``get_settings()``.
+        strict: Override for ``EDIM_STRICT_STARTUP``; ``None`` reads the env.
+
+    Returns:
+        The inspected result (warnings always logged).
+
+    Raises:
+        RuntimeError: When strict mode finds missing Foundry (and optionally SQL).
     """
     if strict is None:
         strict = _truthy("EDIM_STRICT_STARTUP")

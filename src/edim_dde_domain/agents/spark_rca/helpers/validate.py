@@ -1,4 +1,25 @@
-"""Validate and normalize Spark RCA LLM output (legacy API contract parity)."""
+"""Normalize / clamp Spark RCA LLM JSON into the stable API contract.
+
+Business purpose
+----------------
+The synthesize step returns free-form JSON. This module:
+
+* Maps messy categories onto ``RCA_CATEGORIES`` (aliases + hint fallback)
+* Clamps confidence and derives High/Medium/Low labels
+* Filters ``evidence_refs`` and web citations to **allowlisted** values from
+  the live evidence pack / web-search hits (no hallucinated citations)
+* Fills missing summary / actions with safe defaults
+* Shapes ``possible_causes``, ``context_assessment``, recommendation buckets
+
+The output of ``validate_rca_llm_output`` is what the API projects as
+``RcaResponse`` (via ``logic.validate_output``).
+
+Public API
+----------
+* ``validate_rca_llm_output`` — sole entry used by the graph validate node
+
+Helpers below are private (``_``) normalization utilities.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +27,14 @@ from typing import Any
 
 from edim_dde_domain.agents.spark_rca.helpers.classify import RCA_CATEGORIES
 
+# Map verbal confidence labels (if the model emits them) onto floats.
 _CONFIDENCE_LABELS = {
     "high": 0.85,
     "medium": 0.6,
     "low": 0.3,
 }
 
+# Free-text category aliases → closed taxonomy. Keep soft; prefer hint on miss.
 _CATEGORY_ALIASES = {
     "executor out-of-memory": "resource",
     "executor oom": "resource",
@@ -32,6 +55,15 @@ _CATEGORY_ALIASES = {
 
 
 def _clamp_confidence(value: Any, default: float = 0.4) -> float:
+    """Parse and clamp a confidence value into ``[0.0, 1.0]``.
+
+    Args:
+        value: Numeric or numeric-string confidence from the LLM.
+        default: Used when parsing fails.
+
+    Returns:
+        Float in inclusive range 0..1.
+    """
     try:
         c = float(value)
     except (TypeError, ValueError):
@@ -40,6 +72,7 @@ def _clamp_confidence(value: Any, default: float = 0.4) -> float:
 
 
 def _confidence_from_raw(raw: dict[str, Any], default: float) -> float:
+    """Prefer numeric ``confidence``, else map ``confidence_label``."""
     if raw.get("confidence") is not None:
         return _clamp_confidence(raw.get("confidence"), default=default)
     label = str(raw.get("confidence_label") or "").strip().lower()
@@ -49,6 +82,10 @@ def _confidence_from_raw(raw: dict[str, Any], default: float) -> float:
 
 
 def _normalize_category(raw: dict[str, Any], classification_hint: dict[str, Any]) -> str:
+    """Map model category (or alias) onto ``RCA_CATEGORIES``.
+
+    Falls back to the rule hint, then ``unknown``.
+    """
     category = str(raw.get("category") or "").strip().lower()
     if category in RCA_CATEGORIES:
         return category
@@ -62,6 +99,7 @@ def _normalize_category(raw: dict[str, Any], classification_hint: dict[str, Any]
 
 
 def _as_str_list(value: Any) -> list[str]:
+    """Coerce a scalar or list into a list of non-empty strings."""
     if value is None:
         return []
     if isinstance(value, list):
@@ -71,6 +109,7 @@ def _as_str_list(value: Any) -> list[str]:
 
 
 def _flatten_recommendations(raw: dict[str, Any]) -> list[str]:
+    """Prefer flat ``recommended_actions``; else merge structured buckets."""
     actions = _as_str_list(raw.get("recommended_actions"))
     if actions:
         return actions[:10]
@@ -86,6 +125,7 @@ def _flatten_recommendations(raw: dict[str, Any]) -> list[str]:
 
 
 def _factors_from_raw(raw: dict[str, Any]) -> list[str]:
+    """Build contributing factors from explicit list or evidence_analysis prose."""
     factors = _as_str_list(raw.get("contributing_factors"))
     if factors:
         return factors[:10]
@@ -105,6 +145,7 @@ def _factors_from_raw(raw: dict[str, Any]) -> list[str]:
 
 
 def _normalize_recommendations_block(raw: dict[str, Any]) -> dict[str, list[str]]:
+    """Ensure the three structured recommendation buckets always exist."""
     rec = raw.get("recommendations")
     if not isinstance(rec, dict):
         rec = {}
@@ -116,6 +157,7 @@ def _normalize_recommendations_block(raw: dict[str, Any]) -> dict[str, list[str]
 
 
 def _normalize_evidence_analysis(raw: dict[str, Any]) -> dict[str, str]:
+    """Clamp evidence_analysis to the three prompt/schema channels."""
     analysis = raw.get("evidence_analysis")
     if not isinstance(analysis, dict):
         analysis = {}
@@ -131,6 +173,11 @@ def _normalize_evidence_analysis(raw: dict[str, Any]) -> dict[str, str]:
 def _normalize_possible_causes(
     raw: dict[str, Any], allowed_refs: set[str]
 ) -> list[dict[str, Any]]:
+    """Keep at most five alternative causes; drop rows without verification.
+
+    Supporting evidence refs must appear in the live pack (hallucinated refs
+    are stripped).
+    """
     rows = raw.get("possible_causes")
     if not isinstance(rows, list):
         return []
@@ -163,6 +210,11 @@ def _normalize_possible_causes(
 def _normalize_context_assessment(
     raw: dict[str, Any], allowed_web_urls: set[str]
 ) -> dict[str, Any]:
+    """Normalize how the model assessed runbooks / history / web.
+
+    Web citations must be a subset of URLs returned by the web-search provider
+    for this run (empty when search was disabled).
+    """
     value = raw.get("context_assessment")
     if not isinstance(value, dict):
         value = {}
@@ -185,7 +237,28 @@ def validate_rca_llm_output(
     classification_hint: dict[str, Any],
     web_search_hits: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Clamp/normalize LLM JSON; fall back to rule classification when needed."""
+    """Clamp/normalize LLM JSON; fall back to rule classification when needed.
+
+    Args:
+        raw: Parsed LLM object (or soft-fallback stub from ``parse_llm_json``).
+        evidence_pack: Authoritative pack for this run (citation allowlist).
+        classification_hint: Rule hint used for category/confidence defaults.
+        web_search_hits: Normalized hits from ``web.search`` (URL allowlist).
+
+    Returns:
+        Dict with ``job_status``, ``root_cause``, ``evidence``, ``timeline``,
+        ``possible_causes``, ``context_assessment``, ``recommendations``, etc.
+        Ready to embed under API ``result``.
+
+    Example:
+        >>> out = validate_rca_llm_output(
+        ...     {\"category\": \"oom\", \"summary\": \"Executor OOM\", \"recommended_actions\": [\"Increase memory\"]},
+        ...     evidence_pack={\"evidence\": [{\"ref\": \"e1\", \"excerpt\": \"OOM\"}]},
+        ...     classification_hint={\"category\": \"resource\", \"confidence\": 0.7},
+        ... )
+        >>> out[\"root_cause\"][\"category\"]
+        'resource'
+    """
     allowed_refs = {
         str(e.get("ref")) for e in (evidence_pack.get("evidence") or []) if e.get("ref")
     }
@@ -198,6 +271,7 @@ def validate_rca_llm_output(
 
     summary = str(raw.get("summary") or "").strip()
     if not summary:
+        # Prefer live failure reason over a hollow "unknown" summary.
         pe = (evidence_pack.get("raw_anchors") or {}).get("pipeline_end") or {}
         summary = (
             pe.get("failure_reason")
@@ -208,6 +282,7 @@ def validate_rca_llm_output(
     evidence_refs = [
         str(r) for r in (raw.get("evidence_refs") or []) if str(r) in allowed_refs
     ]
+    # If the model forgot citations but pack has refs, surface a few for UX.
     if not evidence_refs and allowed_refs:
         evidence_refs = list(allowed_refs)[:3]
 

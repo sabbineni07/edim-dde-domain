@@ -1,4 +1,31 @@
-"""Compose feature-similar and entity-specific RCA history."""
+"""Compose secondary historical context for the Spark RCA LLM prompt.
+
+Business purpose
+----------------
+Live ``evidence_pack`` is always authoritative. This module builds an optional
+**secondary** prompt block with two independent lanes:
+
+1. **Experience similarity (B′)** — hybrid search over ``spark-rca-outcomes``
+   using open failure features (see ``experience_transform``). Cross-job.
+2. **Exact entity shelf (B)** — ``RecommendationStore.list(agent_id=spark_rca)``
+   filtered to the same ``job_id`` / ``job_run_id``. Includes ``proposed``.
+
+Runbooks stay in a separate prompt field (``runbook_context``); this module does
+not merge playbooks into the history string.
+
+Failure modes
+-------------
+Any retrieval / store error is swallowed → empty lane. If both lanes are empty,
+callers receive the literal ``\"None\"`` so the prompt stays well-formed and the
+request never fails for missing history.
+
+Public API
+----------
+* ``compose_historical_context`` — entry used by ``logic.load_historical_context``
+
+YAML knobs (on ``domain.rca.load_historical_context``) typically include
+``enabled``, ``corpus``, ``top_k``, ``same_job_limit``.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +42,21 @@ from edim_dde_domain.agents.spark_rca.helpers.experience_transform import (
 def _experience_block(
     state: dict[str, Any], *, corpus: str, top_k: int
 ) -> str:
+    """Retrieve and format feature-similar past RCA experience cards.
+
+    Tiny indexes can return weakly related neighbors. We therefore require either:
+
+    * shared strong feature labels (category / ``signal_*``), or
+    * an independently high similarity score (≥ 0.75).
+
+    Args:
+        state: Live graph state (evidence_pack, classification_hint).
+        corpus: Outcomes corpus name (default ``spark-rca-outcomes``).
+        top_k: Max hits to request from the retrieval provider.
+
+    Returns:
+        Markdown-ish block string, or ``\"\"`` when nothing useful matches.
+    """
     pack = state.get("evidence_pack")
     hint = state.get("classification_hint")
     current_features = set(
@@ -23,6 +65,8 @@ def _experience_block(
             classification_hint=hint if isinstance(hint, dict) else {},
         )
     )
+    # Category + signature tokens are the only features we treat as "strong"
+    # enough to justify a low-score hit from a cold / tiny index.
     strong_current = {
         feature
         for feature in current_features
@@ -36,6 +80,7 @@ def _experience_block(
             search_mode="hybrid",
         )
     except Exception:
+        # History is secondary — never fail the RCA request for retrieval errors.
         return ""
     # Tiny indexes may return the least-dissimilar document even when unrelated.
     # Require a shared category/signature feature unless semantic similarity is
@@ -69,6 +114,19 @@ def _experience_block(
 
 
 def _same_job_block(state: dict[str, Any], *, limit: int) -> str:
+    """List prior RCA store rows for the same job and/or job run.
+
+    Unlike the experience corpus, this shelf includes ``proposed`` diagnoses so
+    engineers see what the agent already suggested for this entity.
+
+    Args:
+        state: Must carry ``job_id`` and/or ``job_run_id`` (and optional
+            ``request_id`` to skip the in-flight row).
+        limit: Max rows to render after filtering.
+
+    Returns:
+        Markdown list block, or ``\"\"`` when store is ``none`` / empty / errors.
+    """
     job_id = str(state.get("job_id") or "").strip()
     job_run_id = str(state.get("job_run_id") or "").strip()
     if not job_id and not job_run_id:
@@ -77,6 +135,7 @@ def _same_job_block(state: dict[str, Any], *, limit: int) -> str:
         store = get_recommendation_store()
         if getattr(store, "name", "") == "none":
             return ""
+        # Over-fetch then filter: store list may only key on job_id today.
         rows = store.list(
             job_id=job_id or None,
             agent_id="spark_rca",
@@ -116,7 +175,22 @@ def compose_historical_context(
     top_k: int = 5,
     same_job_limit: int = 3,
 ) -> str:
-    """Return separate similarity and exact-entity history lanes."""
+    """Return separate similarity and exact-entity history lanes for the prompt.
+
+    Args:
+        state: Live RCA graph state.
+        enabled: When false, skip all work and return ``\"None\"``.
+        corpus: Experience corpus (must exist in ``config/corpora.yaml``).
+        top_k: Max experience hits after filtering.
+        same_job_limit: Max exact entity rows to show.
+
+    Returns:
+        Combined history text, or ``\"None\"`` when disabled / empty.
+
+    Example:
+        >>> compose_historical_context({"job_id": "j-1"}, enabled=False)
+        'None'
+    """
     if not enabled:
         return "None"
     blocks = [

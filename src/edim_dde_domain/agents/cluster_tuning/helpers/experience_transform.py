@@ -1,8 +1,28 @@
 """Cluster-tuning ExperienceTransform — pressure/action cards for outcomes corpus.
 
+Business purpose
+----------------
+When a cluster_tuning recommendation is saved/updated, this transform (registered
+at bootstrap) converts the ``RecommendationRecord`` into an ``ExperienceDocument``
+for corpus ``cluster-tuning-outcomes``. Later sizing runs retrieve **feature-
+similar** past outcomes (resource pressure dimensions + action direction), not
+by ``job_id``.
+
 Cards describe observed resource dimensions and action direction. They never
-infer failure events from utilization and do not depend on a fixed scenario list.
-``job_id`` remains metadata for entity/chat lookup filters.
+infer failure events from utilization and do not depend on a fixed scenario list
+(``over_provisioned``, ``oom_or_memory_pressure``, …). ``job_id`` remains
+metadata for entity/chat lookup filters only.
+
+Public API
+----------
+* ``CORPUS`` / ``AGENT_ID`` — registry constants
+* ``infer_feature_labels`` — open pressure-feature vocabulary for index + query
+* ``build_experience_text`` — index card body + action signature
+* ``build_experience_query`` — live-state query for ``search_corpus``
+* ``ClusterTuningExperienceTransform`` — ``ExperienceTransform`` protocol impl
+* ``register_cluster_tuning_experience_transform`` — bootstrap hook
+
+See also: ``historical_context.py``, platform ``edim_dde_ai.experiences``.
 """
 
 from __future__ import annotations
@@ -20,6 +40,7 @@ CORPUS = "cluster-tuning-outcomes"
 AGENT_ID = "cluster_tuning"
 
 def _metrics_from_record(record: RecommendationRecord) -> dict[str, Any]:
+    """Best-effort metrics snapshot from stored request/response payloads."""
     response = record.response if isinstance(record.response, dict) else {}
     request = record.request if isinstance(record.request, dict) else {}
     for blob in (
@@ -33,6 +54,7 @@ def _metrics_from_record(record: RecommendationRecord) -> dict[str, Any]:
 
 
 def _recommendation_blob(record: RecommendationRecord) -> dict[str, Any]:
+    """Locate the recommendation dict on the stored response."""
     response = record.response if isinstance(record.response, dict) else {}
     rec = response.get("recommendation") or {}
     return rec if isinstance(rec, dict) else {}
@@ -44,7 +66,18 @@ def infer_feature_labels(
     resource_pressure: dict[str, Any] | None = None,
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> list[str]:
-    """Generate labels from configured dimensions, without scenario vocabulary."""
+    """Generate labels from configured dimensions, without scenario vocabulary.
+
+    Args:
+        metrics: Job-cluster metrics snapshot.
+        resource_pressure: Precomputed pressure facts when available on the
+            recommendation; otherwise computed from metrics.
+        resource_pressure_config: Optional YAML overrides for recompute.
+
+    Returns:
+        Deduped open-vocabulary labels such as ``cpu_pressure_high``,
+        ``limiting_resource_memory``, ``resource_shape_mismatch``.
+    """
     pressure = (
         resource_pressure
         if isinstance(resource_pressure, dict) and resource_pressure.get("dimensions")
@@ -139,7 +172,18 @@ def build_experience_text(
     resource_pressure: dict[str, Any],
     status: str,
 ) -> tuple[str, str]:
-    """Return (index_text, action_signature)."""
+    """Build index card text and a compact action signature for de-dupe.
+
+    Args:
+        feature_labels: From ``infer_feature_labels``.
+        metrics: Metrics snapshot used for SKU / signals.
+        recommendation: Applied recommendation blob.
+        resource_pressure: Pressure facts for signal lines.
+        status: Lifecycle status (proposed/accepted/applied/…).
+
+    Returns:
+        ``(index_text, action_signature)`` for ``ExperienceDocument``.
+    """
     action_lines, action_sig = _action_parts(metrics, recommendation)
     sku = str(metrics.get("azure_worker_vm_size") or "").strip() or "unknown"
     pressure_signals = " ".join(
@@ -160,7 +204,15 @@ def build_experience_query(
     *,
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> str:
-    """Free-text query for the outcomes corpus from the live job metrics."""
+    """Free-text query for the outcomes corpus from the live job metrics.
+
+    Args:
+        state: Graph state with ``metrics``.
+        resource_pressure_config: Optional pressure overrides for feature labels.
+
+    Returns:
+        Query string for ``search_corpus`` (feature similarity, not job_id).
+    """
     metrics = state.get("metrics") or {}
     if not isinstance(metrics, dict):
         metrics = {}
@@ -179,22 +231,42 @@ def build_experience_query(
 
 
 class ClusterTuningExperienceTransform:
-    """Domain Strategy: RecommendationRecord → ExperienceDocument."""
+    """Domain Strategy: RecommendationRecord → ExperienceDocument.
+
+    Registered for ``agent_id=cluster_tuning`` / corpus ``cluster-tuning-outcomes``.
+    """
 
     def __init__(
         self, resource_pressure_config: dict[str, Any] | None = None
     ) -> None:
+        """Optionally bake YAML pressure overrides into the transform.
+
+        Args:
+            resource_pressure_config: Merged onto packaged defaults when
+                recompute is needed (recommendation lacks pressure snapshot).
+        """
         self._resource_pressure_config = dict(resource_pressure_config or {})
 
     @property
     def agent_id(self) -> str:
+        """Agent id this transform serves."""
         return AGENT_ID
 
     @property
     def corpus(self) -> str:
+        """Retrieval corpus name for upserted experience cards."""
         return CORPUS
 
     def transform(self, record: RecommendationRecord) -> ExperienceDocument | None:
+        """Convert a persisted recommendation into an indexable experience card.
+
+        Args:
+            record: Lifecycle row from RecommendationStore.
+
+        Returns:
+            ``ExperienceDocument`` ready for the outcomes corpus (always built
+            when metrics/recommendation can be read; never raises).
+        """
         metrics = _metrics_from_record(record)
         recommendation = _recommendation_blob(record)
         pressure = recommendation.get("resource_pressure")
@@ -235,6 +307,12 @@ class ClusterTuningExperienceTransform:
 def register_cluster_tuning_experience_transform(
     resource_pressure_config: dict[str, Any] | None = None,
 ) -> None:
+    """Bootstrap hook: register this transform with ``edim_dde_ai.experiences``.
+
+    Args:
+        resource_pressure_config: Optional pressure overrides baked into the
+            registered transform instance.
+    """
     from edim_dde_ai.experiences import register_experience_transform
 
     register_experience_transform(

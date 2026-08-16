@@ -1,4 +1,18 @@
-"""EDIM DDE domain — tools + YAML agents (depends on edim-dde-ai)."""
+"""EDIM DDE domain package — tools, sources, and YAML agents on edim-dde-ai.
+
+Business purpose
+----------------
+Product-facing domain layer that sits on ``edim-dde-ai``: Databricks SQL
+sources, Foundry LLM wiring, shared security helpers, and agent bootstrap.
+Hosts (``edim-dde-api``) import bootstrap / errors from here at startup.
+
+Public API
+----------
+* ``__version__`` — package version string
+* ``bootstrap_agents`` / ``load_external_agents`` / ``reset_bootstrap``
+* ``DomainToolError`` / ``DatabricksNotConfiguredError`` / ``NoJobMetricsError``
+* ``FoundryLLMNotConfiguredError``
+"""
 
 from edim_dde_domain.bootstrap import (
     bootstrap_agents,

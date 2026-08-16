@@ -1,4 +1,17 @@
-"""JSON helpers + Azure AI Foundry LLM provider."""
+"""JSON helpers + Azure AI Foundry LLM provider.
+
+Business purpose
+----------------
+Shared LLM utilities for agent graph steps: Foundry chat completions adapter
+for edim-dde-ai ``llm_chain``, plus robust JSON extraction from model text.
+
+Public API
+----------
+* ``FoundryLLMNotConfiguredError`` / ``FoundryLLMProvider``
+* ``get_foundry_access_token`` / ``get_foundry_llm_provider`` /
+  ``clear_foundry_llm_provider_cache``
+* ``dumps`` / ``parse_json_object``
+"""
 
 from edim_dde_domain.llm.foundry import (
     FoundryLLMNotConfiguredError,

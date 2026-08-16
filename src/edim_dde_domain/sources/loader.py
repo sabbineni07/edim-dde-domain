@@ -1,4 +1,17 @@
-"""Load sources.yaml into SourceSpec registry."""
+"""Load sources.yaml into SourceSpec mappings.
+
+Business purpose
+----------------
+Parse the packaged (or repo-root) ``sources.yaml`` into frozen ``SourceSpec``
+objects. Prefers repo-root ``config/sources.yaml`` when present so local edits
+override the package-shipped file without a reinstall.
+
+Public API
+----------
+* ``default_sources_path`` — resolved default YAML path
+* ``parse_sources_mapping`` — dict → ``{name: SourceSpec}``
+* ``load_sources_file`` — read + parse a YAML file
+"""
 
 from __future__ import annotations
 
@@ -19,10 +32,22 @@ _DEFAULT_SOURCES_PATH = (
 
 
 def default_sources_path() -> Path:
+    """Return the default ``sources.yaml`` path (repo root if present, else package)."""
     return _DEFAULT_SOURCES_PATH
 
 
 def parse_sources_mapping(data: dict[str, Any]) -> dict[str, SourceSpec]:
+    """Parse a decoded YAML mapping into ``SourceSpec`` objects.
+
+    Args:
+        data: Top-level mapping that must contain a non-empty ``sources`` dict.
+
+    Returns:
+        ``{source_name: SourceSpec}``.
+
+    Raises:
+        DomainToolError: Invalid shape or missing required fields.
+    """
     if not isinstance(data, dict):
         raise DomainToolError("sources.yaml must be a mapping")
     raw_sources = data.get("sources")
@@ -49,6 +74,17 @@ def parse_sources_mapping(data: dict[str, Any]) -> dict[str, SourceSpec]:
 
 
 def load_sources_file(path: str | Path | None = None) -> dict[str, SourceSpec]:
+    """Read and parse a ``sources.yaml`` file.
+
+    Args:
+        path: Explicit path; ``None`` uses ``default_sources_path()``.
+
+    Returns:
+        ``{source_name: SourceSpec}``.
+
+    Raises:
+        DomainToolError: Missing file or invalid YAML shape.
+    """
     p = Path(path) if path else default_sources_path()
     if not p.is_file():
         raise DomainToolError(f"sources file not found: {p}")

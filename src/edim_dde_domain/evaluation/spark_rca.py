@@ -1,4 +1,30 @@
-"""Deterministic quality rubric for Spark job-failure RCA."""
+"""Deterministic quality rubric for Spark job-failure RCA (``spark_rca.quality``).
+
+Business purpose
+----------------
+After validate, the graph runs this evaluator to attach a structured ``quality``
+object to the API response. Scores are **deterministic** (no LLM-as-judge):
+
+* **contract** — required RCA fields / taxonomy / confidence range
+* **evidence** — citations resolve to the pack; analysis channels filled
+* **diagnosis** — lexical overlap with evidence; agrees with strong rule hints
+* **actions** — non-generic, sufficiently specific fixes
+* **context** — when runbooks/history/web were supplied, assessment mentions them
+* **safety** — web citations ⊆ provider hits; external context cannot replace
+  current-run evidence refs
+
+Pass gate (see ``EvaluationResult.passed``): score ≥ 0.75, contract=1,
+evidence≥0.75, actions≥0.66, safety=1.
+
+Evaluator ``confidence`` ≠ model ``root_cause.confidence``. The former reflects
+evidence-pack completeness + rubric coverage; the latter is the model's own
+estimate and is only mirrored in ``metadata.model_confidence``.
+
+Public API
+----------
+* ``SparkRcaQualityEvaluator`` — protocol-compatible evaluator class
+* ``register_spark_rca_evaluator`` — bootstrap registration hook
+"""
 
 from __future__ import annotations
 
@@ -8,6 +34,7 @@ from typing import Any
 from edim_dde_ai.evaluation import EvaluationResult, register_evaluator
 from edim_dde_domain.agents.spark_rca.helpers.classify import RCA_CATEGORIES
 
+# Actions that alone are not product-quality remediations.
 _GENERIC_ACTIONS = {
     "re-run with additional logging",
     "rerun with additional logging",
@@ -17,11 +44,13 @@ _GENERIC_ACTIONS = {
 
 
 def _result(output: dict[str, Any]) -> dict[str, Any]:
+    """Accept either a wrapped ``{\"result\": …}`` or a bare RCA payload."""
     value = output.get("result")
     return value if isinstance(value, dict) else output
 
 
 def _tokens(value: Any) -> set[str]:
+    """Lowercased alphanumeric tokens (≥4 chars) for cheap lexical overlap."""
     return {
         token.lower()
         for token in re.findall(r"[A-Za-z][A-Za-z0-9_.-]{3,}", str(value or ""))
@@ -29,10 +58,15 @@ def _tokens(value: Any) -> set[str]:
 
 
 class SparkRcaQualityEvaluator:
-    """Score contract, evidence, diagnosis, fixes, context use, and safety."""
+    """Score contract, evidence, diagnosis, fixes, context use, and safety.
+
+    Registered name: ``spark_rca.quality``. Invoked from
+    ``logic.evaluate_output`` via ``edim_dde_ai.evaluation.evaluate``.
+    """
 
     @property
     def name(self) -> str:
+        """Evaluator registry key."""
         return "spark_rca.quality"
 
     def evaluate(
@@ -42,6 +76,18 @@ class SparkRcaQualityEvaluator:
         output: dict[str, Any],
         context: dict[str, Any] | None = None,
     ) -> EvaluationResult:
+        """Run the six-dimension rubric and return a scored ``EvaluationResult``.
+
+        Args:
+            inputs: Should include ``evidence_pack`` (authoritative for this run).
+            output: Validated RCA ``result`` (or ``{\"result\": …}`` wrapper).
+            context: Optional runbook / historical / web context strings for the
+                context-assessment dimension.
+
+        Returns:
+            ``EvaluationResult`` with ``score``, ``confidence``, ``passed``,
+            per-dimension floats, and human-readable ``findings``.
+        """
         result = _result(output)
         pack = inputs.get("evidence_pack") or result.get("evidence_pack") or {}
         if not isinstance(pack, dict):
@@ -244,4 +290,5 @@ class SparkRcaQualityEvaluator:
 
 
 def register_spark_rca_evaluator() -> None:
+    """Register ``spark_rca.quality`` with the process-wide evaluator registry."""
     register_evaluator(SparkRcaQualityEvaluator())

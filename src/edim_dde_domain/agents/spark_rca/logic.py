@@ -1,4 +1,26 @@
-"""Spark RCA analysis + evidence assembly (SQL collect is domain.sql.query)."""
+"""Spark RCA graph business logic (pure state → state patches).
+
+Business purpose
+----------------
+Each public function here is the body of a ``domain.rca.*`` LangGraph node
+(see ``nodes.py``). Together they implement the product pipeline::
+
+    SQL collectors (framework) → assemble_evidence → classify_failure
+      → load_historical_context → build_web_search_query → web.search (builtin)
+      → build_retrieval_query → rag.retrieve (runbooks)
+      → prepare_llm_payload → synthesize (llm_chain)
+      → parse_llm_json → validate_output → evaluate_output → END
+
+Authoritative signal is always the live ``evidence_pack``. History, runbooks,
+and optional web search are **secondary** context lanes and must never block
+the request when empty or when providers fail.
+
+SQL collection itself lives in ``domain.sql.query`` nodes configured in
+``spark_rca.agent.yaml``; this module only assembles / classifies / prepares /
+validates around those rows.
+
+Public entry points mirror node type ids without the ``domain.rca.`` prefix.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +39,18 @@ from edim_dde_domain.llm.json_util import dumps, parse_json_object
 
 
 def _seed_from_rows(rows: list[Any], *keys: str) -> str | None:
+    """Pick the first non-empty value for any of ``keys`` across SQL result rows.
+
+    Used when the HTTP request omitted ``job_id`` / ``task_key`` but collectors
+    returned them on telemetry rows.
+
+    Args:
+        rows: List of dict-like SQL rows.
+        *keys: Candidate field names in priority order per row.
+
+    Returns:
+        First non-empty string value found, else ``None``.
+    """
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -28,7 +62,21 @@ def _seed_from_rows(rows: list[Any], *keys: str) -> str | None:
 
 
 def assemble_evidence(state: dict[str, Any]) -> dict[str, Any]:
-    """Build evidence_pack from SQL section outputs (or keep override/stub)."""
+    """Build ``evidence_pack`` from SQL section outputs (or keep override/stub).
+
+    When the client already supplied a non-empty ``evidence_pack``, collectors
+    are skipped by YAML ``skip_if_key`` and this node returns ``{}`` (no-op merge)
+    so the override is preserved.
+
+    Args:
+        state: Graph state after optional SQL collect nodes. Expected keys when
+            building from SQL: ``failure_anchors``, ``stage_pressure``,
+            ``error_logs``, ``timeline_events``, ``sql_plans``, ``job_run_id``.
+
+    Returns:
+        Patch with ``evidence_pack`` and optionally seeded ``job_id`` /
+        ``job_run_date`` / ``task_key``. Empty dict when override present.
+    """
     existing = state.get("evidence_pack")
     if isinstance(existing, dict) and existing:
         return {}
@@ -72,7 +120,16 @@ def assemble_evidence(state: dict[str, Any]) -> dict[str, Any]:
 def classify_failure(
     state: dict[str, Any], *, signal_groups: list[dict[str, Any]] | None = None
 ) -> dict[str, Any]:
-    """Config-seeded broad category hint from evidence pack."""
+    """Config-seeded broad category hint from evidence pack.
+
+    Args:
+        state: Must include ``evidence_pack``; optional ``error_text`` is folded
+            into a temporary view for regex matching only.
+        signal_groups: YAML-configured ordered pattern groups (see classify.py).
+
+    Returns:
+        ``{\"classification_hint\": {...}}``.
+    """
     pack = state.get("evidence_pack") or {}
     if not isinstance(pack, dict):
         pack = {}
@@ -88,7 +145,17 @@ def classify_failure(
 
 
 def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
-    """Build a free-text query for runbook similarity search (RAG pilot)."""
+    """Build a free-text query for **runbook** similarity search (not experiences).
+
+    Experience queries are feature-based and live in ``historical_context``;
+    polluting runbook search with outcome-card phrasing would mix lanes.
+
+    Args:
+        state: ``evidence_pack`` + ``classification_hint``.
+
+    Returns:
+        ``{\"retrieval_query\": \"...\"}`` for the subsequent ``rag.retrieve`` node.
+    """
     pack = state.get("evidence_pack") or {}
     if not isinstance(pack, dict):
         pack = {}
@@ -107,6 +174,16 @@ def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
 def load_historical_context(
     state: dict[str, Any], *, config: dict[str, Any] | None = None
 ) -> dict[str, Any]:
+    """Compose experience + same-job history into ``historical_context``.
+
+    Args:
+        state: Live graph state.
+        config: Node YAML knobs — ``enabled``, ``corpus``, ``top_k``,
+            ``same_job_limit``.
+
+    Returns:
+        ``{\"historical_context\": \"...\"}`` (may be the literal ``\"None\"``).
+    """
     policy = config or {}
     return {
         "historical_context": compose_historical_context(
@@ -126,7 +203,22 @@ def build_web_search_query(
 
     Raw log excerpts, IDs, table names, paths, SQL, and user text are never sent.
     The query consists only of bounded technical feature tokens already derived
-    from the evidence pack.
+    from the evidence pack, plus a fixed remediation preamble. Empty string
+    disables the downstream ``web.search`` node effectively (provider no-ops).
+
+    Args:
+        state: ``classification_hint`` + ``evidence_pack``.
+        config: YAML policy — ``enabled`` (default false), ``trigger``,
+            ``confidence_below``.
+
+    Returns:
+        ``{\"web_search_query\": \"...\"}`` or empty string when skipped.
+
+    Example:
+        With ``enabled: false`` (default in agent YAML)::
+
+            >>> build_web_search_query(state, config={\"enabled\": False})
+            {'web_search_query': ''}
     """
     policy = config or {}
     if not bool(policy.get("enabled", False)):
@@ -181,6 +273,7 @@ def build_web_search_query(
 
 
 def _section_text(section: Any, empty_message: str) -> str:
+    """Serialize a section dict for the human prompt, or an empty placeholder."""
     if not section:
         return empty_message
     if isinstance(section, dict) and not any(section.values()):
@@ -189,7 +282,19 @@ def _section_text(section: Any, empty_message: str) -> str:
 
 
 def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
-    """Flatten evidence + classification into RCA human-prompt string fields."""
+    """Flatten evidence + classification into RCA human-prompt string fields.
+
+    Keys ending in ``_text`` / ``_section`` are intentional so they do not
+    overwrite structured state fields like ``classification_hint`` /
+    ``evidence_pack`` when the graph merges the patch.
+
+    Args:
+        state: Post-retrieval state including optional ``runbook_context``,
+            ``historical_context``, ``web_search_context``.
+
+    Returns:
+        Dict of string fields consumed by ``content/prompts/rca.human.md``.
+    """
     pack = state.get("evidence_pack") or {}
     if not isinstance(pack, dict):
         pack = {}
@@ -236,7 +341,17 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def parse_llm_json(state: dict[str, Any]) -> dict[str, Any]:
-    """Parse synthesize llm_chain text into llm_raw dict for validate_output."""
+    """Parse synthesize ``llm_chain`` text into ``llm_raw`` dict for validate.
+
+    On non-JSON model output, builds a soft stub from the classification hint so
+    validate can still emit a contract-shaped response.
+
+    Args:
+        state: Contains ``llm_raw`` (str or dict) plus hint / pack for fallback.
+
+    Returns:
+        ``{\"llm_raw\": {…}}``.
+    """
     parsed = parse_json_object(state.get("llm_raw"))
     if parsed:
         return {"llm_raw": parsed}
@@ -259,7 +374,14 @@ def parse_llm_json(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_output(state: dict[str, Any]) -> dict[str, Any]:
-    """Clamp draft into a stable API response shape (legacy-rich fields retained)."""
+    """Clamp draft into a stable API response shape (legacy-rich fields retained).
+
+    Args:
+        state: Post-parse state with ``llm_raw``, pack, hint, optional web hits.
+
+    Returns:
+        ``{\"result\": RcaResponse-shaped dict}`` (quality attached later).
+    """
     raw = state.get("llm_raw") or {}
     if not isinstance(raw, dict):
         raw = parse_json_object(raw) or {}
@@ -307,7 +429,18 @@ def validate_output(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def evaluate_output(state: dict[str, Any]) -> dict[str, Any]:
-    """Attach deterministic quality/confidence without replacing model confidence."""
+    """Attach deterministic quality/confidence without replacing model confidence.
+
+    Invokes the registered ``spark_rca.quality`` evaluator. Model
+    ``root_cause.confidence`` stays as emitted; evaluator confidence is a
+    separate pack-completeness metric under ``quality``.
+
+    Args:
+        state: Post-validate state with ``result`` and context strings.
+
+    Returns:
+        Updated ``result`` (with ``quality``) plus top-level ``quality`` mirror.
+    """
     from edim_dde_ai.evaluation import evaluate
 
     result = dict(state.get("result") or {})
