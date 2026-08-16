@@ -103,6 +103,11 @@ flowchart TB
 
 LLM nodes still execute (Foundry live, or `DomainStubLLM` in pytest).
 
+**Prod vs dry vs quality JSON:** without an override, prod builds `metrics` /
+`evidence_pack` from Databricks UC. Overrides (API body or harness case JSON)
+skip SQL only. Details:
+[Evaluation & quality §5b](../framework/evaluation-and-quality.md#5b-where-evidence--metrics-come-from-prod-vs-smoke).
+
 ---
 
 ← [Bundled agents](bundled-agents.md) · [Guide home](../README.md) · [Cluster tuning walkthrough](cluster-tuning-agent.md) →

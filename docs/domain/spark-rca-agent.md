@@ -45,6 +45,26 @@ It does **not** restart jobs, apply fixes, or open tickets.
 | `error_text` | No | Extra failure text for classify when provided |
 | `evidence_pack` | No | Full pack → **skip all SQL** collectors |
 
+### What `evidence_pack` is (and where it comes from)
+
+An **evidence pack** is the structured failure evidence for one run (anchors,
+log/SQL excerpts, stage signals, citation `ref`s) — **not** the same as
+cluster-tuning `metrics` (SKU / utilization / workers).
+
+| Source | Typical use |
+|--------|-------------|
+| **Assembled from Databricks UC** | Production: request has `job_run_id` and **no** `evidence_pack` → five SQL collectors run → `assemble_evidence` builds the pack |
+| **Sent in the request body** | Dry API / demos: client supplies `evidence_pack` → collectors skip; Foundry + RAG still run |
+| **JSON under `testdata/quality/`** | Quality corpus / harness smoke: pack (and often a frozen `output`) comes from case files |
+
+```text
+Prod:     { job_run_id }           → live SQL → real evidence_pack → Foundry
+Dry API:  { job_run_id, evidence_pack } → skip SQL → Foundry
+Harness:  case JSON pack/output    → score fixture  or  invoke + Foundry (SQL usually skipped)
+```
+
+Quality harness vs prod: [Evaluation & quality §5b](../framework/evaluation-and-quality.md#5b-where-evidence--metrics-come-from-prod-vs-smoke).
+
 Example (dry):
 
 ```bash

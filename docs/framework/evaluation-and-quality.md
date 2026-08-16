@@ -184,11 +184,44 @@ assert all(r.passed and not r.expectation_failures for r in rows)
 
 Pytest gate: `tests/test_quality_corpus.py`.
 
-### 5b. Unified Foundry harness (Quality Phase 2b)
+### 5b. Where evidence / metrics come from (prod vs smoke)
+
+Do not confuse the **quality harness** with **production runtime**. Neither
+`evidence_pack` (RCA) nor `metrics` (cluster tuning) is “always from JSON” or
+“always from Databricks” — the source depends on how the agent was invoked.
+
+| Source | When it happens | SQL collectors |
+|--------|-----------------|----------------|
+| **Built live from Databricks UC** | Prod / API / Apps: request has `job_run_id` or `job_id`+`cluster_id` and **does not** send a pack/metrics override | Run — assemble from warehouse telemetry |
+| **Sent in the HTTP / invoke state** | Client (or engineer) includes `evidence_pack` or `metrics` in the body | **Skipped** (`skip_if_key`) — rest of graph (RAG, Foundry, validate, quality) still runs |
+| **Case JSON under `testdata/quality/`** | Offline corpus gate, fixture-only harness rows, and most smoke `invoke_input` packs | N/A offline; skipped when pack/metrics are in `invoke_input` |
+
+```text
+PROD (typical)
+  POST { job_run_id }  →  SQL × N  →  real evidence_pack / metrics  →  Foundry  →  response
+                           (+ RecommendationStore save)
+
+HARNESS / SMOKE
+  case JSON  →  either:
+    score_output:     frozen output → rubric only (no Foundry, no SQL)
+    invoke_input:     pack/metrics from JSON → graph + Foundry (SQL skipped)
+                      (omit pack/metrics + real ids → full live SQL like prod)
+```
+
+**What “live” means in the harness:** `--live` + `invoke_input` makes the
+**Foundry completion** realtime. The **inputs** still usually come from the case
+JSON unless you omit the override and pass a real warehouse-backed id. Fixture
+cases without `invoke_input` stay `mode: score_output` even under `--live`
+(re-grade golden JSON only).
+
+Agent walkthroughs: [Spark RCA — input](../domain/spark-rca-agent.md#2-input-http--agent-state) ·
+[Cluster tuning — input](../domain/cluster-tuning-agent.md#2-input-http--agent-state).
+API dry vs warehouse live: [Live & dry smoke test](../contribute/live-smoke-test.md).
+
+### 5c. Unified Foundry harness (Quality Phase 2b)
 
 One runner covers **both** agents. Offline (default) re-scores fixtures; `--live`
 bootstraps agents and can invoke when cases include `invoke_input`.
-
 ```bash
 # Offline — deterministic fixtures, no Foundry
 python -m edim_dde_domain.evaluation.harness --corpus v1 --trials 1
@@ -280,10 +313,18 @@ an agreed lift on evidence / direction / history / diagnosis axes.
     | `expectations` | Applied | Applied to the **live** evaluation result |
 
     **Why pass `evidence_pack` / `metrics` in `invoke_input`?**  
-    Bundled agents honor overrides: SQL collectors use `skip_if_key: evidence_pack`
-    (RCA) or metrics override (tuning). That lets the live harness exercise LLM +
-    RAG + validate + quality **without** a live Databricks warehouse. Omit the
-    override to run the full SQL path (needs warehouse creds).
+    Those fields are the same overrides used on the HTTP API. SQL collectors use
+    `skip_if_key: evidence_pack` (RCA) or skip when `metrics` is already present
+    (tuning). That lets the live harness exercise LLM + RAG + validate + quality
+    **without** a live Databricks warehouse. The pack/metrics still come from the
+    **case JSON** in that mode — only the model answer is realtime.
+
+    **Prod is different:** a normal `POST /api/v1/rca/analyze` with a real
+    `job_run_id` and **no** `evidence_pack` builds the pack from UC SQL, then
+    calls Foundry. Omit the override in `invoke_input` (and supply a real id) to
+    approximate that full path from the harness (needs warehouse creds).
+
+    See [§5b Where evidence / metrics come from](#5b-where-evidence--metrics-come-from-prod-vs-smoke).
 
     #### Live trial — harness I/O at each step
 
@@ -366,7 +407,7 @@ an agreed lift on evidence / direction / history / diagnosis axes.
     Expect `results[].mode` = `invoke_agent` when `invoke_input` was used, and
     `score_output` for fixture-only cases still in the same run.
 
-### 5c. Golden axes (what cases should cover)
+### 5d. Golden axes (what cases should cover)
 
 Golden cases should cover the reasoning axes, not a fixed scenario enum:
 

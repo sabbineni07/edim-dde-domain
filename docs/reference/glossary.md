@@ -13,7 +13,10 @@
 | **Content** | Prompts/skills for `llm_chain` |
 | **Helper** | Agent-local pure module under `helpers/` |
 | **Source** | Named Databricks SQL connection spec |
-| **Override** | Request field that skips SQL (`metrics`, `evidence_pack`) |
+| **Override** | Request field that skips SQL: `metrics` (cluster tuning) or `evidence_pack` (RCA). Rest of the graph (RAG, Foundry, validate) still runs |
+| **`evidence_pack`** | Structured RCA failure evidence (anchors, excerpts, refs). Built from UC SQL in prod, or supplied in the request / quality JSON for dry/smoke |
+| **`metrics`** | One cluster-tuning telemetry row (SKU, util, workers). Built from UC SQL in prod, or supplied in the request / quality JSON for dry/smoke |
+| **Quality harness** | Offline/live runner over `testdata/quality/`; fixtures score golden JSON; `--live` + `invoke_input` calls Foundry (inputs usually still from JSON unless SQL override omitted) |
 | **Plugin** | External agent dir or entry point registered at runtime |
 | **HITL** | Human-in-the-loop — human review/approval in the agent workflow |
 | **LangSmith** | LangChain tracing / eval product used for EDIM observability |

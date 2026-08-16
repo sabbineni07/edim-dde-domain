@@ -37,6 +37,25 @@ The agent:
 | `include_explanation` | No | If true, second LLM call explains the recommendation |
 | `metrics` | No | Full metrics object → **skip SQL** |
 
+### What `metrics` is (and where it comes from)
+
+**`metrics`** is one job-cluster telemetry row (SKU, peak CPU/memory, provisioned
+workers, etc.) used for sizing. It is **not** an RCA `evidence_pack`.
+
+| Source | Typical use |
+|--------|-------------|
+| **Read from Databricks UC** | Production: `job_id` / `cluster_id` and **no** `metrics` → `collect_metrics` SQL runs |
+| **Sent in the request body** | Dry API / demos: client supplies `metrics` → SQL skipped; sizing LLM still runs |
+| **JSON under `testdata/quality/`** | Quality corpus / harness: metrics (and often a frozen recommendation `output`) come from case files |
+
+```text
+Prod:     { job_id, cluster_id }     → live SQL → real metrics → Foundry sizing
+Dry API:  { job_id, cluster_id, metrics } → skip SQL → Foundry
+Harness:  case JSON metrics/output   → score fixture  or  invoke + Foundry (SQL usually skipped)
+```
+
+Same three-source model as RCA: [Evaluation & quality §5b](../framework/evaluation-and-quality.md#5b-where-evidence--metrics-come-from-prod-vs-smoke).
+
 Also accepted at the HTTP layer: optional `X-Request-Id` (echoed; tags LangSmith / logs).
 
 Example (dry — no warehouse):

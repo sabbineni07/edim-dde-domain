@@ -18,5 +18,11 @@ python -m edim_dde_domain.evaluation.harness --corpus v1 --trials 1 --live \
   --agents spark_rca --out /tmp/rca-live.json
 ```
 
-See the engineer guide: `docs/framework/evaluation-and-quality.md` §5b
-(optional deep dive — live harness with `invoke_input`).
+**Note:** `invoke_input.evidence_pack` here is still **from the JSON file** (SQL
+collectors skip). Only the Foundry answer is realtime. Production builds the pack
+from Databricks when the request has a real `job_run_id` and no override.
+
+See the engineer guide: `docs/framework/evaluation-and-quality.md`
+
+- §5b — where evidence / metrics come from (prod vs smoke)
+- §5c deep dive — live harness with `invoke_input`

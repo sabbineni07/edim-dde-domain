@@ -22,6 +22,17 @@ This runbook proves the stack works **beyond unit tests**: API up, agents regist
 
 > **Important:** Dry ≠ offline. Dry skips the **warehouse** only. `uvicorn` / Compose API always use Foundry for bundled agents. True offline = `pytest` with `DomainStubLLM`.
 
+**Where does `evidence_pack` / `metrics` come from?**
+
+| Mode | Input source | Foundry |
+|------|--------------|---------|
+| Dry smoke | Client body supplies `metrics` or `evidence_pack` (often copied from fixtures) | Real |
+| Live smoke | **No** override → built from Databricks UC for the real `job_id` / `job_run_id` | Real |
+| Quality harness offline | Case JSON `inputs` + frozen `output` | None |
+| Quality harness `--live` + `invoke_input` | Case JSON pack/metrics (SQL skipped) unless you omit override | Real |
+
+Full table: [Evaluation & quality §5b](../framework/evaluation-and-quality.md#5b-where-evidence--metrics-come-from-prod-vs-smoke).
+
 ### Compose stack (API + Postgres) for local E2E
 
 ```bash
