@@ -205,8 +205,14 @@ class FoundryLLMProvider:
 
         Args:
             messages: ``(role, content)`` pairs (``system`` / ``human`` / ``ai``).
-            config: Optional knobs; ``chain == "explanation"`` raises temperature
-                to ``0.2`` (default ``0.0``).
+            config: Optional knobs:
+                * ``temperature`` — explicit override (bindings or node); else
+                  ``chain == "explanation"`` → ``0.2``, default ``0.0``
+                * ``top_p`` / ``max_tokens`` — optional chat-completion knobs
+                * ``endpoint`` / ``deployment`` — Phase 1 agent ``bindings.llm``
+                  overrides injected by GraphBuilder (omit → process globals)
+                * ``top_k`` — accepted on config for forward-compat; not sent to
+                  OpenAI chat completions (use ``top_p`` for nucleus sampling)
 
         Returns:
             Stripped assistant message content, or ``""`` if empty.
@@ -226,8 +232,39 @@ class FoundryLLMProvider:
         if config and config.get("chain") == "explanation":
             temperature = 0.2
 
+        # Phase 1 agent bindings: optional per-invoke endpoint/deployment/knobs.
+        endpoint_override = ""
+        model = self._model
+        top_p: float | None = None
+        max_tokens: int | None = None
+        if config:
+            endpoint_override = str(config.get("endpoint") or "").strip()
+            deployment_override = str(config.get("deployment") or "").strip()
+            if deployment_override:
+                model = deployment_override
+            if config.get("temperature") is not None:
+                try:
+                    temperature = float(config["temperature"])
+                except (TypeError, ValueError):
+                    pass
+            if config.get("top_p") is not None:
+                try:
+                    top_p = float(config["top_p"])
+                except (TypeError, ValueError):
+                    top_p = None
+            if config.get("max_tokens") is not None:
+                try:
+                    max_tokens = int(config["max_tokens"])
+                except (TypeError, ValueError):
+                    max_tokens = None
+        base_url = (
+            _openai_v1_base_url(endpoint_override)
+            if endpoint_override
+            else self._base_url
+        )
+
         client = OpenAI(
-            base_url=self._base_url,
+            base_url=base_url,
             api_key=self._token_provider(),
         )
         normalized = []
@@ -240,15 +277,21 @@ class FoundryLLMProvider:
             else:
                 normalized.append({"role": "user", "content": content})
 
+        create_kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": normalized,
+            "temperature": temperature,
+        }
+        if top_p is not None:
+            create_kwargs["top_p"] = top_p
+        if max_tokens is not None:
+            create_kwargs["max_tokens"] = max_tokens
+
         logger.debug(
             "foundry_chat_invoke",
-            extra={"model": self._model, "base_url": self._base_url, "n_messages": len(normalized)},
+            extra={"model": model, "base_url": base_url, "n_messages": len(normalized)},
         )
-        resp = client.chat.completions.create(
-            model=self._model,
-            messages=normalized,
-            temperature=temperature,
-        )
+        resp = client.chat.completions.create(**create_kwargs)
         choice = (resp.choices or [None])[0]
         if choice is None or choice.message is None:
             return ""

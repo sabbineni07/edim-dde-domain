@@ -38,6 +38,30 @@ graph:
 
 Compiled agents are **cached** after first `create_agent`; re-registering YAML invalidates that id.
 
+## Optional `bindings` (Phase 1 LLM; search/cosmos/sql-warehouse documented)
+
+Per-agent infra targets without forking process globals. See [YAML schema — bindings](yaml-schema.md#bindings-phase-1--llm-wired-search--cosmos--sql-warehouse-documented).
+
+```yaml
+bindings:
+  llm:
+    endpoint: ${ENV:AZURE_OPENAI_ENDPOINT}
+    deployment: ${ENV:AZURE_OPENAI_DEPLOYMENT_NAME}
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 40
+    max_tokens: 4096
+  search:
+    endpoint: ${ENV:EDIM_AZURE_SEARCH_ENDPOINT}
+    index: ${ENV:EDIM_AZURE_SEARCH_INDEX}
+  cosmos:
+    endpoint: ${ENV:EDIM_COSMOS_ENDPOINT}
+    database: ${ENV:EDIM_COSMOS_DATABASE}
+  sql-warehouse:
+    host: ${ENV:DATABRICKS_HOST}
+    http_path: ${ENV:DATABRICKS_HTTP_PATH}
+```
+
 More detail: `edim-dde-ai/docs/USAGE.md` · `edim-dde-ai/docs/DESIGN.md`
 
 <!-- edim-learning-nav -->

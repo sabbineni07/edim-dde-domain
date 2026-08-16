@@ -65,6 +65,27 @@ metadata:
 model:
   ref: foundry-gpt-4o     # logical id; resolves via env/registry later
 
+# Optional Phase 1: per-agent infra targets (omit → process .env globals).
+# llm is wired today (incl. literal sampling knobs); search / cosmos /
+# sql-warehouse are shape-validated for demos.
+bindings:
+  llm:
+    endpoint: ${ENV:AZURE_OPENAI_ENDPOINT}
+    deployment: ${ENV:AZURE_OPENAI_DEPLOYMENT_NAME}
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 40
+    max_tokens: 4096
+  search:
+    endpoint: ${ENV:EDIM_AZURE_SEARCH_ENDPOINT}
+    index: ${ENV:EDIM_AZURE_SEARCH_INDEX}
+  cosmos:
+    endpoint: ${ENV:EDIM_COSMOS_ENDPOINT}
+    database: ${ENV:EDIM_COSMOS_DATABASE}
+  sql-warehouse:
+    host: ${ENV:DATABRICKS_HOST}
+    http_path: ${ENV:DATABRICKS_HTTP_PATH}
+
 tools: []                 # future tool registry refs
 
 rag:
@@ -103,6 +124,53 @@ Practical R1: set `metadata.hitl_required` for documentation/catalog; keep `hitl
 ### `rag.cite`
 
 When `true`, the agent/prompt policy should **ground answers in retrieved sources** (runbook doc ids, evidence `ref`s) instead of free-form claims. Used on `spark_rca` with corpus `spark-runbooks`. It does not change the vector index itself — it is a **response policy** flag for prompts / future output checks.
+
+### `bindings` (Phase 1 — LLM wired; search / cosmos / sql-warehouse documented)
+
+Optional per-agent infra overrides. **Omit the whole block** (or omit a key) to keep process `.env` / Key Vault globals.
+
+| Field | Meaning | Runtime today |
+|-------|---------|---------------|
+| `bindings.llm.endpoint` | Foundry / Azure OpenAI base URL | Injected into `llm_chain` |
+| `bindings.llm.deployment` | Deployment / model name | Injected into `llm_chain` |
+| `bindings.llm.temperature` | Sampling temperature (**literal**) | Injected; Foundry honors |
+| `bindings.llm.top_p` | Nucleus sampling (**literal**) | Injected; Foundry honors |
+| `bindings.llm.top_k` | Top-k (**literal**, provider-dependent) | Injected on config |
+| `bindings.llm.max_tokens` | Max completion tokens (**literal**) | Injected; Foundry honors |
+| `bindings.search.endpoint` | Azure AI Search service URL | Parsed only (wiring later) |
+| `bindings.search.index` | Physical index name | Parsed only (wiring later) |
+| `bindings.cosmos.endpoint` | Cosmos account URL | Parsed only (wiring later) |
+| `bindings.cosmos.database` | Cosmos database name | Parsed only (wiring later) |
+| `bindings.sql-warehouse.host` | Databricks workspace host | Parsed only (wiring later) |
+| `bindings.sql-warehouse.http_path` | SQL warehouse HTTP path | Parsed only (wiring later) |
+
+Use **literal strings** for non-secrets when you want (URLs, deployment names, index/database names, hosts) — e.g. `endpoint: https://….openai.azure.com/openai/v1`. Prefer `${ENV:VAR_NAME}` when the value is environment-specific and you do not want it committed. Sampling knobs (`temperature`, `top_p`, `top_k`, `max_tokens`) are always **literal numbers**.
+
+**Never** put secrets in YAML (API keys, Cosmos keys, Search keys, client secrets) — those stay in `.env` / Key Vault and are read by the process globals (or via `${ENV:…}` only if you deliberately surface a secret-bearing env name, which is still discouraged in agent YAML).
+
+If a `${ENV:…}` ref is declared but the variable is missing/empty, graph build **fails closed** for that LLM string binding.
+
+Bundled agents ship a **commented** demo that reuses the live process env names (`AZURE_OPENAI_*`, `EDIM_AZURE_SEARCH_*`, `EDIM_COSMOS_*`, `DATABRICKS_*`).
+
+```yaml
+bindings:
+  llm:
+    endpoint: ${ENV:AZURE_OPENAI_ENDPOINT}
+    deployment: ${ENV:AZURE_OPENAI_DEPLOYMENT_NAME}
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 40
+    max_tokens: 4096
+  search:
+    endpoint: ${ENV:EDIM_AZURE_SEARCH_ENDPOINT}
+    index: ${ENV:EDIM_AZURE_SEARCH_INDEX}
+  cosmos:
+    endpoint: ${ENV:EDIM_COSMOS_ENDPOINT}
+    database: ${ENV:EDIM_COSMOS_DATABASE}
+  sql-warehouse:
+    host: ${ENV:DATABRICKS_HOST}
+    http_path: ${ENV:DATABRICKS_HTTP_PATH}
+```
 ---
 
 ## Breaking-change policy
