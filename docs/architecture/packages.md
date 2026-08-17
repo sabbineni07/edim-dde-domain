@@ -5,6 +5,12 @@
 
 Ownership boundaries — keep dependencies one-way.
 
+**One-line contract (use in reviews / slides):**
+
+> **ai** = reusable agent runtime (graphs, scoring hooks, stores, traces).  
+> **domain** = Databricks + product semantics (SQL/UC, Foundry, tuning & RCA).  
+> **api** = thin HTTP host.
+
 ---
 
 ## Responsibility matrix

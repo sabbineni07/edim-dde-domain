@@ -17,6 +17,17 @@ EDIM_ENV=dev  ──►  workspaces.yaml entries with env: dev  ✓
 
 ---
 
+## Setup (default vs multi-workspace)
+
+| Scenario | What to configure |
+|----------|-------------------|
+| **One Databricks workspace per App (R1 default)** | Leave `config/workspaces.yaml` as `workspaces: {}`. Set process `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, and `DATABRICKS_*_TABLE` in deploy env / Key Vault. No `workspace_id` on requests required. |
+| **Several workspaces inside one `EDIM_ENV`** | Add catalog entries with `env: <EDIM_ENV>`. Set per-workspace host/path (often via env placeholders). Set `EDIM_DEFAULT_WORKSPACE_ID` when the catalog has more than one entry. Pass `workspace_id` on API requests (or rely on default). |
+
+The shipped package includes an empty catalog — behaviour matches pre-resolver installs until you add entries.
+
+---
+
 ## What it resolves
 
 | Concern | Source |

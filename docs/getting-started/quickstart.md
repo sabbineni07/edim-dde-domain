@@ -94,6 +94,8 @@ export LANGCHAIN_PROJECT=edim-dde-dev
 # export EDIM_FAISS_INDEX_PATH=/tmp/edim-indexes
 ```
 
+See [LangSmith setup](../platform/langsmith-setup.md) for self-hosted endpoints, UI navigation (Application vs tracing project), and validation. On Windows, load `.env` into the same PowerShell session before `uvicorn` — [Windows smoke checklist](../contribute/windows-smoke-checklist.md).
+
 ### Start API
 
 ```bash

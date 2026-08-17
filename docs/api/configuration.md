@@ -88,6 +88,24 @@ curl -s localhost:8080/health   # includes observability + state_store + recomme
 
 Full store guides: [Control-plane state store](../platform/state-store.md) · [Recommendation store](../platform/recommendation-store.md).
 
+## Observability (LangSmith)
+
+`uvicorn` does **not** load `edim-dde-domain/.env` automatically — export vars in the shell that starts the API (or use `make host-run`).
+
+```bash
+export EDIM_OBSERVABILITY=langsmith
+export EDIM_ENV=dev
+export LANGCHAIN_TRACING_V2=true          # required for LangGraph tracing (not LANGSMITH_TRACING alone)
+export LANGCHAIN_API_KEY=lsv2_pt_...
+export LANGCHAIN_PROJECT=edim-dde-dev     # tracing project in LangSmith UI — not EDIM_ENV
+# Self-hosted:
+# export LANGCHAIN_ENDPOINT=https://your-host.example.net/api/v1
+```
+
+Validate: `GET /health` → `"observability": "langsmith"`; dry agent call with `X-Request-Id`; find run in LangSmith under **My First App** → project **`LANGCHAIN_PROJECT`**.
+
+Full guide (UI hierarchy, `LANGCHAIN_*` vs `LANGSMITH_*`, Windows steps, troubleshooting): [LangSmith setup](../platform/langsmith-setup.md).
+
 **Smoke testing (dry Foundry-only or live SQL):** [Live & dry smoke test](../contribute/live-smoke-test.md).
 
 **Deploy (Databricks Apps / Docker / ACA):** [Deploy & hosting](deploy-and-hosting.md).

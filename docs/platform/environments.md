@@ -11,6 +11,23 @@ Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 
 ---
 
+## `EDIM_ENV` vs deploy configuration
+
+One **deployed App / process** = one **`EDIM_ENV`**. That value is **identity and tagging**, not a substitute for CI/CD env vars.
+
+| Layer | What it does | Example |
+|-------|----------------|---------|
+| **`EDIM_ENV`** | Tags traces (`env:dev`), fail-closed workspace catalog filter, docs matrix row | `dev` |
+| **Deploy env vars** | Primary runtime config: Databricks host/path, table FQNs, Foundry, LangSmith key | `DATABRICKS_HOST`, `LANGCHAIN_PROJECT` |
+| **`config/workspaces.yaml`** | **Optional** overlay when one env has **multiple** Databricks workspaces | Leave `workspaces: {}` until needed — see [workspace resolver](../domain/workspace-resolver.md) |
+| **`LANGCHAIN_PROJECT`** | LangSmith **tracing project** (Runs tab) | `edim-dde-dev` — not the same string as `EDIM_ENV` |
+
+**R1 default:** one API App per environment; process-level `DATABRICKS_*` only; empty workspace catalog. Add `workspaces.yaml` entries only when DEV (or another env) must route SQL to more than one warehouse/UC target inside the same `EDIM_ENV`.
+
+**Identities (who authenticates):** Identity **U** = signed-in user (SQL on Apps); **A** = host runtime (Key Vault); **B** = Foundry workload SP (`EDIM_FOUNDRY_*`). Full matrix: [Access & permissions](access-and-permissions.md) · [Authentication flows](authentication-flows.md).
+
+---
+
 ## Matrix (current)
 
 | Concern | SDBX | DEV | PROD |

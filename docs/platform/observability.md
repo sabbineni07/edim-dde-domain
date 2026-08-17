@@ -82,7 +82,9 @@ Custom backends: implement `ObservabilityProvider` and call `set_observability_p
 
 ## 5. LangSmith (recommended)
 
-Hands-on setup: **[LangSmith setup](langsmith-setup.md)** (next page).
+Full setup, env naming (`LANGCHAIN_*` vs `LANGSMITH_*`), UI hierarchy (Application vs tracing project), Windows validation, and troubleshooting: **[LangSmith setup](langsmith-setup.md)**.
+
+Minimal `.env`:
 
 ```bash
 EDIM_OBSERVABILITY=langsmith
@@ -90,7 +92,12 @@ EDIM_ENV=dev
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=lsv2_pt_...
 LANGCHAIN_PROJECT=edim-dde-dev
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com   # or self-hosted /api/v1 URL
 ```
+
+Confirm: `GET /health` → `"observability": "langsmith"`.
+
+**Not used:** LangSmith UI “OpenAI Agents SDK” quickstart (`langsmith[openai-agents]`, `OpenAIAgentsTracingProcessor`) — EDIM traces via **LangGraph auto-tracing** (see setup guide §2).
 
 ---
 

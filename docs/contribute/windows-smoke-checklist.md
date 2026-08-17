@@ -158,6 +158,14 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 # DATABRICKS_JOB_CLUSTER_METRICS_TABLE=catalog.schema.job_cluster_metrics
 # DATABRICKS_SPARK_METRICS_TABLE=catalog.schema.spark_metrics
 # DATABRICKS_SPARK_LOGS_TABLE=catalog.schema.spark_logs
+
+# LangSmith (optional — see docs/platform/langsmith-setup.md):
+# EDIM_OBSERVABILITY=langsmith
+# LANGCHAIN_TRACING_V2=true
+# LANGCHAIN_API_KEY=...
+# LANGCHAIN_PROJECT=edim-dde-dev
+# LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+# Do NOT set EDIM_LANGSMITH_ENABLED=auto (only unset or false)
 ```
 
 If using Key Vault bootstrap, verify secret-map order is:
@@ -359,6 +367,39 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/rca/analyze `
 
 ---
 
+## Step 6b — Validate LangSmith (optional)
+
+Full reference: [LangSmith setup guide](../platform/langsmith-setup.md).
+
+Prerequisites: LangSmith vars in `.env` (Step 4), API running (Step 5), dry tuning call succeeded (Step 6).
+
+1. **Health**
+
+```powershell
+curl.exe -sS http://127.0.0.1:8080/health
+```
+
+Pass: JSON contains `"observability": "langsmith"`. If `"none"`, reload `.env` in the uvicorn shell (Step 4 loader) and restart.
+
+2. **Correlated dry call** (if you skipped Step 6 tuning):
+
+```powershell
+curl.exe -sS -D - http://127.0.0.1:8080/api/v1/cluster_tuning/recommend `
+  -H "content-type: application/json" `
+  -H "X-Request-Id: langsmith-win-001" `
+  --data-binary "@C:\temp\edim-tuning-dry.json"
+```
+
+3. **LangSmith UI**
+
+- Sidebar **Application** → **My First App** (not **All Applications**)
+- Open **Tracing** → project matching **`LANGCHAIN_PROJECT`** from `.env`
+- Find run **`cluster_tuning`**; metadata `request_id` = `langsmith-win-001`
+
+**Common mistakes:** using `LANGSMITH_TRACING` without `LANGCHAIN_TRACING_V2`; looking under wrong Application; expecting OpenAI Agents SDK layout (EDIM uses LangGraph — see setup guide §2).
+
+---
+
 ## Step 7 — Live smoke (after §B filled)
 
 1. Ensure warehouse is **running** and your AAD user can `SELECT` the tables.
@@ -401,6 +442,7 @@ curl.exe -sS http://127.0.0.1:8080/api/v1/cluster_tuning/recommend `
 - [ ] `/health` OK  
 - [ ] Dry tuning 200 (+ `recommendation_id` if Postgres)  
 - [ ] Dry RCA 200  
+- [ ] *(optional)* LangSmith: `/health` → `observability: langsmith`; trace in `LANGCHAIN_PROJECT` ([Step 6b](#step-6b--validate-langsmith-optional))  
 - [ ] *(optional)* Live tuning 200  
 - [ ] *(optional)* Live RCA 200  
 - [ ] Note request ids + date + dry vs live  
@@ -421,6 +463,9 @@ If blocked, send: mode, `/health` JSON, HTTP status, `error_code`, request id �
 | Docker / Postgres fail | Start Docker Desktop; `docker compose -f ..\docker-compose.state-store.yml ps`; free port 5432 |
 | `psycopg` missing | `pip install -e "..\edim-dde-ai[postgres]"` |
 | Foundry 503 | Re-check endpoint (no trailing path mistakes), deployment **name**, `az account show` |
+| `/health` → `observability: none` | Load `.env` in uvicorn shell; `LANGCHAIN_TRACING_V2=true`; see [LangSmith setup §7](../platform/langsmith-setup.md#71-confirm-process-config) |
+| No traces in LangSmith | Use **My First App** (not All Applications); match `LANGCHAIN_PROJECT`; keep `LANGCHAIN_TRACING_V2` |
+| `EDIM_LANGSMITH_ENABLED=auto` | Remove — only unset or `false` is valid |
 
 ---
 

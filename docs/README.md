@@ -58,14 +58,14 @@ API startup configures concerns in roughly this order — docs follow it so ment
 
 | Step | Page | Plane |
 |------|------|-------|
-| **C1** | [Environments](platform/environments.md) | SDBX / DEV / PROD matrix |
+| **C1** | [Environments](platform/environments.md) | SDBX / DEV / PROD matrix; `EDIM_ENV` vs deploy vars; default empty workspace catalog |
 | **C2** | [Security baseline](platform/security-baseline.md) | Trust boundaries, app role matrix (docs) |
 | **C2b** | [**Access & permissions**](platform/access-and-permissions.md) | Identities U/A/B — who runs SQL / Foundry / KV per host |
 | **C2b-flow** | [**Authentication flows**](platform/authentication-flows.md) | Visual auth: User → Apps → API → UC / RAG / Foundry / stores / LangSmith |
 | **C2c** | [**Key Vault bootstrap**](platform/key-vault-bootstrap.md) | Vault auth order, `EDIM_KV_SECRET_MAP`, examples |
 | **C3** | [PII guardrails](platform/pii-guardrails.md) | Redaction before logs/traces |
 | **C4** | [Observability providers](platform/observability.md) | LangSmith / MLflow / none |
-| **C5** | [LangSmith setup](platform/langsmith-setup.md) | Projects, keys, local vs SaaS |
+| **C5** | [LangSmith setup](platform/langsmith-setup.md) | Env vars, UI hierarchy, LangGraph vs SDK quickstarts, Windows validation |
 | **C6** | [Control-plane state store](platform/state-store.md) | `EDIM_STATE_STORE` — agent catalog / sessions / audit (examples in guide) |
 | **C6b** | [Recommendation lifecycle store](platform/recommendation-store.md) | `EDIM_RECOMMENDATION_STORE` — tuning/RCA history rows + status; [Cosmos §4b](platform/recommendation-store.md#4b-setting-up-cosmos-for-edim_recommendation_storecosmos) |
 | **C7** | [Retrieval & RAG](platform/retrieval-and-rag.md) | FAISS / Azure AI Search / Databricks; [Azure setup §8](platform/retrieval-and-rag.md#8-setting-up-azure-ai-search-for-a-real-retrievalprovider) |

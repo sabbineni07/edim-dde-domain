@@ -7,6 +7,15 @@ Open the slide deck for architecture reviews and PowerPoint capture:
 
 **→ [Open HTML deck (Present mode)](diagrams/r1-architecture-deck.html)**
 
+### Speaker line (slide 03 — packages)
+
+> We split the stack on a hard boundary: **ai** is the reusable agent runtime;
+> **domain** is Databricks plus this product’s agents; **api** is a thin HTTP host.
+> YAML composes graphs; Python is allowlisted. The framework never talks to Unity Catalog.
+
+That is the intended contract. Today, a few safety/quality helpers still live in domain
+(PII patterns, quality harness) and may move into ai later — do not over-claim file locations.
+
 | Asset | Use |
 |-------|-----|
 | [r1-architecture-deck.html](diagrams/r1-architecture-deck.html) | Chrome → **Present** → capture 1280×720 slides into PPT |

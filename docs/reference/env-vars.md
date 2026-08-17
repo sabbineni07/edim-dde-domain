@@ -56,13 +56,26 @@ Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/ret
 | `EDIM_KV_FORCE` | Key Vault | `1` = overwrite existing env from vault |
 | `EDIM_KV_CLIENT_ID` / `EDIM_KV_CLIENT_SECRET` / `EDIM_KV_TENANT_ID` | Key Vault | Optional dedicated vault-reader SP |
 | `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` | Apps (injected) | App SP — used to open KV when tenant set |
-| `LANGCHAIN_TRACING_V2` | LangSmith | Set `true` to enable tracing |
-| `LANGCHAIN_API_KEY` | LangSmith | API key (from UI or Key Vault) |
-| `LANGCHAIN_PROJECT` | LangSmith | Project name (`edim-dde-sdbx` / `edim-dde-dev` / `edim-dde-prod`) |
-| `LANGCHAIN_ENDPOINT` | LangSmith | Default `https://api.smith.langchain.com` |
-| `EDIM_LANGSMITH_ENABLED` | runtime | Set `false` to force-disable EDIM tracing helpers |
+| `LANGCHAIN_TRACING_V2` | LangSmith / LangGraph | Set `true` to enable **LangGraph → LangSmith** tracing (required for EDIM) |
+| `LANGCHAIN_API_KEY` | LangSmith | API key (from UI or Key Vault secret `langchain-api-key`) |
+| `LANGCHAIN_PROJECT` | LangSmith | **Tracing project** name (`edim-dde-sdbx` / `edim-dde-dev` / `edim-dde-prod`) |
+| `LANGCHAIN_ENDPOINT` | LangSmith | SaaS: `https://api.smith.langchain.com`; self-hosted: your `/api/v1` URL |
+| `EDIM_LANGSMITH_ENABLED` | EDIM observability | Optional **off switch only**: `false` forces EDIM to ignore tracing (do not set `auto`) |
 | `EDIM_STRICT_STARTUP` | API | `1`/`true` → fail process start if Foundry endpoint missing |
 | `EDIM_REQUIRE_SQL` | API | With strict: also require Databricks host/path |
+
+### LangSmith tracing
+
+EDIM uses **LangGraph automatic tracing** (`LANGCHAIN_TRACING_V2`), not the LangSmith UI “OpenAI Agents SDK” integration. Setup and validation: [LangSmith setup guide](../platform/langsmith-setup.md).
+
+| LangSmith UI / newer SDK docs | EDIM / LangGraph (use these) |
+|-------------------------------|------------------------------|
+| `LANGSMITH_TRACING=true` | **`LANGCHAIN_TRACING_V2=true`** (do not use bare `LANGCHAIN_TRACING`) |
+| `LANGSMITH_API_KEY` | `LANGCHAIN_API_KEY` (aliases often work — set both if your ops standard requires `LANGSMITH_*`) |
+| `LANGSMITH_PROJECT` | `LANGCHAIN_PROJECT` |
+| `LANGSMITH_ENDPOINT` | `LANGCHAIN_ENDPOINT` |
+
+The `langsmith` Python package is installed **transitively** via `langchain-core` (optional extra: `edim-dde-ai[observability]`).
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
 

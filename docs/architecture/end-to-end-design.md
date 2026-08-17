@@ -103,6 +103,8 @@ edim-dde-ai
 | **edim-dde-domain** | `sources.yaml`, `domain.sql.query`, Foundry adapter, Key Vault, PII, bundled agents, `corpora.yaml`, runbooks | FastAPI routes |
 | **edim-dde-api** | Middleware, lifespan wiring, OpenAPI projection, curated ingest route | Agent business logic |
 
+**Slide-ready contract:** ai = reusable runtime · domain = Databricks + product semantics · api = thin HTTP host.
+
 Detail: [packages.md](packages.md).
 
 ---

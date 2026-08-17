@@ -414,7 +414,12 @@
         <div>
           <div class="eyebrow">Package view</div>
           <h1>Responsibility boundaries</h1>
-          <p class="subtitle">Dependency direction is strict: <span class="mono">api → domain → ai</span></p>
+          <p class="subtitle">
+            <strong>ai</strong> = reusable agent runtime &nbsp;·&nbsp;
+            <strong>domain</strong> = Databricks + product semantics &nbsp;·&nbsp;
+            <strong>api</strong> = thin HTTP host
+            &nbsp;·&nbsp; Dependency: <span class="mono">api → domain → ai</span>
+          </p>
         </div>
       </div>
       <div class="body">
@@ -431,13 +436,13 @@
             <tr>
               <td><strong>edim-dde-ai</strong></td>
               <td class="mono">1.0.0</td>
-              <td>YAML schema, LangGraph builder, registries, llm_chain, invoke_agent, LangSmith hooks</td>
-              <td>SQL, Foundry credentials, HTTP, product prompts</td>
+              <td>YAML → LangGraph runtime, registries, llm_chain, retrieval, stores, observability, scoring hooks</td>
+              <td>Databricks SQL, Foundry credentials, HTTP, product prompts</td>
             </tr>
             <tr>
               <td><strong>edim-dde-domain</strong></td>
               <td class="mono">1.0.0</td>
-              <td>Named sources, auth, Foundry adapter, Key Vault helper, PII patterns, bundled agents</td>
+              <td>Databricks SQL / UC, Apps auth, Foundry adapter, Key Vault, workspace pick, cluster_tuning · spark_rca</td>
               <td>HTTP middleware, generic graph runtime</td>
             </tr>
             <tr>
@@ -451,7 +456,7 @@
         <div class="grid grid-3" style="margin-top:16px">
           <div class="card" style="min-height:120px;border-top:4px solid var(--teal)">
             <h3>Design rule</h3>
-            <ul><li>Data collection = declarative SQL in YAML + one generic <span class="mono">domain.sql.query</span></li></ul>
+            <ul><li>Framework stays Databricks-unaware. Product SQL lives in domain YAML + one <span class="mono">domain.sql.query</span> node.</li></ul>
           </div>
           <div class="card" style="min-height:120px;border-top:4px solid var(--slate)">
             <h3>Security stance</h3>
