@@ -1,0 +1,5 @@
+# Within-env workspace / dataset catalog.
+# See package copy under src/edim_dde_domain/config/workspaces.yaml for docs.
+# Repo-root file wins when present (same pattern as sources.yaml).
+
+workspaces: {}

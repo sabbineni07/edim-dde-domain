@@ -17,8 +17,8 @@ Set `EDIM_ENV` to one of: `sdbx` | `dev` | `uat` | `intg` | `prod`.
 |---------|------|-----|------|
 | Purpose | Spikes, LangSmith learning | Active development | Live Apps traffic |
 | `EDIM_ENV` | `sdbx` | `dev` | `prod` |
-| Databricks workspace | Sandbox | Shared DEV | Production |
-| SQL tables | Sample / synthetic UC | DEV UC FQNs | Prod UC FQNs |
+| Databricks workspace | Sandbox | One or more DEV workspaces (`dev_1` / …) | Production |
+| SQL tables | Sample / synthetic UC | DEV UC FQNs (per workspace via resolver) | Prod UC FQNs |
 | Azure OpenAI deployment | Non-prod | DEV deployment | Prod deployment |
 | Key Vault (convention) | `edim-dde-sdbx-kv` | `edim-dde-dev-kv` | `edim-dde-prod-kv` |
 | LangSmith project | `edim-dde-sdbx` | `edim-dde-dev` | `edim-dde-prod` |
@@ -72,6 +72,7 @@ See [Environment variables](../reference/env-vars.md) and [.env.example — see 
 Minimum for agent invoke:
 
 - Databricks: `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, table FQNs
+  (or within-env [workspace catalog](../domain/workspace-resolver.md))
 - Foundry: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT_NAME`
 - LangSmith (recommended): `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, `LANGCHAIN_PROJECT`
 - State store (recommended local): `EDIM_STATE_STORE=postgres` + `EDIM_DATABASE_URL` — see [state-store.md](state-store.md)

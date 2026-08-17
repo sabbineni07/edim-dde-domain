@@ -89,6 +89,7 @@ Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 | Step | Page | What you learn |
 |------|------|----------------|
 | **E1** | [Sources and SQL](domain/sources-and-sql.md) | Named sources + `domain.sql.query` |
+| **E1b** | [Within-env workspace resolver](domain/workspace-resolver.md) | Pick warehouse + UC FQNs inside `EDIM_ENV` only |
 | **E2** | [Sources & SQL design (deep)](DESIGN_SOURCES_AND_SQL_NODES.md) | Why one SQL node |
 | **E3** | [Bundled agents](domain/bundled-agents.md) | Map of `cluster_tuning`, `spark_rca` |
 | **E3a** | [**Agents deep dive**](domain/agents-guide.md) | Section hub — shared deps |

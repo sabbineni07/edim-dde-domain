@@ -34,6 +34,7 @@ The agent:
 | `cluster_id` | Yes* | Job cluster id filter (*SQL allows null; API currently requires it) |
 | `job_run_id` | No | Pin a specific run; otherwise latest matching row |
 | `start_date` / `end_date` | No | Bound `job_run_date` (`YYYY-MM-DD`) |
+| `workspace_id` | No | Within-env workspace for warehouse/UC FQNs ([resolver](workspace-resolver.md)) |
 | `include_explanation` | No | If true, second LLM call explains the recommendation |
 | `metrics` | No | Full metrics object → **skip SQL** |
 

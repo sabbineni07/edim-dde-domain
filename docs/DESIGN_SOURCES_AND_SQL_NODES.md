@@ -95,7 +95,9 @@ sources:
 - `${VAR}` interpolation for host/path (and optionally other non-secret fields).
 - `type` selects connector (`databricks_sql` first; later `postgres`, `local_stub`, …).
 - Unknown source name → fail at bootstrap or first use with a clear error.
-- Multi-workspace later: overlay table/query YAML per workspace; **reuse** the same source name or map `workspace_id → source`.
+- Multi-workspace **within one `EDIM_ENV`**: [workspace resolver](domain/workspace-resolver.md)
+  maps `workspace_id` → warehouse host/path + UC FQNs; cross-env entries are
+  never registered (fail closed). Complements `bindings.sql-warehouse`.
 - On Databricks Apps, API middleware calls `extract_forwarded_databricks_token` + `set_request_databricks_token` so SQL runs as the user.
 ### 4.4 Resolved source (runtime)
 

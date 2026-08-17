@@ -6,7 +6,8 @@
 
 | Variable | Used by | Purpose |
 |----------|---------|---------|
-| `EDIM_ENV` | API / tracing | Environment name: `sdbx` \| `dev` \| `uat` \| `intg` \| `prod` (Current focus: sdbx/dev/prod) |
+| `EDIM_ENV` | API / tracing / workspace resolver | Environment name: `sdbx` \| `dev` \| `uat` \| `intg` \| `prod` (Current focus: sdbx/dev/prod). **Binds the process** — workspace catalog only registers entries with matching `env`. |
+| `EDIM_DEFAULT_WORKSPACE_ID` | workspace resolver | Default within-env workspace when the request omits `workspace_id` (required if `workspaces.yaml` has multiple entries for this env) |
 | `EDIM_OBSERVABILITY` | API lifespan / AI | Backend: `langsmith` \| `mlflow` \| `none` \| `auto` (default auto) |
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
@@ -40,11 +41,11 @@ Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/ret
 | `EDIM_WEB_SEARCH_API_KEY` | HTTP JSON web provider | Provider API key (prefer Key Vault) |
 | `EDIM_WEB_SEARCH_KEY_HEADER` | HTTP JSON web provider | API-key header (default `Ocp-Apim-Subscription-Key`) |
 | `EDIM_WEB_SEARCH_TIMEOUT_SECONDS` | HTTP JSON web provider | Bounded request timeout (default 8 seconds) |
-| `DATABRICKS_HOST` | domain sources | SQL warehouse hostname |
-| `DATABRICKS_HTTP_PATH` | domain sources | Warehouse HTTP path |
-| `DATABRICKS_JOB_CLUSTER_METRICS_TABLE` | cluster_tuning SQL | UC FQN (`catalog.schema.table`) |
-| `DATABRICKS_SPARK_METRICS_TABLE` | spark_rca SQL | UC FQN |
-| `DATABRICKS_SPARK_LOGS_TABLE` | spark_rca SQL | UC FQN |
+| `DATABRICKS_HOST` | domain sources / workspace fallback | SQL warehouse hostname (process default; catalog may override per workspace) |
+| `DATABRICKS_HTTP_PATH` | domain sources / workspace fallback | Warehouse HTTP path |
+| `DATABRICKS_JOB_CLUSTER_METRICS_TABLE` | cluster_tuning SQL / workspace fallback | UC FQN (`catalog.schema.table`) |
+| `DATABRICKS_SPARK_METRICS_TABLE` | spark_rca SQL / workspace fallback | UC FQN |
+| `DATABRICKS_SPARK_LOGS_TABLE` | spark_rca SQL / workspace fallback | UC FQN |
 | `AZURE_OPENAI_ENDPOINT` | Foundry | OpenAI v1 endpoint |
 | `AZURE_OPENAI_DEPLOYMENT_NAME` | Foundry | Deployment name |
 | `EDIM_FOUNDRY_TENANT_ID` / `EDIM_FOUNDRY_CLIENT_ID` / `EDIM_FOUNDRY_CLIENT_SECRET` | Foundry (prod) | Foundry workload SP (often from Key Vault). Keeps SQL `DefaultAzureCredential` clean |
@@ -64,6 +65,8 @@ Hands-on Azure service + indexes + ingest: [Retrieval & RAG §8](../platform/ret
 | `EDIM_REQUIRE_SQL` | API | With strict: also require Databricks host/path |
 
 Table FQNs must match identifier validation (letters/digits/underscore; `schema.table` or `catalog.schema.table`).
+
+**Multi-workspace within one env:** see [Within-env workspace resolver](../domain/workspace-resolver.md) (`config/workspaces.yaml`). Process `DATABRICKS_*` remain the fallback when the catalog is empty for `EDIM_ENV`.
 
 ---
 

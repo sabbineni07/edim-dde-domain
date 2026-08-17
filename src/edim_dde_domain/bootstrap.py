@@ -2,10 +2,11 @@
 
 Business purpose
 ----------------
-One-shot process bootstrap for API / hosts: load ``sources.yaml``, corpora,
-experience transforms, quality evaluators, shared ``domain.sql.query``, then
-discover packaged (and optional external) ``*.agent.yaml`` graphs. Does **not**
-set an LLM provider — hosts must call ``set_llm_provider(...)``.
+One-shot process bootstrap for API / hosts: load ``sources.yaml``, within-env
+workspace catalog, corpora, experience transforms, quality evaluators, shared
+``domain.sql.query``, then discover packaged (and optional external)
+``*.agent.yaml`` graphs. Does **not** set an LLM provider — hosts must call
+``set_llm_provider(...)``.
 
 Public API
 ----------
@@ -31,6 +32,7 @@ from edim_dde_ai.errors import LoaderError
 
 from edim_dde_domain.errors import DomainToolError
 from edim_dde_domain.sources import load_sources
+from edim_dde_domain.workspace import load_workspace_resolver
 
 # Shared node type (not under a single agent package).
 from edim_dde_domain.nodes import sql_query as _sql_query_nodes  # noqa: F401
@@ -214,6 +216,7 @@ def bootstrap_agents(*, load_external: bool = True) -> None:
         if _READY:
             return
         load_sources()
+        load_workspace_resolver()
         _load_corpora()
         _register_experience_transforms()
         _register_evaluators()
@@ -331,12 +334,15 @@ def _register_evaluators() -> None:
 def reset_bootstrap() -> None:
     """Allow re-bootstrap after clearing sources (tests).
 
-    Clears the in-process sources registry and the ``_READY`` latch so the
-    next ``bootstrap_agents()`` runs the full registration path again.
+    Clears the in-process sources + workspace registries and the ``_READY``
+    latch so the next ``bootstrap_agents()`` runs the full registration path
+    again.
     """
     global _READY
     with _LOCK:
         _READY = False
         from edim_dde_domain.sources import clear_sources
+        from edim_dde_domain.workspace import clear_workspace_resolver
 
         clear_sources()
+        clear_workspace_resolver()

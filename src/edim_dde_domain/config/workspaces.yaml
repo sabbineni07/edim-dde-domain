@@ -1,0 +1,32 @@
+# Within-env workspace / dataset catalog.
+#
+# Hard rule: a process is bound to one EDIM_ENV. Only entries whose `env`
+# matches the process EDIM_ENV are registered; other envs are never selectable.
+#
+# When `workspaces` is empty (or this file is absent), the runtime falls back
+# to process DATABRICKS_HOST / DATABRICKS_HTTP_PATH / DATABRICKS_*_TABLE
+# as a single synthetic workspace id `default` (or EDIM_DEFAULT_WORKSPACE_ID).
+#
+# Example for EDIM_ENV=dev with three Databricks workspaces:
+#
+# workspaces:
+#   dev_1:
+#     env: dev
+#     server_hostname: ${DATABRICKS_HOST_DEV_1}
+#     http_path: ${DATABRICKS_HTTP_PATH_DEV_1}
+#     tables:
+#       job_cluster_metrics: catalog_dev1.schema.job_cluster_metrics
+#       spark_metrics: catalog_dev1.schema.spark_metrics
+#       spark_logs: catalog_dev1.schema.spark_logs
+#   dev_2:
+#     env: dev
+#     server_hostname: ${DATABRICKS_HOST_DEV_2}
+#     http_path: ${DATABRICKS_HTTP_PATH_DEV_2}
+#     tables:
+#       job_cluster_metrics: catalog_dev2.schema.job_cluster_metrics
+#       spark_metrics: catalog_dev2.schema.spark_metrics
+#       spark_logs: catalog_dev2.schema.spark_logs
+#
+# Then set EDIM_DEFAULT_WORKSPACE_ID=dev_1 (or pass workspace_id on the request).
+
+workspaces: {}

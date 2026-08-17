@@ -23,10 +23,20 @@ YAML config keys
 * ``skip_if_key`` — skip SQL when another state key already holds data
 * ``server_hostname`` / ``host`` / ``http_path`` — optional warehouse overlay
   (from agent ``bindings.sql-warehouse``); token still from named source auth
+
+Warehouse / UC table precedence (invoke time)
+---------------------------------------------
+1. ``bindings.sql-warehouse`` host/path (agent-fixed overlay)
+2. Within-env workspace resolver (``state.workspace_id`` → catalog / process)
+3. Named source from ``sources.yaml`` (``DATABRICKS_*``)
+
+Table FQNs for ``${DATABRICKS_*_TABLE}`` come from the workspace dataset when
+resolved, else process env. Resolvers **never** cross ``EDIM_ENV`` boundaries.
 """
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from dataclasses import replace
@@ -41,6 +51,7 @@ from edim_dde_domain.errors import (
 )
 from edim_dde_domain.sources import try_get_resolved_source
 from edim_dde_domain.tools.sql import execute_sql, prepare_query
+from edim_dde_domain.workspace import resolve_workspace_dataset
 
 
 @register_node("domain.sql.query")
@@ -103,20 +114,37 @@ def sql_query_factory(config: dict[str, Any]):
                 "Apps user OAuth or `az login`)"
             )
 
-        # Optional per-agent warehouse overlay (bindings.sql-warehouse).
-        if (
-            isinstance(override_host, str)
-            and override_host.strip()
-        ) or (
-            isinstance(override_path, str)
-            and override_path.strip()
-        ):
+        # Within-env workspace → host/path + table FQN overlay (fail closed).
+        workspace = resolve_workspace_dataset(state.get("workspace_id"))
+        sql_environ = dict(os.environ)
+        sql_environ.update(workspace.as_sql_environ())
+
+        binding_host = (
+            isinstance(override_host, str) and bool(override_host.strip())
+        )
+        binding_path = (
+            isinstance(override_path, str) and bool(override_path.strip())
+        )
+
+        # Precedence: bindings.sql-warehouse > workspace catalog > source.
+        if not binding_host and workspace.server_hostname:
+            source = replace(
+                source,
+                server_hostname=strip_hostname(workspace.server_hostname),
+            )
+        if not binding_path and workspace.http_path:
+            source = replace(
+                source,
+                http_path=normalize_http_path(workspace.http_path),
+            )
+
+        if binding_host or binding_path:
             host = source.server_hostname
             path = source.http_path
-            if isinstance(override_host, str) and override_host.strip():
-                host = strip_hostname(override_host.strip())
-            if isinstance(override_path, str) and override_path.strip():
-                path = normalize_http_path(override_path.strip())
+            if binding_host:
+                host = strip_hostname(str(override_host).strip())
+            if binding_path:
+                path = normalize_http_path(str(override_path).strip())
             source = replace(
                 source,
                 server_hostname=host,
@@ -128,6 +156,7 @@ def sql_query_factory(config: dict[str, Any]):
             state=state,
             params_from_state=params_from_state,
             static_params=static_params,
+            environ=sql_environ,
         )
         rows = execute_sql(bound_sql, values, source=source)
 

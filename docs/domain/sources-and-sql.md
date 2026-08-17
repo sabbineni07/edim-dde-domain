@@ -16,9 +16,18 @@ sources:
     http_path: ${DATABRICKS_HTTP_PATH}
 ```
 
+## Within-env workspaces
+
+When one `EDIM_ENV` has multiple Databricks workspaces, use the
+[workspace / dataset resolver](workspace-resolver.md) (`config/workspaces.yaml`
++ request `workspace_id`). Hard rule: never cross env boundaries.
+
 ## `domain.sql.query`
 
 Generic node: interpolate validated `${ENV}` table FQNs, bind `:name` params from state, execute, write `output_key`.
+
+At invoke time it also applies the within-env workspace overlay (host/path +
+table FQNs), then optional `bindings.sql-warehouse`.
 
 Useful config keys:
 

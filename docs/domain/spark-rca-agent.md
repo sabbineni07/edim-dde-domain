@@ -41,7 +41,7 @@ It does **not** restart jobs, apply fixes, or open tickets.
 | `job_id` | No | Seeded into evidence / response when known |
 | `job_run_date` | No | Partition / date filter for metrics & logs |
 | `task_key` | No | Narrow to one task |
-| `workspace_id` | No | Reserved / passthrough |
+| `workspace_id` | No | Within-env workspace for warehouse/UC FQNs ([resolver](workspace-resolver.md)); never cross-env |
 | `error_text` | No | Extra failure text for classify when provided |
 | `evidence_pack` | No | Full pack → **skip all SQL** collectors |
 
