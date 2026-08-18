@@ -1,0 +1,32 @@
+agent_id: hitl_demo
+display_name: HITL resume demo
+version: 1
+metadata:
+  owner: platform
+  risk_tier: low
+  lifecycle: draft
+  hitl_required: true
+hitl:
+  enabled: true
+graph:
+  nodes:
+    - id: draft
+      type: set_value
+      field: proposal
+      template: "resize-{name}"
+    - id: approve
+      type: hitl.gate
+      prompt: Approve the proposed action?
+    - id: finish
+      type: set_value
+      field: status
+      template: "done:{hitl_decision}"
+    - id: pack
+      type: echo_result
+      from_fields: [name, proposal, hitl_decision, hitl_comment, status, session_id]
+  edges:
+    - [START, draft]
+    - [draft, approve]
+    - [approve, finish]
+    - [finish, pack]
+    - [pack, END]

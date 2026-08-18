@@ -19,10 +19,13 @@
 | **Quality harness** | Offline/live runner over `testdata/quality/`; fixtures score golden JSON; `--live` + `invoke_input` calls Foundry (inputs usually still from JSON unless SQL override omitted) |
 | **Outcome correlation (2c)** | Join persisted `response.quality` bands with RecommendationStore `accepted`/`applied` via `evaluation.correlation` CLI; optional `extra.outcome` labels/reruns |
 | **Plugin** | External agent dir or entry point registered at runtime |
-| **HITL** | Human-in-the-loop — human review/approval in the agent workflow |
+| **HITL** | Human-in-the-loop — pause at `hitl.gate`, persist session, resume via `/api/v1/sessions/{id}/resume`. Guide: [HITL resume](../framework/hitl-resume.md) |
 | **LangSmith** | LangChain tracing / eval product used for EDIM observability |
 | **Observability provider** | Pluggable backend in `edim-dde-ai` (`langsmith` \| `mlflow` \| `none`) |
-| **Control plane** | Catalog, sessions, audit — managed via `StateStore`, not SQL/LLM work |
+| **Control plane** | Catalog, sessions, audit — managed via `StateStore`, not SQL/LLM work. **Not** the future routing/governance plane — see [Agent control plane](../architecture/agent-control-plane.md) |
+| **Agent control plane** | **Design only:** live location/policy/health repository + optional gateway. Does not execute graphs. Option B/C parked pending review |
+| **Location registry** | Future: `agent_id` + env → where to invoke (not `AgentRecord` routing). Design: [Agent control plane](../architecture/agent-control-plane.md) |
+| **`span_id` / `parent_span_id`** | Proposed per-invoke ids under a shared `request_id` for nested/remote agents. **Not implemented** — see control-plane §12 |
 | **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |
 | **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **RecommendationStore** | Pluggable product-history backend for tuning (and future) recommendations: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` |

@@ -1,7 +1,7 @@
 # Environments (BL-046)
 
 **Learning path:** C1 · [Guide home](../README.md)
-**← Previous:** [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · **Next:** [Security baseline](security-baseline.md) →
+**← Previous:** [Agent control plane (design review)](../architecture/agent-control-plane.md) · **Next:** [Security baseline](security-baseline.md) →
 
 
 **Current focus:** `SDBX`, `DEV`, `PROD`  
@@ -99,4 +99,4 @@ Minimum for agent invoke:
 <!-- edim-learning-nav -->
 ---
 
-← [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →
+← [Agent control plane (design review)](../architecture/agent-control-plane.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →

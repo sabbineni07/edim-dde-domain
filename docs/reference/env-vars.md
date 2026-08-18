@@ -97,7 +97,7 @@ EDIM_RECOMMENDATION_STORE →  recommend / RCA history rows  (product history)
 | What is it? | Platform catalog + session/audit | Durable outcomes from agent HTTP calls |
 | Example contents | `{ "agent_id": "cluster_tuning", "lifecycle": "approved", … }` | `{ "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": { … } }` |
 | Written by | Lifespan sync / HITL sessions | `POST /api/v1/cluster_tuning/recommend`, `POST /api/v1/rca/analyze` |
-| Read by | Catalog / `/health` / future HITL | List/get/patch APIs, prompt historical context, experience index |
+| Read by | Catalog / `/health` / HITL get-resume | List/get/patch APIs, prompt historical context, experience index |
 | Typical local | `postgres` | unset → inherits postgres |
 | Typical deployed | `cosmos` | unset → inherits cosmos, or set `cosmos` explicitly |
 | Disable? | No | `EDIM_RECOMMENDATION_STORE=none` |

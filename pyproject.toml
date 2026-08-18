@@ -12,6 +12,8 @@ dependencies = [
   "pydantic>=2.0",
   "pydantic-settings>=2.0",
   "PyYAML>=6",
+  # Published later (private index): "edim-dde-ai>=1.0.0"
+  # Local/dev: pip install -e ../edim-dde-ai  (see docs/contribute/packaging.md)
 ]
 
 [project.optional-dependencies]

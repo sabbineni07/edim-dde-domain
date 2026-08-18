@@ -75,6 +75,7 @@ nav:
       - Auth and SQL: architecture/auth-and-sql.md
       - Config to observability: architecture/config-to-observability.md
       - Agent deployment: architecture/agent-deployment-and-composition.md
+      - Agent control plane (design review): architecture/agent-control-plane.md
   - C — Platform:
       - Environments: platform/environments.md
       - Security baseline: platform/security-baseline.md
@@ -94,6 +95,7 @@ nav:
       - Conditional edges: framework/conditional-edges.md
       - Content and LLM: framework/content-and-llm.md
       - Orchestration: framework/orchestration-topology.md
+      - HITL resume: framework/hitl-resume.md
       - Evaluation and quality: framework/evaluation-and-quality.md
   - E — Domain:
       - Sources and SQL: domain/sources-and-sql.md
@@ -119,3 +121,4 @@ nav:
       - Testing: contribute/testing.md
       - Live smoke: contribute/live-smoke-test.md
       - Windows smoke: contribute/windows-smoke-checklist.md
+      - Packaging: contribute/packaging.md

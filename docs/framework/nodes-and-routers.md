@@ -15,6 +15,7 @@ How allowlisted **node types** and **routers** work — the Strategy + Registry 
 | **Strategy** | Each factory returns a different algorithm selected by YAML `type` / `router` |
 | **Factory Method** | `(config) -> callable` builds the per-node Strategy |
 | **Adapter** | Flat `(state)->partial` adapted into LangGraph’s `data` bag by `GraphBuilder` |
+| **Decorator** | `skip_until_resume` wraps every node so HITL resume does not re-run work before the gate |
 
 ```text
 YAML type: "domain.rca.classify_failure"
@@ -24,6 +25,9 @@ get_node_factory(type)     # Registry lookup
         │
         ▼
 factory(config) → _node    # Factory Method
+        │
+        ▼
+skip_until_resume(...)     # Decorator (HITL resume skip)
         │
         ▼
 adapt_node(_node)          # Adapter → LangGraph
@@ -56,6 +60,7 @@ def step_factory(config: dict):
 | `llm_chain` | Prompts + skills + LLMProvider / chain invoker |
 | `invoke_agent` | Nested agent call (depth-limited) |
 | `rag.retrieve` | Similarity / hybrid search via RetrievalProvider |
+| `hitl.gate` | Pause for human approval (StateStore session). [HITL resume](hitl-resume.md) |
 
 ### Domain / product types
 

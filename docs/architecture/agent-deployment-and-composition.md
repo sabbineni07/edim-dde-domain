@@ -1,7 +1,7 @@
 # Agent deployment & composition
 
 **Learning path:** B9 · [Guide home](../README.md)  
-**← Previous:** [Config → observability](config-to-observability.md) · **Next:** [Environments](../platform/environments.md) →
+**← Previous:** [Config → observability](config-to-observability.md) · **Next:** [Agent control plane (design)](agent-control-plane.md) →
 
 **This page covers:** how to **deploy** many YAML agents (one app vs many apps), how **end consumers** use the framework (full DE SDLC suite vs single-agent packs), and how agents **interact across apps** when topologies are split.
 
@@ -50,14 +50,15 @@ Track what the **runtime supports today** vs what is **design-only**. Expand row
 | **Option A — single app, many agents** | **Supported** | One `edim-dde-api` + `bootstrap_agents` loads bundled + `EDIM_AGENT_DIRS` / entry-point packs into one registry |
 | **In-process agent→agent** | **Supported** | Builtin `invoke_agent` (`agent_id`, I/O map, `max_depth`) — [Orchestration topology](../framework/orchestration-topology.md) |
 | **Single-agent BU pack** | **Supported** | One pack on a shared runtime, or a small app that only loads that pack |
-| **Option B — multiple apps by domain** | **Partial (ops only)** | Multiple Apps/ACA deploys with different packs are possible; **no** first-class cross-app YAML wiring |
-| **Option C — hub + location catalog** | **Not supported** | No `local` / `remote` location map; StateStore catalog is metadata sync, not routing |
-| **Cross-app `remote_invoke_agent`** | **Not supported** | Manual HTTP to another app’s API only |
+| **Option B — multiple apps by domain** | **Partial (ops only) · parked** | Multiple Apps/ACA deploys with different packs are possible; **no** first-class cross-app YAML wiring. **Do not implement** until [agent control plane](agent-control-plane.md) review (2026-08-18). |
+| **Option C — hub + location catalog** | **Not supported · parked** | No `local` / `remote` location map; StateStore catalog is metadata sync, not routing. **Superseded for design** by [agent control plane](agent-control-plane.md). |
+| **Agent control plane / routing** | **Design review only** | Live location/policy/health repository; optional gateway. **Not R1.** [Full design](agent-control-plane.md). |
+| **Cross-app `remote_invoke_agent`** | **Not supported · parked** | Manual HTTP to another app’s API only |
 | **Full DE SDLC orchestrator suite** | **Not shipped** | Documented target (§4); R1 ships operate-style agents (`cluster_tuning`, `spark_rca`) |
-| **Shared SDLC run state / HITL resume** | **Partial / later** | StateStore has session-shaped models; HITL interrupt/resume not a current product flow |
+| **Shared SDLC run state / HITL resume** | **Supported (MVP)** | `hitl.gate` + StateStore sessions + `POST /api/v1/sessions/{id}/resume`. Not product-wired on RCA/tuning. [HITL resume](../framework/hitl-resume.md) |
 | **Parallel fan-out across agents** | **Same-app only** | Via graph design / multiple `invoke_agent` nodes in one process — not a distributed orchestrator |
 
-**Expand later without losing intent:** when implementing Option B/C or remote invoke, update this table’s Status/Notes first, then tick the matching backlog items (§8 Related + product/platform backlogs).
+**Expand later without losing intent:** when implementing the [agent control plane](agent-control-plane.md) (or a signed-off Option B stopgap), update this table’s Status/Notes first, then tick the matching backlog items (§8 Related + product/platform backlogs).
 
 ---
 
@@ -372,13 +373,15 @@ Same authoring path: [Agent package layout](../build-agents/agent-package-layout
 | Doc | Topic |
 |-----|--------|
 | [Orchestration topology](../framework/orchestration-topology.md) | In-process `invoke_agent` |
+| [HITL resume](../framework/hitl-resume.md) | Interrupt / approve / continue |
 | [Deploy & hosting](../api/deploy-and-hosting.md) | Host adapters (Apps / ACA) |
 | [State store](../platform/state-store.md) | Catalog / sessions |
 | [External plugins](../build-agents/external-plugins.md) | `EDIM_AGENT_DIRS` packs |
 | [End-to-end design](end-to-end-design.md) | Planes and patterns |
+| [**Agent control plane & routing**](agent-control-plane.md) | **Design review** — governance CP, registry, gateway vs directory; Option B/C parked |
 | Workspace root `BACKLOG.md` · `AI_Framework_Platform_Capability_Backlog.md` | HITL, remote invoke, routing |
 
 <!-- edim-learning-nav -->
 ---
 
-← [Config → observability](config-to-observability.md) · [Guide home](../README.md) · [Environments](../platform/environments.md) →
+← [Config → observability](config-to-observability.md) · [Guide home](../README.md) · [Agent control plane (design)](agent-control-plane.md) →

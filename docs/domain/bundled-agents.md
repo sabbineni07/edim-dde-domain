@@ -15,6 +15,7 @@ Shipped inside `edim-dde-domain` under `agents/`. Both follow [agent package lay
 |------------|---------|------------|
 | `cluster_tuning` | Job cluster sizing recommendations | SQL metrics → sizing LLM → guardrails → **optional 1 re-prompt** → performance validation → risk → recommendation |
 | `spark_rca` | Spark job root-cause analysis | SQL telemetry → evidence → classify → **runbook retrieve (RAG)** → RCA LLM |
+| `hitl_demo` | HITL pause / resume sample | `set_value` → `hitl.gate` → finish. No SQL/LLM. [HITL guide](../framework/hitl-resume.md) |
 
 | Walkthrough | UC catalog | Add-ons |
 |-------------|------------|---------|

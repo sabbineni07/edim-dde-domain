@@ -141,7 +141,7 @@ YAML only references the id:
 
 **Where:** node factories, router factories, chain invokers, `ObservabilityProvider`, `StateStore`, `RetrievalProvider`, `LLMProvider`.
 
-**Why:** Swap algorithms (Postgres vs Cosmos, FAISS vs Azure Search, LangSmith vs MLflow) without rewriting agents.
+**Why:** Swap algorithms (Postgres vs Cosmos, FAISS vs Azure Search, LangSmith vs MLflow) without rewriting agents. HITL sessions use the same `StateStore` Strategy (`memory` / `postgres` / `cosmos` / `redis`).
 
 ```bash
 # Same spark_rca YAML — different retrieval Strategy via env
@@ -191,13 +191,13 @@ final = agent.invoke({"job_run_id": "jr-1", "evidence_pack": {...}})
 
 ### 4.6 Template Method
 
-**Where:** `graph/runtime.py` — `MetadataAgent.invoke` / `ainvoke` share `_prepare` / `_extract`.
+**Where:** `graph/runtime.py` — `MetadataAgent.invoke` / `ainvoke` share `_prepare` / `_extract` / `_merge_kwargs` / `_from_paused`.
 
-**Why:** Uniform invoke surface + observability config merge for every agent.
+**Why:** Uniform invoke surface + observability config merge for every agent. `HitlPaused` is unwrapped to a waiting snapshot (not treated as `FoundationError`).
 
 ### 4.7 Facade
 
-**Where:** `edim_dde_ai.__init__`, `api/entrypoints.py`, API routes.
+**Where:** `edim_dde_ai.__init__`, `api/entrypoints.py`, API routes, `edim_dde_ai.hitl.resume_hitl_session`.
 
 **Why:** Stable public API over registries, builders, and providers.
 
@@ -205,6 +205,7 @@ final = agent.invoke({"job_run_id": "jr-1", "evidence_pack": {...}})
 from edim_dde_ai import (
     register_from_yaml,
     create_agent,
+    resume_hitl_session,
     configure_observability_from_env,
     configure_state_store_from_env,
     configure_retrieval_from_env,
@@ -216,6 +217,20 @@ from edim_dde_ai import (
 **Where:** `ObservabilityProvider`, `StateStore`, `RetrievalProvider`, `LLMProvider`, …
 
 **Why:** Duck-typed backends with clear method contracts; optional extras install real clients.
+
+### 4.9 Decorator
+
+**Where:** `hitl/decorator.py` — `skip_until_resume(node_id, fn)` applied by `GraphBuilder` **before** `adapt_node`.
+
+**Why:** On HITL resume, skip SQL/LLM nodes before the gate without a LangGraph checkpointer. The wrapper returns `{}` until `state[hitl_resume_at]` matches this node id.
+
+### 4.10 State
+
+**Where:** `hitl/sessions.py` — `SessionRecord.status` is `waiting_hitl` then `closed`.
+
+**Why:** Pause / resume is a session lifecycle, not a second graph copy. Decisions live in `state.hitl_decisions[gate_id]`.
+
+HITL walkthrough: [HITL resume](../framework/hitl-resume.md).
 
 ---
 
@@ -281,6 +296,8 @@ RcaResponse projection        (never dump full state bag)
 ```
 
 Tuning (`/api/v1/cluster_tuning/recommend`) is the same host pattern without the retrieval pilot.
+
+HITL (`POST /api/v1/sessions`) uses the same `MetadataAgent` path. A `hitl.gate` persists a StateStore session and returns `waiting_hitl` instead of a product projection. Resume is `POST /api/v1/sessions/{id}/resume`. See [HITL resume](../framework/hitl-resume.md).
 
 Sequence SVG: [r1-request-sequence.svg](diagrams/r1-request-sequence.svg) · Narrative: [request-flow.md](request-flow.md).
 

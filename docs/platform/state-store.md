@@ -54,8 +54,8 @@ This store does **not** hold SQL metrics, Foundry completions, or recommendation
 | Document | When written | Example fields |
 |----------|--------------|----------------|
 | **Agent catalog** (`AgentRecord`) | API lifespan: `sync_registered_agents_to_store` after YAML bootstrap | `agent_id`, `display_name`, `version`, `owner`, `risk_tier`, `lifecycle`, `hitl_required`, `source_path`, `git_sha` |
-| **Sessions** (`SessionRecord`) | Multi-turn / HITL resume (when session APIs are used) | `session_id`, `agent_id`, state blob, timestamps |
-| **Audit** (`AuditEvent`) | Register / sync / promote events | `event_id`, `actor`, `action`, `agent_id`, `detail` |
+| **Sessions** (`SessionRecord`) | `hitl.gate` pause and `/api/v1/sessions` start/resume | `session_id`, `agent_id`, `status` (`waiting_hitl` / `closed`), state blob, `request_id` |
+| **Audit** (`AuditEvent`) | Register / sync / HITL pause-resume-close | `event_id`, `actor`, `action`, `agent_id`, `detail` |
 
 Example **agent catalog** row (Cosmos `agents` / Postgres `edim_agents` payload):
 

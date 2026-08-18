@@ -15,6 +15,7 @@
 | `invoke_agent` | Call another registered agent (subgraph spike; depth-limited) |
 | `rag.retrieve` | Similarity / hybrid search via RetrievalProvider |
 | `web.search` | Opt-in public-web enrichment via WebSearchProvider (bounded, allowlisted, fail-open) |
+| `hitl.gate` | Pause for human approval; persist StateStore session; resume via `/api/v1/sessions/{id}/resume` |
 
 ## Domain shared
 

@@ -1,7 +1,7 @@
 # Windows laptop — dry & live smoke checklist
 
 **Learning path:** H5b · [Guide home](../README.md)  
-**← Previous:** [Live smoke](live-smoke-test.md) · **Next:** [Guide home](../README.md) →
+**← Previous:** [Live smoke](live-smoke-test.md) · **Next:** [Packaging](packaging.md) →
 
 **Audience:** engineers validating EDIM DDE from a **Windows** machine  
 **Full reference:** [live-smoke-test.md](live-smoke-test.md)  
@@ -469,4 +469,4 @@ If blocked, send: mode, `/health` JSON, HTTP status, `error_code`, request id �
 
 ---
 
-← [Live smoke (full)](live-smoke-test.md) · [Guide home](../README.md) →
+← [Live smoke (full)](live-smoke-test.md) · [Guide home](../README.md) · [Packaging](packaging.md) →

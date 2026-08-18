@@ -1,7 +1,7 @@
 # Orchestration topology (D6)
 
 **Learning path:** D6 · [Guide home](../README.md)  
-**← Previous:** [Content and LLM](content-and-llm.md) · **Next:** [Sources and SQL](../domain/sources-and-sql.md) →
+**← Previous:** [Content and LLM](content-and-llm.md) · **Next:** [HITL resume](hitl-resume.md) →
 
 How multi-agent composition works without breaking the “one LangGraph per agent” rule.
 
@@ -63,10 +63,10 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 
 ## 5. Not in current scope
 
-- Cross-app remote invoke (see [Agent deployment & composition](../architecture/agent-deployment-and-composition.md))  
+- Cross-app remote invoke and agent control plane — **parked / design review:** [Agent control plane](../architecture/agent-control-plane.md) · [Agent deployment & composition](../architecture/agent-deployment-and-composition.md)  
 - Cross-agent long-term memory  
 - Capability-based router across a marketplace of agents (later)  
-- HITL interrupt nodes  
+- HITL interrupt nodes — **shipped:** [HITL resume](hitl-resume.md)  
 
 ---
 
@@ -75,9 +75,11 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 | Doc | Topic |
 |-----|--------|
 | [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | Option A/B/C topologies; DE SDLC; cross-app |
+| [Agent control plane](../architecture/agent-control-plane.md) | **Design review** — governance, location registry, routing (Option B/C parked) |
+| [HITL resume](hitl-resume.md) | `hitl.gate` + StateStore sessions |
 | [External plugins](../build-agents/external-plugins.md) | Loading packs into one runtime |
 
 <!-- edim-learning-nav -->
 ---
 
-← [Content and LLM](content-and-llm.md) · [Guide home](../README.md) · [Sources and SQL](../domain/sources-and-sql.md) →
+← [Content and LLM](content-and-llm.md) · [Guide home](../README.md) · [HITL resume](hitl-resume.md) →

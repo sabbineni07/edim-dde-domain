@@ -42,6 +42,7 @@ Dependency direction: **`api` → `domain` → `ai`**. (Sibling checkouts next t
 | **B7** | [Auth and SQL](architecture/auth-and-sql.md) | Identity paths into the warehouse |
 | **B8** | [Config → observability](architecture/config-to-observability.md) | YAML → registries → traces + store + retrieval |
 | **B9** | [**Agent deployment & composition**](architecture/agent-deployment-and-composition.md) | One app vs many; DE SDLC; cross-app; **§1b capability matrix** |
+| **B9b** | [**Agent control plane & routing**](architecture/agent-control-plane.md) | **Design review only** — governance CP, location registry, gateway vs directory; Option B/C parked |
 
 ### Part C — Platform planes (same order as API lifespan)
 
@@ -80,6 +81,7 @@ API startup configures concerns in roughly this order — docs follow it so ment
 | **D4** | [Conditional edges](framework/conditional-edges.md) | Branching |
 | **D5** | [Content and LLM](framework/content-and-llm.md) | Prompts, skills, Foundry |
 | **D6** | [Orchestration (`invoke_agent`)](framework/orchestration-topology.md) | Nested agents |
+| **D6b** | [HITL interrupt / resume](framework/hitl-resume.md) | `hitl.gate`, StateStore sessions, `/api/v1/sessions` |
 | **D7** | [Evaluation & quality](framework/evaluation-and-quality.md) | Rubrics, corpus `v1`, Foundry harness |
 
 Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
@@ -124,6 +126,7 @@ Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 | **H4** | [Testing](contribute/testing.md) | How we test |
 | **H5** | [Live & dry smoke test](contribute/live-smoke-test.md) | Engineer runbook: env checklist, local + remote |
 | **H5b** | [Windows smoke checklist](contribute/windows-smoke-checklist.md) | Same smoke, PowerShell / Windows steps |
+| **H6** | [Packaging](contribute/packaging.md) | Wheels, versions, private index (deferred) |
 | — | Workspace root `BACKLOG.md` | Day-to-day EDIM (Git; not in this site) |
 | — | Workspace root `AI_Framework_Platform_Capability_Backlog.md` | Enterprise roadmap (Git; not in this site) |
 

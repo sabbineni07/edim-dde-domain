@@ -19,6 +19,11 @@ Base app: `edim_dde_api.main:app`
 | PATCH | `/api/v1/rca/recommendations/{id}` | `RecommendationStatusUpdate` | `RecommendationHistoryItem` |
 | POST | `/api/v1/knowledge/ingest` | `KnowledgeIngestRequest` | `KnowledgeIngestResponse` |
 | GET | `/api/v1/debug/sql-auth` | — | Booleans only (Apps SQL auth diagnostics; no tokens) |
+| POST | `/api/v1/sessions` | `{agent_id, state}` | `SessionResponse` (`waiting_hitl` or `completed`) |
+| GET | `/api/v1/sessions/{session_id}` | — | `SessionResponse` |
+| POST | `/api/v1/sessions/{session_id}/resume` | `{decision, comment?, patch?}` | `SessionResponse` (`closed` or paused again) |
+
+HITL details: [HITL resume](../framework/hitl-resume.md) (YAML, HTTP, GoF map, why `HitlPaused` is not an error). Demo agent: `hitl_demo`. Product routes do not pause unless those graphs add a `hitl.gate`.
 
 OpenAPI: `http://localhost:8080/docs` when uvicorn is running.
 

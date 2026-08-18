@@ -26,7 +26,7 @@ A step in the graph. YAML references a **type id** string; Python registers a fa
 
 | Kind | Examples |
 |------|----------|
-| Framework builtins | `passthrough`, `set_value`, `echo_result`, `llm_chain`, `invoke_agent`, `rag.retrieve` |
+| Framework builtins | `passthrough`, `set_value`, `echo_result`, `llm_chain`, `invoke_agent`, `rag.retrieve`, `hitl.gate` |
 | Shared domain | `domain.sql.query` |
 | Product / plugin | `domain.tuning.*`, `domain.rca.*`, `acme.*` |
 

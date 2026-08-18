@@ -116,9 +116,9 @@ Two related fields on purpose (easy to confuse):
 | Field | Layer | Meaning today |
 |-------|--------|----------------|
 | `metadata.hitl_required` | **Catalog / governance** | Declares that this agent *should* involve a human (inventory, risk, future gates). Synced into StateStore catalog. |
-| `hitl.enabled` | **Runtime workflow** | Turns on HITL *behavior* in the run (pause / approve). Reserved for BL-039; not fully enforced in R1 graphs yet. |
+| `hitl.enabled` | **Runtime workflow** | When **true**, `hitl.gate` nodes pause for approval. When **false**, gates are no-ops. See [HITL resume](hitl-resume.md). |
 
-Practical R1: set `metadata.hitl_required` for documentation/catalog; keep `hitl.enabled: false` until HITL runtime ships. Prefer not to set conflicting values (`hitl_required: true` + `enabled: false` means “policy says HITL needed, runtime not wired yet”).
+Practical R1: set `metadata.hitl_required` for catalog; set `hitl.enabled: true` and add a `hitl.gate` node to actually pause. Prefer not to set conflicting values (`hitl_required: true` + `enabled: false` means “policy says HITL needed, runtime off”). Patterns, skip Decorator, and session state machine: [HITL resume](hitl-resume.md).
 
 ### `rag.cite`
 

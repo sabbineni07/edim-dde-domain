@@ -1,7 +1,7 @@
 # Evaluation, quality, and confidence
 
 **Learning path:** D7 · [Guide home](../README.md)
-**← Previous:** [Orchestration](orchestration-topology.md) · **Next:** [Sources and SQL](../domain/sources-and-sql.md) →
+**← Previous:** [HITL resume](hitl-resume.md) · **Next:** [Sources and SQL](../domain/sources-and-sql.md) →
 
 ## 1. Three different questions
 
