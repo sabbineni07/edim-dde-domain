@@ -83,6 +83,33 @@ Keep these planes separate — they solve different problems and use different s
 | Job metrics / logs | Data | Unity Catalog tables |
 | Traces | Observability | LangSmith / MLflow |
 
+**“Option C / routing control plane” is not a seventh plane.** It is a **later job of the same Control plane** (where an `agent_id` runs, policy, heartbeat). See §2.1.
+
+### 2.1 Control plane: R1 vs later (do not confuse with Option C)
+
+| | **R1 today** (shipped) | **Later** (design review, parked) |
+|--|------------------------|-----------------------------------|
+| **Name** | Control plane | Same plane, extra **governance / routing** work |
+| **What it remembers** | Catalog metadata (`AgentRecord`), HITL **sessions**, audit | Plus **location** (URL/health), **policy** (who may invoke), optional gateway |
+| **Storage** | `StateStore` (memory / postgres / cosmos / redis) | Live repository (may still be Cosmos/Postgres; not a new *kind* of plane) |
+| **Does it execute graphs / SQL / Foundry?** | No | Still no — that stays **Data plane** |
+| **Option C** | — | A **topology tactic** (hub + location YAML). **Parked.** If we build routing, we grow this control plane — we do **not** add an “Option C plane.” |
+
+```text
+SOURCE CONTROL     Git: YAML, prompts, skills          (unchanged)
+CONTROL PLANE      remember & govern the system
+                   R1: catalog + sessions + audit
+                   later: + location + policy + heartbeat
+KNOWLEDGE          search hits / embeddings            (unchanged)
+DATA PLANE         run the graph, SQL, Foundry         (unchanged)
+OBSERVABILITY      traces                              (unchanged)
+INGEST (batch)     Jobs / curated upsert               (unchanged)
+```
+
+In-process **agent / node / prompt registries** (Python `Registry`, ContentHub) are **not** a plane. They are how one runtime **loads** Git artifacts in the data plane. StateStore catalog is the control-plane **copy of metadata**, not a second prompt store.
+
+Detail: [Agent control plane & routing](agent-control-plane.md) (design only).
+
 ---
 
 ## 3. Package map and dependency rule
@@ -334,6 +361,8 @@ Full detail: [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 | “CPU% for job run” | `domain.sql.query` → UC |
 
 Do **not** put embeddings in Cosmos/Postgres StateStore, or agent YAML in the vector index.
+
+**Later (same control plane, not a new plane):** “Where is `spark_rca` healthy in this env?” is location/heartbeat — [agent control plane (design)](agent-control-plane.md). Today there is only one App, so that question does not exist.
 
 ---
 

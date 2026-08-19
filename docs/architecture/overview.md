@@ -46,7 +46,7 @@ edim-dde-ai  (v1.0.0)
 | Plane | Responsibility |
 |-------|----------------|
 | **Source control** | Azure DevOps / Git — `*.agent.yaml`, prompts, runbooks, CI |
-| **Control plane** | StateStore — catalog metadata, sessions, audit |
+| **Control plane** | StateStore — catalog metadata, sessions, audit. **Later (parked):** same plane may add location/policy/routing — not a new plane. [B9b](agent-control-plane.md) |
 | **Knowledge / retrieval** | RetrievalProvider — similarity search indexes (not StateStore) |
 | **Data plane** | LangGraph + Databricks + Foundry — do the work |
 | **Observability** | LangSmith / MLflow — traces and eval |
