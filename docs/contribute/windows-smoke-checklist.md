@@ -5,6 +5,7 @@
 
 **Audience:** engineers validating EDIM DDE from a **Windows** machine  
 **Full reference:** [live-smoke-test.md](live-smoke-test.md)  
+**Full numbered suite (HITL, examples, quality, results log):** workspace root [`VALIDATION.md`](../../../VALIDATION.md)  
 **Time:** dry ~20–40 min · live +30–60 min  
 
 Use PowerShell (recommended) or Windows Terminal. Adjust drive letters/paths to your checkout.

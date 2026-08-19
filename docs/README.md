@@ -126,6 +126,7 @@ Deep dive (in the `edim-dde-ai` package): `docs/DESIGN.md` · `docs/USAGE.md`
 | **H4** | [Testing](contribute/testing.md) | How we test |
 | **H5** | [Live & dry smoke test](contribute/live-smoke-test.md) | Engineer runbook: env checklist, local + remote |
 | **H5b** | [Windows smoke checklist](contribute/windows-smoke-checklist.md) | Same smoke, PowerShell / Windows steps |
+| — | Workspace root `VALIDATION.md` | Numbered dry + live validation suite (pytest, examples, HITL, quality; Git, not in this MkDocs site) |
 | **H6** | [Packaging](contribute/packaging.md) | Wheels, versions, private index (deferred) |
 | — | Workspace root `BACKLOG.md` | Day-to-day EDIM (Git; not in this site) |
 | — | Workspace root `AI_Framework_Platform_Capability_Backlog.md` | Enterprise roadmap (Git; not in this site) |

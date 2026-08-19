@@ -28,7 +28,8 @@ Do **not** put production SQL/LLM stubs in main packages.
 
 For a shared engineer runbook (what info to gather, where to configure, dry vs live vs remote):
 
-→ **[Live & dry smoke test](live-smoke-test.md)** · **[Windows checklist](windows-smoke-checklist.md)**
+→ **[Live & dry smoke test](live-smoke-test.md)** · **[Windows checklist](windows-smoke-checklist.md)**  
+→ Workspace root **[VALIDATION.md](../../../VALIDATION.md)** — numbered test suite (pytest + framework examples + dry/live HTTP + HITL + quality). Use that when running the full stack from another laptop.
 
 <!-- edim-learning-nav -->
 ---
