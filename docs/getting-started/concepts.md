@@ -1,36 +1,38 @@
 # Core concepts (A2)
 
-**Learning path:** A2 · [Guide home](../README.md)  
-**← Previous:** [Quickstart](quickstart.md) · **Next:** [End-to-end design](../architecture/end-to-end-design.md) →
+**Learning path:** A2 · [Home](../README.md)  
+**← Previous:** [Quickstart](quickstart.md) · **Next:** [Part B — Architecture](../architecture/index.md) →
 
-Vocabulary and mental models used everywhere else in this guide.
+## Chapter summary
+
+This chapter defines the **vocabulary and mental models** used throughout the guide: agents, nodes, state, content, bootstrap, planes, and request overrides. Read it once before Part B.
+
+**Outcome:** you can read `*.agent.yaml` and follow architecture discussions without ambiguity.
 
 ---
 
 ## 1. Agent
 
-A named graph identified by `agent_id` (e.g. `cluster_tuning`, `spark_rca`). Declared in `*.agent.yaml`, registered into `edim-dde-ai`, invoked as:
+An **agent** is a named LangGraph compiled from `*.agent.yaml`, identified by `agent_id` (e.g. `cluster_tuning`, `spark_rca`).
 
 ```python
 from edim_dde_ai import create_agent
-final_state = create_agent("cluster_tuning").invoke({...})
+
+final_state = create_agent("cluster_tuning").invoke({"job_id": "j-1", ...})
 ```
 
-**Patterns:** Registry (definition by id) + Factory Method (`create_agent`).
+| Pattern | Role |
+|---------|------|
+| **Registry** | Lookup definition by `agent_id` |
+| **Factory Method** | `create_agent(id)` returns a runnable graph |
+
+Agents are registered at API startup via domain bootstrap — not hard-coded in the HTTP layer.
 
 ---
 
 ## 2. Node
 
-A step in the graph. YAML references a **type id** string; Python registers a factory with `@register_node("type.id")`.
-
-| Kind | Examples |
-|------|----------|
-| Framework builtins | `passthrough`, `set_value`, `echo_result`, `llm_chain`, `invoke_agent`, `rag.retrieve`, `hitl.gate` |
-| Shared domain | `domain.sql.query` |
-| Product / plugin | `domain.tuning.*`, `domain.rca.*`, `acme.*` |
-
-**Pattern:** Strategy — the `type` id selects the algorithm; YAML never embeds import paths.
+A **node** is one step in the graph. YAML declares a **type id**; Python registers a factory:
 
 ```yaml
 - id: synthesize
@@ -47,94 +49,111 @@ def classify_failure_factory(_config: dict):
     return _node
 ```
 
+| Category | Example type ids |
+|----------|------------------|
+| Framework builtins | `passthrough`, `llm_chain`, `invoke_agent`, `rag.retrieve`, `hitl.gate` |
+| Shared domain | `domain.sql.query` |
+| Product / plugin | `domain.tuning.*`, `domain.rca.*` |
+
+**Pattern:** Strategy — YAML selects behavior by allowlisted `type`; YAML **must not** embed Python import paths.
+
 ---
 
 ## 3. State
 
-Flat `dict` in / out. Nodes return **partial updates** merged into state. No typed schema on the graph itself (API response models are separate OpenAPI DTOs).
+Graph **state** is a flat `dict`. Nodes return **partial updates** merged into the running state. OpenAPI response models (`RcaResponse`, `TuningResponse`) are separate projections at the HTTP boundary.
 
 ```text
 invoke({job_run_id, …})
-  → node A returns {evidence_pack: …}
-  → node B returns {classification_hint: …}
-  → merged state continues
-  → API projects result → RcaResponse / TuningResponse
+  → node A → {evidence_pack: …}
+  → node B → {classification_hint: …}
+  → merged state
+  → API maps result field → response DTO
 ```
 
-**Pattern:** Adapter — flat dict callables adapted to LangGraph’s internal `data` bag.
+**Pattern:** Adapter between domain dicts and LangGraph's internal message bag.
 
 ---
 
 ## 4. Content
 
-Prompts and skills for `llm_chain`, usually under `content/` next to the agent YAML (`content_dir: ./content`).
+**Content** artifacts feed `llm_chain` nodes — prompts and skills under `content/` (typically `content_dir: ./content` in agent YAML).
 
-| Artifact | Path convention |
-|----------|-----------------|
+| Artifact | Convention |
+|----------|------------|
 | System / human prompts | `content/prompts/{chain}.system.md`, `{chain}.human.md` |
 | Skills | `content/skills/{name}.md` |
 
-`{var}` placeholders are substituted from state keys.
+Placeholders `{var}` substitute from state keys at runtime.
 
 ---
 
 ## 5. Bootstrap
 
-`edim_dde_domain.bootstrap_agents()` (API lifespan):
+**Bootstrap** loads platform configuration and registers agents when the API process starts:
 
 ```text
 load sources.yaml
 load corpora.yaml
-import agents/*/nodes.py          # @register_node factories
-register nested *.agent.yaml
-load external plugins             # EDIM_AGENT_DIRS / entry points
+import agents/*/nodes.py          # register @register_node factories
+register *.agent.yaml graphs
+load EDIM_AGENT_DIRS plugins
+configure observability / stores / retrieval from env
+sync_registered_agents_to_store()
+set_llm_provider (lazy Foundry on API)
 ```
 
-Hosts also:
-
-1. `configure_observability_from_env()`
-2. `configure_state_store_from_env()`
-3. `configure_recommendation_store_from_env()`
-4. `configure_retrieval_from_env()`
-5. `sync_registered_agents_to_store()`
-6. `set_llm_provider(...)` (API: lazy Foundry)
+Implementation entry point: `edim_dde_domain.bootstrap_agents()` invoked from `edim-dde-api` lifespan.
 
 ---
 
-## 6. Hybrid model
+## 6. Hybrid YAML + Python model
 
-| Layer | Owns |
-|-------|------|
-| YAML | Topology, SQL text, node config, edges, optional `rag` / `metadata` |
-| Python | Node factories + pure helpers (`logic.py`, `helpers/`) |
+| Layer | Owns | Must not |
+|-------|------|----------|
+| **YAML** | Topology, edges, SQL text in node config, `rag` / `metadata` blocks | Execute code or import modules |
+| **Python** | Node factories, pure logic (`logic.py`, `helpers/`) | Define graph topology duplicated in YAML |
 
-YAML never embeds arbitrary Python import paths — only allowlisted type ids.
+This separation keeps graphs reviewable in Git while preserving type-safe extensibility in code.
 
 ---
 
 ## 7. Planes (preview)
 
-| Plane | Examples |
-|-------|----------|
-| Source control | Git `*.agent.yaml`, prompts, runbooks |
-| Control plane | StateStore catalog / sessions / audit |
-| Knowledge | RetrievalProvider indexes |
-| Data plane | LangGraph + SQL + Foundry |
-| Observability | LangSmith / MLflow |
+| Plane | Responsibility | R1 examples |
+|-------|----------------|-------------|
+| **Source control** | Graphs, prompts, runbooks | Git / Azure DevOps |
+| **Control plane** | Catalog, sessions, audit | StateStore |
+| **Knowledge** | Similarity search | RetrievalProvider, FAISS, Azure AI Search |
+| **Data plane** | Graph execution, SQL, LLM | LangGraph, Foundry, Unity Catalog |
+| **Observability** | Traces, eval hooks | LangSmith, MLflow |
 
-Full treatment: **[End-to-end design](../architecture/end-to-end-design.md)** (next page).
-
----
-
-## 8. Overrides
-
-| Request field | Effect |
-|---------------|--------|
-| `metrics` (tuning) | Skip SQL collect for metrics |
-| `evidence_pack` (RCA) | Skip SQL collectors |
-
-LLM nodes still run unless you stub the provider (tests).
+Full treatment: [End-to-end design (B1)](../architecture/end-to-end-design.md).
 
 ---
 
-← [Quickstart](quickstart.md) · [Guide home](../README.md) · [End-to-end design](../architecture/end-to-end-design.md) →
+## 8. Request overrides (HTTP)
+
+| Field | Agent | Effect |
+|-------|-------|--------|
+| `metrics` | `cluster_tuning` | Skip SQL metric collection; use supplied object |
+| `evidence_pack` | `spark_rca` | Skip SQL evidence collectors |
+
+!!! warning
+    Overrides do **not** disable LLM nodes unless the test harness stubs the LLM provider. Production callers should treat overrides as development and smoke aids unless explicitly supported by your API contract.
+
+---
+
+## Summary
+
+| Term | One-line definition |
+|------|---------------------|
+| Agent | Named YAML graph, invoked by id |
+| Node | Allowlisted step type + factory |
+| State | Flat dict merged per step |
+| Bootstrap | Startup registration and plane wiring |
+| Plane | Swappable cross-cutting backend |
+
+**Next →** [Part B — Architecture](../architecture/index.md) · [End-to-end design (B1)](../architecture/end-to-end-design.md)
+
+← [Quickstart (A1)](quickstart.md) · [Part B — Architecture](../architecture/index.md) →

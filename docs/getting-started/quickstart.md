@@ -1,33 +1,41 @@
 # Quickstart (A1)
 
-**Learning path:** A1 · [Guide home](../README.md)  
-**← Previous:** [Guide home](../README.md) · **Next:** [Core concepts](concepts.md) →
+**Learning path:** A1 · [Home](../README.md)  
+**← Previous:** [Guide map](guide-map.md) · **Next:** [Core concepts](concepts.md) →
 
-Get a working stack on your laptop in two paths: offline tests, or live HTTP with Foundry.
+## Chapter summary
 
-After Compose is up, browse the full guide at `http://127.0.0.1:8080/guide/` (`make guide-site` then `make compose-up` from `edim-dde-api`).
+This chapter walks through a **minimal working EDIM DDE stack** on your machine. You will either run offline unit tests (no Foundry) or start the API and invoke bundled agents over HTTP with request-body overrides that skip Databricks SQL.
 
----
-
-## Two paths
-
-| Path | Skips Databricks? | Skips Foundry? | Use when |
-|------|-------------------|----------------|----------|
-| **A. Pytest + `DomainStubLLM`** | Yes (with overrides) | Yes (stub) | Local sanity / CI |
-| **B. Live HTTP (`uvicorn` + curl)** | Yes (with overrides) | **No** — needs Foundry | Demo / E2E against real LLM |
-
-`metrics` / `evidence_pack` in the request body only bypass **SQL warehouse** reads. Both bundled agents still run **`llm_chain`** (sizing for tuning; synthesize for RCA). `include_explanation: false` skips the *explanation* LLM only — not sizing.
+**Time:** 15–30 minutes · **Outcome:** confirmed install and one successful agent invocation.
 
 ---
 
 ## Prerequisites
 
-- Python 3.10+
-- Sibling packages under `edim/`: `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api`
+| Requirement | Notes |
+|-------------|-------|
+| Python 3.10+ | Match `requires-python` in package `pyproject.toml` files |
+| Sibling repos | `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api` under a common parent |
+| (Path B only) Azure OpenAI / Foundry | Endpoint, deployment, and credentials — see [Configuration (G1)](../api/configuration.md) |
 
 ---
 
-## 1. Install (editable siblings)
+## Choose a path
+
+| Path | Databricks SQL | Foundry LLM | Use when |
+|------|----------------|-------------|----------|
+| **A — Pytest (offline)** | Bypassed via test overrides | Stubbed (`DomainStubLLM`) | CI, local sanity, no cloud credentials |
+| **B — Live HTTP** | Optional (request overrides) | **Required** | Demo, integration smoke, real LLM output |
+
+!!! warning "LLM behavior with overrides"
+    Request fields `metrics` and `evidence_pack` bypass **warehouse SQL only**. Bundled agents still execute **`llm_chain`** nodes (tuning sizing; RCA synthesis). Setting `include_explanation: false` skips the *explanation* LLM call — not sizing or synthesis.
+
+---
+
+## Step 1 — Install packages
+
+From the API repository (editable install pulls siblings via `requirements.txt`):
 
 ```bash
 cd edim-dde-api
@@ -36,7 +44,7 @@ pip install -r requirements.txt
 pip install -e ".[dev]"
 ```
 
-Optional isolation installs:
+Optional explicit sibling installs:
 
 ```bash
 cd ../edim-dde-domain && pip install -e ".[dev]"
@@ -45,9 +53,9 @@ cd ../edim-dde-ai && pip install -e ".[dev]"
 
 ---
 
-## Path A — Offline (tests)
+## Path A — Offline validation (pytest)
 
-Tests install `edim_dde_domain.testing.DomainStubLLM` and pass SQL overrides. **This is the supported no-Foundry path.**
+Tests register `edim_dde_domain.testing.DomainStubLLM` and supply SQL overrides. **This is the supported path without Foundry.**
 
 ```bash
 cd edim-dde-domain && pytest -q
@@ -55,48 +63,44 @@ cd ../edim-dde-api && pytest -q
 cd ../edim-dde-ai && pytest -q
 ```
 
-Plain `uvicorn` does **not** use the stub; its lifespan installs Foundry (see Path B).
+!!! note
+    Running `uvicorn` directly does **not** use the test stub. Path B configures Foundry via API lifespan.
 
 ---
 
 ## Path B — Live HTTP
 
-### Foundry (required for curl)
+### Step 2 — Configure Foundry
 
 ```bash
-az login   # or set EDIM_FOUNDRY_TENANT_ID / EDIM_FOUNDRY_CLIENT_ID / EDIM_FOUNDRY_CLIENT_SECRET
-export AZURE_OPENAI_ENDPOINT=https://….openai.azure.com
+az login
+export AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 export AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+# Or: EDIM_FOUNDRY_TENANT_ID, EDIM_FOUNDRY_CLIENT_ID, EDIM_FOUNDRY_CLIENT_SECRET
 ```
 
-Full list: [configuration](../api/configuration.md) · [env vars](../reference/env-vars.md).
+Full variable list: [Configuration (G1)](../api/configuration.md) · [Environment variables (H1)](../reference/env-vars.md).
 
-Databricks warehouse env is **optional** if you pass `metrics` / `evidence_pack` overrides below.
+Warehouse variables are **optional** when using SQL bypass overrides below.
 
-### Optional planes (recommended as you grow)
+### Step 3 — Optional planes
 
 ```bash
 export EDIM_ENV=dev
-
-# Observability
 export EDIM_OBSERVABILITY=langsmith
 export LANGCHAIN_TRACING_V2=true
 export LANGCHAIN_API_KEY=lsv2_pt_...
 export LANGCHAIN_PROJECT=edim-dde-dev
-
-# Control plane (optional locally)
-# export EDIM_STATE_STORE=postgres
-# export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
-
-# Retrieval for spark_rca runbooks (optional)
-# pip install 'edim-dde-ai[faiss]'
-# export EDIM_RETRIEVAL=faiss
-# export EDIM_FAISS_INDEX_PATH=/tmp/edim-indexes
 ```
 
-See [LangSmith setup](../platform/langsmith-setup.md) for self-hosted endpoints, UI navigation (Application vs tracing project), and validation. On Windows, load `.env` into the same PowerShell session before `uvicorn` — [Windows smoke checklist](../contribute/windows-smoke-checklist.md).
+| Plane | Example | Chapter |
+|-------|---------|---------|
+| State store | `EDIM_STATE_STORE=postgres` | [State store (C6)](../platform/state-store.md) |
+| Retrieval | `EDIM_RETRIEVAL=faiss` | [Retrieval (C7)](../platform/retrieval-and-rag.md) |
 
-### Start API
+On Windows, load `.env` into the same PowerShell session before starting uvicorn — [Windows smoke (H5b)](../contribute/windows-smoke-checklist.md).
+
+### Step 4 — Start the API
 
 ```bash
 cd edim-dde-api
@@ -104,16 +108,15 @@ source .venv/bin/activate
 uvicorn edim_dde_api.main:app --reload --port 8080
 ```
 
-**Lifespan (in order):** Key Vault → observability → state store → recommendation store → retrieval → `bootstrap_agents()` → catalog sync → lazy Foundry.
+**Lifespan order:** Key Vault → observability → state store → recommendation store → retrieval → `bootstrap_agents()` → catalog sync → lazy Foundry provider.
 
 ```bash
-curl -s localhost:8080/health
-# includes: agents, version, observability, state_store, recommendation_store, retrieval
+curl -s localhost:8080/health | python3 -m json.tool
 ```
 
-Without Foundry env/auth, agent curls return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.
+Expected: `"status": "ok"` and registered agent ids. Without Foundry configuration, agent routes return **503** `FOUNDRY_LLM_NOT_CONFIGURED`.
 
-### Cluster tuning (`metrics` override — skip SQL)
+### Step 5 — Invoke cluster tuning (SQL bypass)
 
 ```bash
 curl -s localhost:8080/api/v1/cluster_tuning/recommend \
@@ -137,7 +140,7 @@ curl -s localhost:8080/api/v1/cluster_tuning/recommend \
   }'
 ```
 
-### Spark RCA (`evidence_pack` override — skip SQL)
+### Step 6 — Invoke Spark RCA (SQL bypass)
 
 ```bash
 curl -s localhost:8080/api/v1/rca/analyze \
@@ -154,28 +157,43 @@ curl -s localhost:8080/api/v1/rca/analyze \
   }'
 ```
 
-With `EDIM_RETRIEVAL=faiss` and an indexed corpus, RCA also runs `rag.retrieve` for runbook grounding before the LLM. For the deployed default backend, see [Setting up Azure AI Search](../platform/retrieval-and-rag.md#8-setting-up-azure-ai-search-for-a-real-retrievalprovider) (steps 1–6).
+With retrieval enabled, RCA runs `rag.retrieve` before synthesis — [Retrieval (C7)](../platform/retrieval-and-rag.md).
 
 ---
 
-## What you just exercised
+## What you exercised
 
 ```text
-curl → FastAPI → create_agent().invoke → LangGraph YAML nodes → DTO response
+HTTP → FastAPI → create_agent(id).invoke(state)
                       │
-                      ├─ X-Request-Id echoed; logs show [request_id=…]
-                      ├─ ObservabilityProvider (optional traces)
-                      ├─ StateStore (catalog already synced at startup)
-                      └─ RetrievalProvider (spark_rca only, if enabled)
+                      ├─ RequestId middleware
+                      ├─ ObservabilityProvider (optional)
+                      ├─ StateStore (catalog at startup)
+                      └─ LangGraph YAML nodes → OpenAPI DTO
 ```
+
+Browse the full guide at `http://127.0.0.1:8080/guide/` after `make guide-site && make compose-up` from `edim-dde-api`.
 
 ---
 
-## Next in the learning path
+## Troubleshooting
 
-→ **[A2 — Core concepts](concepts.md)** (required next)  
-Then **[B1 — End-to-end design](../architecture/end-to-end-design.md)** for architecture depth.
+| Symptom | Likely cause | Action |
+|---------|--------------|--------|
+| **503** `FOUNDRY_LLM_NOT_CONFIGURED` | Missing Foundry env | Set `AZURE_OPENAI_*` or `EDIM_FOUNDRY_*`; see G1 |
+| **502** domain/SQL errors | Live SQL without warehouse auth | Use overrides (above) or configure Databricks — B7 |
+| Empty agents in `/health` | Bootstrap failure | Check startup logs; verify sibling packages installed |
+| Tests pass, curl fails | Tests use stub; uvicorn uses Foundry | Expected — complete Path B config |
 
-**Proving the stack with Foundry / SQL:** [Live & dry smoke test](../contribute/live-smoke-test.md)
+---
 
-[Guide home](../README.md)
+## Summary
+
+- **Path A** validates packages without cloud LLM credentials.
+- **Path B** proves the HTTP host and bundled agents with Foundry.
+- Next, learn the vocabulary in **[Core concepts (A2)](concepts.md)**, then **[Part B — Architecture](../architecture/index.md)**.
+
+!!! tip "Extended validation"
+    Follow [Live smoke test (H5)](../contribute/live-smoke-test.md) for dry/live suites beyond this quickstart.
+
+← [Guide map](guide-map.md) · [Core concepts (A2)](concepts.md) →

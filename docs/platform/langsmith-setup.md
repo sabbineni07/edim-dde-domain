@@ -231,7 +231,7 @@ Suggested project names:
 | Option | When |
 |--------|------|
 | **LangSmith Cloud** | Laptop / SDBX spikes; traces leave the machine |
-| **Enterprise self-hosted** | Data residency / FinTech policy |
+| **Enterprise self-hosted** | Data residency / enterprise policy |
 
 Self-hosted endpoint example:
 
@@ -311,7 +311,7 @@ Also check API logs: `[request_id=…]` on the same id.
 
 ---
 
-## 9. PII and FinTech caution
+## 9. PII and compliance caution
 
 Traces may include prompt text. EDIM redacts some patterns in **API logs**; LangSmith spans may still contain LLM I/O unless you redact before invoke. See [PII guardrails](pii-guardrails.md). Use non-prod projects for experiments.
 

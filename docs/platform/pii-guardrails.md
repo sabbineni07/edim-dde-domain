@@ -4,7 +4,7 @@
 **← Previous:** [Key Vault bootstrap](key-vault-bootstrap.md) · **Next:** [Observability](observability.md) →
 
 
-**Context:** Current EDIM agents (`cluster_tuning`, `spark_rca`) operate on **telemetry** (cluster/job metrics and logs). They are **not expected** to process customer PII. As a **FinTech** platform we still apply **basic expandable redaction** so accidental PII does not reach logs or LangSmith.
+**Context:** Current EDIM agents (`cluster_tuning`, `spark_rca`) operate on **telemetry** (cluster/job metrics and logs). They are **not expected** to process customer PII. We still apply **basic expandable redaction** so accidental PII does not reach logs or LangSmith.
 
 ---
 

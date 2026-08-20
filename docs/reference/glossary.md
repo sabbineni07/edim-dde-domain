@@ -1,11 +1,16 @@
 # Glossary
 
-**Learning path:** H3 · [Guide home](../README.md)
+**Learning path:** H3 · [Preface](../README.md)  
 **← Previous:** [Node type ids](node-type-ids.md) · **Next:** [Testing](../contribute/testing.md) →
 
+Organizational names (**EDIM**, **DDE**) and platform terms used across this guide.
 
+---
 | Term | Meaning |
 |------|---------|
+| **EDIM** | **E**nterprise **D**ata & **I**nformation **M**anagement — program under Enterprise Data & Analytics (portfolio or services) |
+| **DDE** | **D**igital **D**ata **E**ngineering — engineering unit under the Digital business unit |
+| **EDIM DDE** | The agent platform in this guide (`edim-dde-ai`, `edim-dde-domain`, `edim-dde-api`) — EDIM capabilities implemented by DDE |
 | **Agent** | Named YAML graph + registered node types |
 | **Node** | One graph step; type id → factory |
 | **State** | Flat dict merged across nodes |

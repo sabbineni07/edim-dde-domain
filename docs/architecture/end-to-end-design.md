@@ -1,15 +1,21 @@
-# End-to-end design (architecture, flow, patterns)
+# End-to-end design (B1)
 
-**Learning path:** B1 · [Guide home](../README.md)  
-**← Previous:** [Core concepts](../getting-started/concepts.md) · **Next:** [Architecture overview](overview.md) →
+**Learning path:** B1 · [Preface](../README.md)  
+**← Previous:** [Part B overview](index.md) · **Next:** [Architecture overview](overview.md) →
 
-This is the **master design page** for EDIM DDE. Read it once end-to-end; use sibling pages for depth. It answers: *what are the planes, how does one request flow, which GoF patterns we use, and where code lives.*
+## Chapter summary
+
+This is the **canonical architecture chapter** for EDIM DDE. It defines planes of responsibility, the hybrid YAML/Python model, request lifecycle, design patterns, and code ownership. Read it once end-to-end; use sibling chapters for focused depth.
+
+**Prerequisites:** [Core concepts (A2)](../getting-started/concepts.md) · [Part B overview](index.md)
+
+**Outcome:** you can explain how one HTTP request flows through API, domain, LangGraph, SQL, LLM, and observability backends.
 
 ---
 
 ## 1. Purpose and hybrid model
 
-EDIM DDE is a **YAML-driven LangGraph agent platform** for FinTech reliability use cases (Spark RCA, cluster tuning), hosted as a thin FastAPI app on Databricks Apps / local.
+EDIM DDE is a **YAML-driven LangGraph agent platform** from the **Enterprise Data & Information Management (EDIM)** program, built by **Digital Data Engineering (DDE)**. It targets data platform reliability use cases (Spark RCA, cluster tuning), hosted as a thin FastAPI app on Databricks Apps / local.
 
 | Layer | Responsibility | Must not |
 |-------|----------------|----------|
@@ -83,9 +89,19 @@ Keep these planes separate — they solve different problems and use different s
 | Job metrics / logs | Data | Unity Catalog tables |
 | Traces | Observability | LangSmith / MLflow |
 
-**“Option C / routing control plane” is not a seventh plane.** It is a **later job of the same Control plane** (where an `agent_id` runs, policy, heartbeat). See §2.1.
+**How many Apps we deploy is not a seventh plane.** R1 is one App with many agents. Ideas for splitting Apps or a hub location map are **deploy topology** (below), not extra boxes in the diagram.
 
-### 2.1 Control plane: R1 vs later (do not confuse with Option C)
+### 2.1 Control plane: R1 vs later routing (not a new plane)
+
+**Options A / B / C** (from [agent deployment](agent-deployment-and-composition.md)) are **hosting shapes**, not planes:
+
+| Option | Meaning | Status |
+|--------|---------|--------|
+| **A** | One API process / App loads many agent packs (what we ship) | Supported |
+| **B** | Several Apps split by domain (e.g. RCA App vs tuning App) | Parked — no cross-app YAML invoke |
+| **C** | A **hub** App plus a **location catalog** (“`spark_rca` runs at this URL”) | Parked — never built; a YAML map on one hub is not governance |
+
+If we later need “where does `agent_id` run, and is it allowed?”, that work **extends the existing Control plane** (location, policy, heartbeat). It does **not** add an “Option C plane.” Detail: [agent control plane](agent-control-plane.md) (design only).
 
 | | **R1 today** (shipped) | **Later** (design review, parked) |
 |--|------------------------|-----------------------------------|
@@ -93,7 +109,6 @@ Keep these planes separate — they solve different problems and use different s
 | **What it remembers** | Catalog metadata (`AgentRecord`), HITL **sessions**, audit | Plus **location** (URL/health), **policy** (who may invoke), optional gateway |
 | **Storage** | `StateStore` (memory / postgres / cosmos / redis) | Live repository (may still be Cosmos/Postgres; not a new *kind* of plane) |
 | **Does it execute graphs / SQL / Foundry?** | No | Still no — that stays **Data plane** |
-| **Option C** | — | A **topology tactic** (hub + location YAML). **Parked.** If we build routing, we grow this control plane — we do **not** add an “Option C plane.” |
 
 ```text
 SOURCE CONTROL     Git: YAML, prompts, skills          (unchanged)

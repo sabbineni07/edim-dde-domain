@@ -3,7 +3,7 @@
 Business purpose
 ----------------
 Deterministic string/structure redaction for logs, evidence packs, and
-LLM prompts. Ships FinTech baseline patterns (SSN, PAN-like cards, labeled
+LLM prompts. Ships baseline patterns (SSN, PAN-like cards, labeled
 account / member ids); orgs can register extras at runtime.
 
 Public API
@@ -41,7 +41,7 @@ class PiiPattern:
         return self.regex.sub(repl, text)
 
 
-# FinTech baseline — extend this list over time; keep unit tests in sync.
+# Baseline — extend this list over time; keep unit tests in sync.
 _DEFAULT_PATTERNS: tuple[PiiPattern, ...] = (
     PiiPattern(
         name="ssn",

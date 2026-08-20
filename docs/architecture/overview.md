@@ -1,9 +1,11 @@
 # Architecture overview (B2)
 
-**Learning path:** B2 · [Guide home](../README.md)  
-**← Previous:** [End-to-end design](end-to-end-design.md) · **Next:** [Packages](packages.md) →
+**Learning path:** B2 · [Preface](../README.md)  
+**← Previous:** [End-to-end design (B1)](end-to-end-design.md) · **Next:** [Packages (B3)](packages.md) →
 
-Compact system sketch. For GoF patterns, planes, and full lifecycle see **[end-to-end design](end-to-end-design.md)**.
+## Chapter summary
+
+A **one-page system sketch** of the three-package stack and plane boundaries. For patterns, lifecycle detail, and invariants, read **[End-to-end design (B1)](end-to-end-design.md)** first.
 
 ---
 

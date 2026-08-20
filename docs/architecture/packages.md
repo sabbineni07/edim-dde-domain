@@ -1,15 +1,17 @@
 # Packages (B3)
 
-**Learning path:** B3 · [Guide home](../README.md)  
-**← Previous:** [Architecture overview](overview.md) · **Next:** [Reference architecture](reference-architecture.md) →
+**Learning path:** B3 · [Preface](../README.md)  
+**← Previous:** [Architecture overview (B2)](overview.md) · **Next:** [Reference architecture (B4)](reference-architecture.md) →
 
-Ownership boundaries — keep dependencies one-way.
+## Chapter summary
 
-**One-line contract (use in reviews / slides):**
+Defines **ownership boundaries** across `edim-dde-ai`, `edim-dde-domain`, and `edim-dde-api`. Dependencies flow in one direction only: **`api` → `domain` → `ai`**.
 
-> **ai** = reusable agent runtime (graphs, scoring hooks, stores, traces).  
-> **domain** = Databricks + product semantics (SQL/UC, Foundry, tuning & RCA).  
-> **api** = thin HTTP host.
+**Review contract:**
+
+> **ai** — reusable agent runtime (graphs, stores, traces).  
+> **domain** — Databricks + product semantics (SQL, Foundry, tuning & RCA).  
+> **api** — thin HTTP host.
 
 ---
 
