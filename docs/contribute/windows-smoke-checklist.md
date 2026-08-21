@@ -1,14 +1,13 @@
-# Windows laptop — dry & live smoke checklist
+# Windows smoke checklist (H5b)
 
-**Learning path:** H5b · [Guide home](../README.md)  
+**Learning path:** H5b · [Preface](../README.md)  
 **← Previous:** [Live smoke](live-smoke-test.md) · **Next:** [Packaging](packaging.md) →
 
-**Audience:** engineers validating EDIM DDE from a **Windows** machine  
-**Full reference:** [live-smoke-test.md](live-smoke-test.md)  
-**Full numbered suite (HITL, examples, quality, results log):** workspace root [`VALIDATION.md`](../../../VALIDATION.md)  
-**Time:** dry ~20–40 min · live +30–60 min  
+## Chapter summary
 
-Use PowerShell (recommended) or Windows Terminal. Adjust drive letters/paths to your checkout.
+PowerShell-oriented dry and live smoke for engineers validating EDIM DDE from a **Windows** machine. Complements [Live smoke (H5)](live-smoke-test.md); the full numbered suite lives in workspace [`VALIDATION.md`](../../../VALIDATION.md).
+
+**Time:** dry ~20–40 min · live +30–60 min.
 
 ---
 
@@ -470,4 +469,4 @@ If blocked, send: mode, `/health` JSON, HTTP status, `error_code`, request id �
 
 ---
 
-← [Live smoke (full)](live-smoke-test.md) · [Guide home](../README.md) · [Packaging](packaging.md) →
+← [Live smoke (full)](live-smoke-test.md) · [Preface](../README.md) · [Packaging](packaging.md) →

@@ -1,7 +1,22 @@
 # Cluster tuning agent — full walkthrough (E3b)
 
-**Learning path:** E3b · [Guide home](../README.md)  
+**Learning path:** E3b · [Preface](../README.md)  
 **← Previous:** [Agents deep dive](agents-guide.md) · **Next:** [Spark RCA walkthrough](spark-rca-agent.md) →
+
+## Chapter summary
+
+This chapter walks through the **`cluster_tuning`** agent end to end: UC metrics (or a `metrics` override), Foundry sizing, deterministic guardrails, performance/risk steps, and the stable `TuningResponse`. Use it when you need to debug the graph, extend pressure policy, or call the recommend API with confidence.
+
+**Audience:** platform / data engineers and domain authors. **Outcome:** you can trace each node, supply dry overrides, and interpret guardrail retries and recommendation fields.
+
+## Prerequisites
+
+| Requirement | Notes |
+|-------------|-------|
+| [Bundled agents (E3)](bundled-agents.md) | Agent map and registration |
+| [Agents deep dive (E3a)](agents-guide.md) | Shared dependencies hub |
+| [Sources and SQL (E1)](sources-and-sql.md) | Named source `edim_sql_wh` |
+| Foundry (live HTTP) | Sizing / optional explanation LLM — [Configuration (G1)](../api/configuration.md) |
 
 **Agent id:** `cluster_tuning`  
 **Package path:** `edim_dde_domain/agents/cluster_tuning/`  
@@ -56,6 +71,9 @@ Harness:  case JSON metrics/output   → score fixture  or  invoke + Foundry (SQ
 ```
 
 Same three-source model as RCA: [Evaluation & quality §5b](../framework/evaluation-and-quality.md#5b-where-evidence--metrics-come-from-prod-vs-smoke).
+
+!!! tip "Pro tip — dry vs live metrics"
+    Supply `metrics` in the request to skip warehouse SQL while still exercising Foundry sizing and guardrails. Omit `metrics` only when you intend a live UC read.
 
 Also accepted at the HTTP layer: optional `X-Request-Id` (echoed; tags LangSmith / logs).
 
@@ -156,6 +174,9 @@ flowchart TB
 
 Reads the latest matching job/cluster run (see SELECT in YAML). Auth: Apps user token or local `az login` — [Auth and SQL](../architecture/auth-and-sql.md).
 
+!!! warning "Empty metrics → 404"
+    With live SQL and no matching row, `on_empty: error` maps to **404** `NoJobMetricsError`. Confirm `job_id` / `cluster_id` (and optional date bounds) against the UC table before debugging the LLM path.
+
 ### Step B — `normalize_metrics`
 
 Ensures `job_id`, `cluster_id`, `job_run_id`, and `metrics` are consistent after SQL or override.
@@ -181,6 +202,9 @@ Writes raw model text to `sizing_raw`.
 **Decision hierarchy:** live metrics → deterministic sizing hints → similar past
 experiences → same-job history → human guidance. Lower-priority evidence can
 corroborate but never override current metrics.
+
+!!! tip "Pro tip — historical context is optional"
+    With `EDIM_RETRIEVAL=none` and an empty RecommendationStore, `{historical_context}` is still `"None"` and sizing proceeds. Do not treat missing RAG as a hard failure.
 
 The model must compare every configured pressure dimension, keep utilization
 separate from failure evidence, and avoid family changes unless a supported
@@ -346,6 +370,9 @@ provided later through a separate RCA evidence channel.
 
 Response transparency: `sizing_attempts`, `guardrail_retries`, `guardrail_adjustments`.
 
+!!! tip "Pro tip — read guardrail fields first"
+    When the SKU looks “wrong,” check `guardrail_adjustments` and `sizing_attempts` before re-prompting. Deterministic clamps often explain the final numbers without another LLM call.
+
 ### Quality evaluation (offline / CI)
 
 After invocation, `cluster_tuning.quality` can score the agent state using the
@@ -395,6 +422,9 @@ Builds:
 ### Step I — optional explanation
 
 If `include_explanation` is truthy: `prepare_explanation_payload` → `generate_explanation` (`llm_chain` / `explanation`) → `explanation` string.
+
+!!! note "Explanation is a second LLM call"
+    Set `include_explanation: false` for cheaper smoke runs. That skips only the explanation chain — sizing still requires Foundry (or a stub in tests).
 
 ---
 
@@ -472,4 +502,24 @@ See [External add-ons](external-addons.md).
 
 ---
 
-← [Agents deep dive](agents-guide.md) · [Guide home](../README.md) · [Spark RCA walkthrough](spark-rca-agent.md) →
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| **404** `NoJobMetricsError` | No UC row for `job_id` / `cluster_id` | Verify filters or supply a `metrics` override |
+| **503** Foundry not configured | Missing Azure OpenAI / Foundry env | Configure per [Configuration (G1)](../api/configuration.md) |
+| Unexpected SKU / workers | Guardrail clamp or allow-list map | Inspect `guardrail_adjustments`, `sizing_attempts` |
+| No historical guidance in prompt | `EDIM_RETRIEVAL=none` or empty corpora/store | Expected cold start — sizing still runs with `"None"` |
+| Slow / expensive calls | `include_explanation: true` | Set false unless you need the narrative |
+| SQL auth failures on Apps | Signed-in user lacks warehouse/UC grants | See [Access & permissions (C2b)](../platform/access-and-permissions.md) |
+
+---
+
+## Summary
+
+- `cluster_tuning` loads one metrics row (SQL or override), sizes via Foundry, then applies deterministic guardrails and risk/performance checks.
+- Historical context (RAG + experience index + same-job shelf) is optional corroboration — never overrides live metrics.
+- Response is always a stable `TuningResponse`, not the raw agent state bag.
+- **Next →** [Spark RCA walkthrough (E3c)](spark-rca-agent.md)
+
+← [Agents deep dive](agents-guide.md) · [Spark RCA walkthrough](spark-rca-agent.md) →

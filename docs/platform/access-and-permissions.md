@@ -1,19 +1,27 @@
-# Access & permissions (identities by host)
+# Access & permissions (C2b)
 
-**Learning path:** C2b · [Guide home](../README.md)  
+**Learning path:** C2b · [Preface](../README.md)  
 **← Previous:** [Security baseline](security-baseline.md) · **Next:** [Authentication flows](authentication-flows.md) →
 
-**This page covers:** who is Identity **U / A / B**, and which identity runs SQL vs Foundry vs Key Vault on each host.
+## Chapter summary
 
-**Not on this page** (follow the links):
+This chapter defines the three runtime identities — **U** (user), **A** (host), **B** (Foundry) — and which identity runs **SQL**, **Foundry**, and **Key Vault** on Local, Databricks Apps, and Azure Container Apps. Platform engineers use it when wiring Apps authorization, KV grants, or ACA managed identity.
 
-| Topic | Go to |
-|-------|--------|
-| Key Vault load order, `EDIM_KV_SECRET_MAP`, examples | [Key Vault bootstrap](key-vault-bootstrap.md) |
-| Packaging Apps / Docker / ACA | [Deploy & hosting](../api/deploy-and-hosting.md) |
-| Step-by-step: grant ACA MI warehouse + UC | [Deploy & hosting — ACA SQL MI](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
-| Token resolution code paths | [Auth and SQL](../architecture/auth-and-sql.md) |
-| Env var catalog | [Environment variables](../reference/env-vars.md) |
+**Outcome:** you can map every credential failure to the correct identity and host without mixing Foundry SP into SQL’s `DefaultAzureCredential` chain.
+
+---
+
+## Prerequisites
+
+| Topic | Chapter |
+|-------|---------|
+| Trust boundaries / roles | [Security baseline (C2)](security-baseline.md) |
+| Token resolution code | [Auth and SQL (B7)](../architecture/auth-and-sql.md) |
+| Vault load order | [Key Vault bootstrap (C2c)](key-vault-bootstrap.md) |
+| Apps / ACA packaging | [Deploy & hosting (G3)](../api/deploy-and-hosting.md) |
+
+!!! note "Scope of this page"
+    Visual end-to-end auth diagrams: [Authentication flows](authentication-flows.md). ACA MI warehouse grants: [Deploy §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc).
 
 **No separate code forks per host** — one API process; behavior follows env + credential resolution.
 
@@ -55,6 +63,9 @@
 | **B** | Foundry LLM | Secrets → `EDIM_FOUNDRY_*` SP, or API key, or `az login` | Same (KV or ACA secret refs) | `az login`, `.env` SP, or API key |
 
 Creating an Entra SP and storing its client id/secret in KV for Foundry = **Identity B only**.
+
+!!! warning "Never put Foundry in AZURE_CLIENT_*"
+    SQL’s `DefaultAzureCredential` auto-reads `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`. Foundry **must** use `EDIM_FOUNDRY_*` so Apps/ACA SQL stay on Identity **U** or **A**, not the Foundry SP.
 
 ---
 
@@ -145,15 +156,19 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 
 ## 6. Troubleshooting (identity)
 
-| Symptom | Likely cause |
-|---------|----------------|
-| Foundry 503 / `DefaultAzureCredential failed` on Apps after SQL works | Identity **B** not in env — App SP (A) cannot read KV, or secret map wrong. Find App SP + grant: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user) |
-| SQL OK local, fail Apps | Need forwarded **user** token (Identity U) |
-| Apps `RequestError` / OpenSession fails | User authorization missing scope **`sql`** (App SP warehouse CAN MANAGE alone is not enough); or no `X-Forwarded-Access-Token`; or user lacks CAN USE / UC SELECT. Check `GET /api/v1/debug/sql-auth` |
-| Do we need a UI to pass the token? | **No.** Swagger at `https://<app-url>/docs` is enough; the Apps gateway injects the header. You never set `X-Forwarded-Access-Token` yourself. |
-| SQL fail ACA | MI not granted warehouse/UC — [§6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
-| KV / map errors | [Key Vault bootstrap](key-vault-bootstrap.md) |
-| `dbutils` on Apps | Not available |
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Foundry 503 / `DefaultAzureCredential failed` on Apps after SQL works | Identity **B** not in env — App SP (**A**) cannot read KV, or `EDIM_KV_SECRET_MAP` wrong | Find App SP + grant Secrets User: [Key Vault §7](key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user) |
+| SQL OK local, fail Apps | No forwarded **user** token (Identity **U**) | Call via App URL while signed in; open `/docs` on the App URL |
+| Apps `RequestError` / OpenSession | User authorization missing scope **`sql`**; or no `X-Forwarded-Access-Token`; or user lacks CAN USE / UC SELECT | Add `sql` scope; re-consent; check `GET /api/v1/debug/sql-auth` |
+| Do we need a UI to pass the token? | No — Apps gateway injects the header | Use Swagger at `https://<app-url>/docs` |
+| SQL fail ACA | MI not granted warehouse / UC | [Deploy §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc) |
+| KV / map errors | Wrong URL, map, or vault role | [Key Vault bootstrap](key-vault-bootstrap.md) |
+| `dbutils` on Apps | Not available in Apps runtime | Use Key Vault SDK / Apps secrets |
+| App SP warehouse CAN MANAGE but SQL still fails | Code uses Identity **U**, not App SP for SQL | Add **user** auth scope `sql` ([Deploy §5.7](../api/deploy-and-hosting.md#57-validate-on-apps-closes-p0-apps-token-check)) |
+
+!!! tip "Pro tip"
+    On Apps, always verify `GET /api/v1/debug/sql-auth` → `"forwarded_access_token_present": true` before debugging UC grants.
 
 ---
 
@@ -161,7 +176,7 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 
 | Doc | Topic |
 |-----|--------|
-| [Authentication flows](authentication-flows.md) | **Visual** local / Apps / ACA auth diagrams + per-service matrix |
+| [Authentication flows](authentication-flows.md) | Visual local / Apps / ACA auth diagrams |
 | [Key Vault bootstrap](key-vault-bootstrap.md) | Vault auth order + `EDIM_KV_SECRET_MAP` |
 | [Deploy & hosting](../api/deploy-and-hosting.md) | Apps / Docker / ACA packaging + ACA MI grants |
 | [Security baseline](security-baseline.md) | App role matrix |
@@ -169,7 +184,17 @@ Apps docs: [Configure authorization in a Databricks app](https://docs.databricks
 | [Environments](environments.md) | SDBX / DEV / PROD |
 | [Env vars](../reference/env-vars.md) | Catalog |
 
+---
+
+## Summary
+
+- **U** = user SQL (Apps forwarded token); **A** = host opens KV; **B** = Foundry SP via `EDIM_FOUNDRY_*`.  
+- Do **not** mix Foundry credentials into `AZURE_CLIENT_*`.  
+- Apps SQL requires user auth scope **`sql`** — App SP warehouse grants alone are insufficient.  
+
+**Next →** [Authentication flows (C2b-flow)](authentication-flows.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Security baseline](security-baseline.md) · [Guide home](../README.md) · [Authentication flows](authentication-flows.md) →
+← [Security baseline](security-baseline.md) · [Authentication flows](authentication-flows.md) →

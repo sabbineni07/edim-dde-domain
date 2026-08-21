@@ -1,8 +1,15 @@
 # EDIM DDE — Release 1 reference architecture
 
-**Learning path:** B4 · [Guide home](../README.md)
+**Learning path:** B4 · [Preface](../README.md)  
 **← Previous:** [Packages](packages.md) · **Next:** [Architecture deck](architecture-deck.md) →
 
+## Chapter summary
+
+Approved **R1 reference map** for the EDIM AI agent stack: packages, trust boundaries, request flow, environments, and explicit non-goals. Use this page for architecture review and PowerPoint export; operational how-tos live in Parts C–G.
+
+**Outcome:** you can defend R1 scope boundaries and point reviewers at the signed-off diagrams.
+
+---
 
 **Status:** BL-001 — **signed off 2026-08-05**  
 **Audience:** Architecture review and PowerPoint export  
@@ -219,7 +226,14 @@ Full guide: [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 - [YAML schema contract](../framework/yaml-schema.md)
 - [Orchestration topology](../framework/orchestration-topology.md)
 
+## Summary
+
+- R1 reference architecture is the signed-off map of packages, planes, and non-goals.
+- Use companion SVGs and the HTML deck for reviews; deep ops live in platform/framework chapters.
+
+**Next →** [Architecture deck (B5)](architecture-deck.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Packages](packages.md) · [Guide home](../README.md) · [Architecture deck](architecture-deck.md) →
+← [Packages](packages.md) · [Preface](../README.md) · [Architecture deck](architecture-deck.md) →

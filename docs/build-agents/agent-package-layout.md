@@ -1,8 +1,15 @@
 # Agent package layout
 
-**Learning path:** F1 · [Guide home](../README.md)
+**Learning path:** F1 · [Preface](../README.md)  
 **← Previous:** [External add-ons](../domain/external-addons.md) · **Next:** [New agent step-by-step](step-by-step.md) →
 
+## Chapter summary
+
+Directory convention for every product or plugin agent: required YAML and `nodes.py`, recommended `logic.py`, optional `helpers/` and `content/`.
+
+**Outcome:** you can scaffold a package that bootstrap and plugins will discover.
+
+---
 
 Convention for every product or plugin agent:
 
@@ -38,7 +45,14 @@ agents/<agent_id>/
 - Fat `nodes.py` with business logic
 - Secrets in YAML
 
+## Summary
+
+- Keep adapters thin; put rules in helpers/logic, not fat `nodes.py`.
+- No secrets in YAML; reuse `domain.sql.query` for Databricks IO.
+
+**Next →** [New agent step-by-step (F2)](step-by-step.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [External add-ons](../domain/external-addons.md) · [Guide home](../README.md) · [New agent step-by-step](step-by-step.md) →
+← [External add-ons](../domain/external-addons.md) · [Preface](../README.md) · [New agent step-by-step](step-by-step.md) →

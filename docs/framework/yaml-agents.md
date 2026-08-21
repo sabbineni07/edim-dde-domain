@@ -1,8 +1,15 @@
 # YAML agents
 
-**Learning path:** D2 · [Guide home](../README.md)
+**Learning path:** D2 · [Preface](../README.md)  
 **← Previous:** [YAML schema](yaml-schema.md) · **Next:** [Nodes and routers](nodes-and-routers.md) →
 
+## Chapter summary
+
+How agents are declared as `*.agent.yaml` and registered via `register_from_yaml` / `register_from_directory`. Covers the load surface engineers use before writing custom nodes.
+
+**Outcome:** you can register and list an agent definition from disk.
+
+---
 
 Agents are declared as `*.agent.yaml` and loaded with:
 
@@ -64,7 +71,14 @@ bindings:
 
 More detail: `edim-dde-ai/docs/USAGE.md` · `edim-dde-ai/docs/DESIGN.md`
 
+## Summary
+
+- Agents are YAML-first; registration is directory- or file-based.
+- Sources and `${ENV:…}` interpolation keep secrets out of YAML.
+
+**Next →** [Nodes and routers (D3)](nodes-and-routers.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [YAML schema](yaml-schema.md) · [Guide home](../README.md) · [Nodes and routers](nodes-and-routers.md) →
+← [YAML schema](yaml-schema.md) · [Preface](../README.md) · [Nodes and routers](nodes-and-routers.md) →

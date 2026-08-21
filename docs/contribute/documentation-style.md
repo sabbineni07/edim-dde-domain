@@ -1,8 +1,11 @@
 # Documentation style guide
 
-**Audience:** contributors editing the EDIM DDE engineer guide (`edim-dde-domain/docs/`).
+**Learning path:** — · [Preface](../README.md)  
+**← Previous:** [Packaging](packaging.md) · **Next:** [Preface](../README.md) →
 
-This guide defines the **book-style** conventions used across all chapters. Match this voice and structure when adding or revising pages.
+## Chapter summary
+
+Conventions for editing the EDIM DDE engineer guide (`edim-dde-domain/docs/`): voice, page anatomy, admonitions, and part mapping. Match this style when adding or revising chapters.
 
 ---
 
@@ -36,7 +39,7 @@ Every guide page (except Home) should include, in order:
 ### Learning path header (required)
 
 ```markdown
-**Learning path:** A1 · [Home](../README.md)  
+**Learning path:** A1 · [Preface](../README.md)  
 **← Previous:** [Guide map](guide-map.md) · **Next:** [Core concepts](concepts.md) →
 ```
 
@@ -105,5 +108,11 @@ make guide-site && make compose-up
 
 ---
 
-**Learning path:** H6 · [Home](../README.md)  
-**← Previous:** [Packaging](packaging.md) · **Next:** [Home](../README.md) →
+## Summary
+
+- Match voice, page anatomy, and admonitions when editing the guide.
+- Update `mkdocs.yml` nav, page prev/next, and [Guide map](../getting-started/guide-map.md) together.
+
+**Next →** [Preface](../README.md)
+
+← [Packaging](packaging.md) · [Preface](../README.md) →

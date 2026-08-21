@@ -67,4 +67,4 @@ edim-dde-ai  (v1.0.0)
 
 ---
 
-← [End-to-end design](end-to-end-design.md) · [Guide home](../README.md) · [Packages](packages.md) →
+← [End-to-end design](end-to-end-design.md) · [Preface](../README.md) · [Packages](packages.md) →

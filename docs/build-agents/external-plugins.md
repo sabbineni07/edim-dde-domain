@@ -1,8 +1,15 @@
 # External agent plugins
 
-**Learning path:** F3 · [Guide home](../README.md)
+**Learning path:** F3 · [Preface](../README.md)  
 **← Previous:** [Step-by-step](step-by-step.md) · **Next:** [API configuration](../api/configuration.md) →
 
+## Chapter summary
+
+How additional agents register into the same runtime without forking `edim-dde-domain`: `EDIM_AGENT_DIRS` directory plugins and entry-point packs.
+
+**Outcome:** you can load partner/agent packs beside bundled agents safely.
+
+---
 
 Bundled agents ship inside the `edim-dde-domain` wheel. Additional agents register **into the same registries** without forking the package.
 
@@ -50,7 +57,14 @@ Install the plugin into the same environment as the API; bootstrap loads the ent
 - Reuse `domain.sql.query` and domain sources when talking to Databricks
 - No secrets in YAML
 
+## Summary
+
+- Namespace node type ids; reuse domain SQL sources for Databricks.
+- Bootstrap loads directories and entry points into shared registries.
+
+**Next →** [API configuration (G1)](../api/configuration.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Step-by-step](step-by-step.md) · [Guide home](../README.md) · [API configuration](../api/configuration.md) →
+← [Step-by-step](step-by-step.md) · [Preface](../README.md) · [API configuration](../api/configuration.md) →

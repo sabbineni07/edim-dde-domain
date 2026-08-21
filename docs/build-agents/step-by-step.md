@@ -1,8 +1,15 @@
 # New agent — step by step
 
-**Learning path:** F2 · [Guide home](../README.md)
+**Learning path:** F2 · [Preface](../README.md)  
 **← Previous:** [Agent package layout](agent-package-layout.md) · **Next:** [External plugins](external-plugins.md) →
 
+## Chapter summary
+
+Practical checklist to author a new agent package: scaffold, YAML graph, node registration, content, tests, and optional HTTP exposure.
+
+**Outcome:** you can add an agent beyond the bundled tuning/RCA graphs.
+
+---
 
 ## 1. Create the package
 
@@ -94,7 +101,14 @@ Add a route in `edim-dde-api` that:
 
 See [testing](../contribute/testing.md).
 
+## Summary
+
+- Follow package layout; test with overrides and stub LLM before live SQL.
+- Expose HTTP only when the agent is product-ready.
+
+**Next →** [External plugins (F3)](external-plugins.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Agent package layout](agent-package-layout.md) · [Guide home](../README.md) · [External plugins](external-plugins.md) →
+← [Agent package layout](agent-package-layout.md) · [Preface](../README.md) · [External plugins](external-plugins.md) →

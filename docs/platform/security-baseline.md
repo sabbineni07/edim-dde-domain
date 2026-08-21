@@ -1,8 +1,15 @@
 # Security baseline (BL-013)
 
-**Learning path:** C2 · [Guide home](../README.md)
+**Learning path:** C2 · [Preface](../README.md)  
 **← Previous:** [Environments](environments.md) · **Next:** [Access & permissions](access-and-permissions.md) →
 
+## Chapter summary
+
+R1 security posture: keep the current identity model, bootstrap secrets via Azure Key Vault, and document a role matrix for later enforcement. Detailed U/A/B matrices and KV maps live on dedicated pages.
+
+**Outcome:** you know what is in scope for R1 security vs deferred controls.
+
+---
 
 **Current decision:** Keep the **current identity model**. Add **Azure Key Vault SDK** bootstrap for secrets. Document a **role matrix** for later enforcement.
 
@@ -56,9 +63,16 @@ YAML **cannot** dynamically import Python. Node and router type ids must already
 - [Key Vault bootstrap](key-vault-bootstrap.md) — secret load  
 - [PII guardrails](pii-guardrails.md)  
 - [Auth and SQL](../architecture/auth-and-sql.md)  
-- [Environments](environments.md)  
+- [Environments](environments.md)
+
+## Summary
+
+- Identity model stays; KV bootstrap is the secret path; role matrix is documentation-first.
+- Follow linked pages for grants, PII, and host-specific access.
+
+**Next →** [Access & permissions](access-and-permissions.md)
 
 <!-- edim-learning-nav -->
 ---
 
-← [Environments](environments.md) · [Guide home](../README.md) · [Access & permissions](access-and-permissions.md) →
+← [Environments](environments.md) · [Preface](../README.md) · [Access & permissions](access-and-permissions.md) →

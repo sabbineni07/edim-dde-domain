@@ -1,8 +1,15 @@
 # Within-env workspace / dataset resolver
 
-**Learning path:** E1b · [Guide home](../README.md)
+**Learning path:** E1b · [Preface](../README.md)  
 **← Previous:** [Sources and SQL](sources-and-sql.md) · **Next:** [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →
 
+## Chapter summary
+
+Within a single `EDIM_ENV`, resolve among multiple Databricks workspaces/datasets without ever crossing env boundaries. Hard rule: no `dev` → `prod` SQL from one process.
+
+**Outcome:** you configure workspace catalogs and bindings safely inside one env.
+
+---
 
 ## Hard rule
 
@@ -128,7 +135,14 @@ Complementary — not replacements.
 
 `tests/test_workspace_resolver.py` — catalog filter, cross-env refusal, process fallback, SQL node overlay, bindings precedence.
 
+## Summary
+
+- One process = one env; resolver only chooses workspaces inside that env.
+- Tests cover cross-env refusal and binding precedence.
+
+**Next →** [SQL design deep dive (E2)](../DESIGN_SOURCES_AND_SQL_NODES.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Sources and SQL](sources-and-sql.md) · [Guide home](../README.md) · [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →
+← [Sources and SQL](sources-and-sql.md) · [Preface](../README.md) · [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →

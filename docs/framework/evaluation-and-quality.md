@@ -1,7 +1,15 @@
 # Evaluation, quality, and confidence
 
-**Learning path:** D7 · [Guide home](../README.md)
+**Learning path:** D7 · [Preface](../README.md)  
 **← Previous:** [HITL resume](hitl-resume.md) · **Next:** [Sources and SQL](../domain/sources-and-sql.md) →
+
+## Chapter summary
+
+Separates structural validity, recommendation quality, and evaluator confidence — and shows how EDIM records outcomes for later calibration. Do not collapse these into a single “confidence” number.
+
+**Outcome:** you can wire evaluators and interpret quality bands without misusing confidence fields.
+
+---
 
 ## 1. Three different questions
 
@@ -471,3 +479,12 @@ Stored under `RecommendationRecord.extra.outcome` for later calibration
 ```text
 predicted quality band → acceptance rate → applied success rate → performance regression rate
 ```
+
+## Summary
+
+- Validity, quality, and evaluator confidence are distinct questions.
+- Persist outcomes on recommendation records for calibration loops.
+
+**Next →** [Sources and SQL (E1)](../domain/sources-and-sql.md)
+
+← [HITL resume](hitl-resume.md) · [Preface](../README.md) · [Sources and SQL](../domain/sources-and-sql.md) →

@@ -1,7 +1,15 @@
 # UC telemetry tables & attributes (E3d)
 
-**Learning path:** E3d · [Guide home](../README.md)  
+**Learning path:** E3d · [Preface](../README.md)  
 **← Previous:** [Spark RCA walkthrough](spark-rca-agent.md) · **Next:** [External add-ons](external-addons.md) →
+
+## Chapter summary
+
+Unity Catalog telemetry tables and attributes that bundled agents SELECT via the SQL warehouse. FQNs are env-driven; column lists mirror agent YAML SELECT lists.
+
+**Outcome:** you can map env vars to physical tables and verify grants for the calling identity.
+
+---
 
 Agents read **Unity Catalog** Delta tables through the SQL warehouse. FQNs are env-driven (never hard-coded catalog names in YAML).
 
@@ -149,4 +157,11 @@ Filter: `ERROR`/`WARNING` **or** non-null `exception`.
 
 ---
 
-← [Spark RCA walkthrough](spark-rca-agent.md) · [Guide home](../README.md) · [External add-ons](external-addons.md) →
+## Summary
+
+- Never hard-code catalog names in YAML — use env FQNs.
+- Align physical columns with YAML SELECT lists or provide views.
+
+**Next →** [External add-ons (E3e)](external-addons.md)
+
+← [Spark RCA walkthrough](spark-rca-agent.md) · [Preface](../README.md) · [External add-ons](external-addons.md) →

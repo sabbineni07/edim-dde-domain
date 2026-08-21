@@ -1,7 +1,15 @@
 # HTML architecture deck (B5)
 
-**Learning path:** B5 · [Guide home](../README.md)  
+**Learning path:** B5 · [Preface](../README.md)  
 **← Previous:** [Reference architecture](reference-architecture.md) · **Next:** [Request flow](request-flow.md) →
+
+## Chapter summary
+
+Short pointer to the **HTML Present-mode deck** and SVG assets used in architecture reviews. Narrative and non-goals remain in the reference architecture page.
+
+**Outcome:** you can open the deck and capture slides without hunting paths.
+
+---
 
 Open the slide deck for architecture reviews and PowerPoint capture:
 
@@ -25,7 +33,14 @@ That is the intended contract. Today, a few safety/quality helpers still live in
 
 Sign-off narrative and non-goals stay in [reference architecture](reference-architecture.md). Continue the learning path at [request flow](request-flow.md).
 
+## Summary
+
+- Present the HTML deck for reviews; keep sign-off narrative in reference architecture.
+- SVGs are the preferred vector inserts for PowerPoint.
+
+**Next →** [Request flow (B6)](request-flow.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Reference architecture](reference-architecture.md) · [Guide home](../README.md) · [Request flow](request-flow.md) →
+← [Reference architecture](reference-architecture.md) · [Preface](../README.md) · [Request flow](request-flow.md) →

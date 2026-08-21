@@ -1,7 +1,15 @@
 # Agent deployment & composition
 
-**Learning path:** B9 · [Guide home](../README.md)  
+**Learning path:** B9 · [Preface](../README.md)  
 **← Previous:** [Config → observability](config-to-observability.md) · **Next:** [Agent control plane (design)](agent-control-plane.md) →
+
+## Chapter summary
+
+How to **deploy** many YAML agents (one app vs many), how consumers package DE SDLC suites vs single-agent packs, and how agents interact when topologies split. In-process `invoke_agent` mechanics stay in the orchestration chapter.
+
+**Outcome:** you can choose Option A/B-style deployment shapes without inventing a control plane.
+
+---
 
 **This page covers:** how to **deploy** many YAML agents (one app vs many apps), how **end consumers** use the framework (full DE SDLC suite vs single-agent packs), and how agents **interact across apps** when topologies are split.
 
@@ -381,7 +389,14 @@ Same authoring path: [Agent package layout](../build-agents/agent-package-layout
 | [**Agent control plane & routing**](agent-control-plane.md) | **Design review** — governance CP, registry, gateway vs directory; Option B/C parked |
 | Workspace root `BACKLOG.md` · `AI_Framework_Platform_Capability_Backlog.md` | HITL, remote invoke, routing |
 
+## Summary
+
+- Prefer one App with many YAML agents unless isolation forces a split.
+- Cross-app remote invoke and governance CP are design/parked — see B9b.
+
+**Next →** [Agent control plane (B9b)](agent-control-plane.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Config → observability](config-to-observability.md) · [Guide home](../README.md) · [Agent control plane (design)](agent-control-plane.md) →
+← [Config → observability](config-to-observability.md) · [Preface](../README.md) · [Agent control plane (design)](agent-control-plane.md) →

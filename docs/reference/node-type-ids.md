@@ -1,8 +1,15 @@
-# Node type ids
+# Node type ids (H2)
 
-**Learning path:** H2 · [Guide home](../README.md)
+**Learning path:** H2 · [Preface](../README.md)  
 **← Previous:** [Environment variables](env-vars.md) · **Next:** [Glossary](glossary.md) →
 
+## Chapter summary
+
+Allowlisted node **`type`** strings registered by the framework and domain packages. Agent YAML may only reference these ids (or plugin-registered extensions).
+
+**Outcome:** you can pick a valid `type` when authoring or reviewing `*.agent.yaml`.
+
+---
 
 ## Framework builtins (`edim-dde-ai`)
 
@@ -35,4 +42,4 @@ Plugins should use their own prefix (e.g. `acme.*`).
 <!-- edim-learning-nav -->
 ---
 
-← [Environment variables](env-vars.md) · [Guide home](../README.md) · [Glossary](glossary.md) →
+← [Environment variables](env-vars.md) · [Preface](../README.md) · [Glossary](glossary.md) →

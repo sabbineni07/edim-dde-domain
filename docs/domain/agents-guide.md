@@ -1,7 +1,15 @@
 # Agents deep dive (E3a)
 
-**Learning path:** E3a · [Guide home](../README.md)  
+**Learning path:** E3a · [Preface](../README.md)  
 **← Previous:** [Bundled agents](bundled-agents.md) · **Next:** [Cluster tuning walkthrough](cluster-tuning-agent.md) →
+
+## Chapter summary
+
+Section index for product walkthroughs of the bundled agents: shared dependencies, then per-agent graph pages, UC telemetry, and external add-ons.
+
+**Outcome:** you know the reading order before opening the tuning or RCA walkthrough.
+
+---
 
 This section is the **product walkthrough** for the two bundled agents: what they are for, every graph step from HTTP input to final DTO, Unity Catalog telemetry they read, and external add-ons (knowledge / RAG, Foundry, optional Databricks Knowledge Assistant).
 
@@ -110,4 +118,11 @@ skip SQL only. Details:
 
 ---
 
-← [Bundled agents](bundled-agents.md) · [Guide home](../README.md) · [Cluster tuning walkthrough](cluster-tuning-agent.md) →
+## Summary
+
+- Start here for shared context; then open tuning or RCA walkthroughs.
+- Prod builds evidence from UC; overrides are for smoke and harnesses.
+
+**Next →** [Cluster tuning walkthrough](cluster-tuning-agent.md)
+
+← [Bundled agents](bundled-agents.md) · [Preface](../README.md) · [Cluster tuning walkthrough](cluster-tuning-agent.md) →

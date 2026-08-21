@@ -1,7 +1,15 @@
 # Content and LLM (D5)
 
-**Learning path:** D5 · [Guide home](../README.md)  
+**Learning path:** D5 · [Preface](../README.md)  
 **← Previous:** [Conditional edges](conditional-edges.md) · **Next:** [Orchestration](orchestration-topology.md) →
+
+## Chapter summary
+
+How prompts, skills, and the `LLMProvider` Strategy wire into `llm_chain` nodes via ContentHub resolution order.
+
+**Outcome:** you can attach prompts/skills to a chain and know where Foundry auth is configured.
+
+---
 
 How prompts, skills, and the LLM Strategy are wired into `llm_chain` nodes.
 
@@ -81,4 +89,11 @@ Foundry auth: local `az login` or SP from Key Vault — see [auth and SQL](../ar
 
 ---
 
-← [Conditional edges](conditional-edges.md) · [Guide home](../README.md) · [Orchestration](orchestration-topology.md) →
+## Summary
+
+- ContentHub resolves prompts/skills; LLMProvider invokes the model.
+- Foundry credentials follow auth/KV paths documented in architecture and API config.
+
+**Next →** [Orchestration topology (D6)](orchestration-topology.md)
+
+← [Conditional edges](conditional-edges.md) · [Preface](../README.md) · [Orchestration](orchestration-topology.md) →

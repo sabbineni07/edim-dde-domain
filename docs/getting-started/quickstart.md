@@ -1,6 +1,6 @@
 # Quickstart (A1)
 
-**Learning path:** A1 · [Home](../README.md)  
+**Learning path:** A1 · [Preface](../README.md)  
 **← Previous:** [Guide map](guide-map.md) · **Next:** [Core concepts](concepts.md) →
 
 ## Chapter summary

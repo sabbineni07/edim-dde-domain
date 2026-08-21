@@ -1,7 +1,15 @@
 # Auth and SQL
 
-**Learning path:** B7 · [Guide home](../README.md)
+**Learning path:** B7 · [Preface](../README.md)  
 **← Previous:** [Request flow](request-flow.md) · **Next:** [Config → observability](config-to-observability.md) →
+
+## Chapter summary
+
+How runtime code resolves a **Databricks SQL warehouse token** and how **Foundry** authenticates. Identity matrices, visual flows, and Key Vault mapping live on companion platform pages.
+
+**Outcome:** you know which credential path the SQL and LLM clients take in local vs Apps hosts.
+
+---
 
 **This page covers:** how code resolves a Databricks SQL warehouse token, and how Foundry authenticates.
 
@@ -53,7 +61,14 @@ Named connections in `sources.yaml` (no secrets inline). Host/path support `${EN
 
 See [domain sources and SQL](../domain/sources-and-sql.md) and the deep dive [DESIGN_SOURCES_AND_SQL_NODES.md](../DESIGN_SOURCES_AND_SQL_NODES.md).
 
+## Summary
+
+- SQL token and Foundry auth are separate resolution paths; do not conflate App SP with Foundry SP.
+- Named sources hold connection shape only — secrets stay in env / Key Vault.
+
+**Next →** [Config → observability (B8)](config-to-observability.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Request flow](request-flow.md) · [Guide home](../README.md) · [Config → observability](config-to-observability.md) →
+← [Request flow](request-flow.md) · [Preface](../README.md) · [Config → observability](config-to-observability.md) →

@@ -1,8 +1,15 @@
-# Environment variables
+# Environment variables (H1)
 
-**Learning path:** H1 · [Guide home](../README.md)
+**Learning path:** H1 · [Preface](../README.md)  
 **← Previous:** [Deploy & hosting](../api/deploy-and-hosting.md) · **Next:** [Node type ids](node-type-ids.md) →
 
+## Chapter summary
+
+Lookup catalog of **`EDIM_*`**, Databricks, Azure, and plane configuration variables. Use this page when wiring `.env`, `app.yaml`, or ACA secrets — not as a narrative chapter.
+
+**Outcome:** you can find the correct variable name and owning package for any deploy concern.
+
+---
 
 | Variable | Used by | Purpose |
 |----------|---------|---------|
@@ -132,4 +139,4 @@ See also: [access & permissions](../platform/access-and-permissions.md), [deploy
 <!-- edim-learning-nav -->
 ---
 
-← [Deploy & hosting](../api/deploy-and-hosting.md) · [Guide home](../README.md) · [Node type ids](node-type-ids.md) →
+← [Deploy & hosting](../api/deploy-and-hosting.md) · [Preface](../README.md) · [Node type ids](node-type-ids.md) →

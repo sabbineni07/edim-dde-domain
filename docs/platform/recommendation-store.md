@@ -1,7 +1,15 @@
 # Recommendation lifecycle store (Postgres · Cosmos · Redis · memory · none)
 
-**Learning path:** C6b · [Guide home](../README.md)
+**Learning path:** C6b · [Preface](../README.md)  
 **← Previous:** [Control-plane state store](state-store.md) · **Next:** [Retrieval & RAG](retrieval-and-rag.md) →
+
+## Chapter summary
+
+Product **recommendation lifecycle** persistence (tuning/RCA outcomes and status), separate from control-plane StateStore though often sharing a database. Selected via `EDIM_RECOMMENDATION_STORE`.
+
+**Outcome:** you know which env vars and API routes own recommendation history vs agent catalog.
+
+---
 
 ---
 
@@ -380,7 +388,14 @@ Document model: `RecommendationRecord` (`edim_dde_ai.recommendations.models`).
 
 Also: [State store](state-store.md) · [HTTP endpoints](../api/endpoints.md) · [Env vars](../reference/env-vars.md)
 
+## Summary
+
+- RecommendationStore remembers outcomes; StateStore manages the system.
+- API lifespan configures both; list/get/patch routes expose history.
+
+**Next →** [Retrieval & RAG (C7)](retrieval-and-rag.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [State store](state-store.md) · [Guide home](../README.md) · [Retrieval & RAG](retrieval-and-rag.md) →
+← [State store](state-store.md) · [Preface](../README.md) · [Retrieval & RAG](retrieval-and-rag.md) →

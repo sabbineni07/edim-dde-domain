@@ -16,8 +16,6 @@ This guide explains **what EDIM DDE is**, **how it is architected**, and **how t
 - Author or modify YAML agents and domain node types.
 - Wire platform planes (SQL auth, Foundry, Key Vault, observability, persistence, retrieval).
 
-It does **not** replace product backlog or enterprise roadmap documents (`BACKLOG.md`, `AI_Framework_Platform_Capability_Backlog.md` at workspace root).
-
 ### Organization
 
 The guide follows eight **parts** (A–H), ordered as a learning path:

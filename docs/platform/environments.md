@@ -1,8 +1,15 @@
 # Environments (BL-046)
 
-**Learning path:** C1 · [Guide home](../README.md)
+**Learning path:** C1 · [Preface](../README.md)  
 **← Previous:** [Agent control plane (design review)](../architecture/agent-control-plane.md) · **Next:** [Security baseline](security-baseline.md) →
 
+## Chapter summary
+
+Defines `EDIM_ENV` (`sdbx` / `dev` / `uat` / `intg` / `prod`) and what must be configured per environment for Databricks, Foundry, LangSmith, state, and retrieval. Current focus is SDBX, DEV, and PROD.
+
+**Outcome:** you set one env per process and know which companion planes to wire.
+
+---
 
 **Current focus:** `SDBX`, `DEV`, `PROD`  
 **Documented for later:** `UAT`, `INTG`
@@ -96,7 +103,14 @@ Minimum for agent invoke:
 - Retrieval (optional local): `EDIM_RETRIEVAL=faiss` + `EDIM_FAISS_INDEX_PATH` — see [retrieval-and-rag.md](retrieval-and-rag.md)
 - Platform: `EDIM_ENV`, optional `AZURE_KEY_VAULT_URL` + secret name mappings
 
+## Summary
+
+- One process binds to one `EDIM_ENV`; never cross-env SQL or catalogs.
+- Per-env secrets and FQNs live in env/KV — not hard-coded in YAML.
+
+**Next →** [Security baseline (C2)](security-baseline.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Agent control plane (design review)](../architecture/agent-control-plane.md) · [Guide home](../README.md) · [Security baseline](security-baseline.md) →
+← [Agent control plane (design review)](../architecture/agent-control-plane.md) · [Preface](../README.md) · [Security baseline](security-baseline.md) →

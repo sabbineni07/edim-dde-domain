@@ -1,7 +1,15 @@
 # Observability providers (C4) — LangSmith · MLflow · none
 
-**Learning path:** C4 · [Guide home](../README.md)  
+**Learning path:** C4 · [Preface](../README.md)  
 **← Previous:** [PII guardrails](pii-guardrails.md) · **Next:** [LangSmith setup](langsmith-setup.md) →
+
+## Chapter summary
+
+Pluggable observability backends in `edim-dde-ai` (LangSmith, MLflow, or none), selected once at process start. R1 default is LangSmith when tracing env is enabled.
+
+**Outcome:** you can choose and verify the active provider without confusing it with state or retrieval.
+
+---
 
 EDIM supports **pluggable observability backends** in `edim-dde-ai`, selected at process start (same Strategy pattern as `LLMProvider`, `StateStore`, `RetrievalProvider`).
 
@@ -140,4 +148,11 @@ Built-in registry = **one** active provider. A composite provider can be added l
 
 ---
 
-← [PII guardrails](pii-guardrails.md) · [Guide home](../README.md) · [LangSmith setup](langsmith-setup.md) →
+## Summary
+
+- Observability is a Strategy plane, independent of StateStore and RetrievalProvider.
+- Hands-on LangSmith wiring continues in the next chapter.
+
+**Next →** [LangSmith setup (C5)](langsmith-setup.md)
+
+← [PII guardrails](pii-guardrails.md) · [Preface](../README.md) · [LangSmith setup](langsmith-setup.md) →

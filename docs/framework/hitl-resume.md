@@ -1,13 +1,24 @@
 # HITL interrupt / resume (D6b)
 
-**Learning path:** D6b · [Guide home](../README.md)  
+**Learning path:** D6b · [Preface](../README.md)  
 **← Previous:** [Orchestration](orchestration-topology.md) · **Next:** [Evaluation & quality](evaluation-and-quality.md) →
 
-Human-in-the-loop: pause a graph at a gate, persist a **StateStore session**, then continue after approve / reject / modify.
+## Chapter summary
 
-**R1 scope:** in-process only (same App). Not LangGraph checkpointers, not risk-based escalation (BL-039 later), not a UI.
+This chapter covers human-in-the-loop pause and resume: stop a graph at a `hitl.gate`, persist a **StateStore** session, then continue after approve / reject / modify. It is both the **user guide** (YAML + HTTP) and the **engineer guide** (skip Decorator, decision merge, why `HitlPaused` is not an error).
 
-This page is the **user guide** (YAML + HTTP) and the **engineer guide** (patterns, skip Decorator, why `HitlPaused` is not an error). Product graphs (`cluster_tuning`, `spark_rca`) do **not** pause unless you add a `hitl.gate`.
+**Audience:** framework authors wiring gates and API consumers calling session routes. **Outcome:** you can add a gate, start/resume via HTTP or `resume_hitl_session`, and treat pause as success—not a crash.
+
+## Prerequisites
+
+| Requirement | Notes |
+|-------------|-------|
+| [Orchestration (D6)](orchestration-topology.md) | In-process invoke and one-graph-per-agent |
+| [State store (C6)](../platform/state-store.md) | Session persistence backends |
+| [Nodes and routers (D3)](nodes-and-routers.md) | Factory → Decorator → Adapter wrap order |
+
+!!! note "R1 scope"
+    HITL is **in-process only** (same App). Not LangGraph checkpointers, not risk-based escalation (BL-039 later), not a UI. Product graphs (`cluster_tuning`, `spark_rca`) do **not** pause unless you add a `hitl.gate`.
 
 ---
 
@@ -111,6 +122,9 @@ graph:
 
 Put the gate **after** expensive SQL/LLM work you do not want to re-run. On resume, nodes **before** the gate are skipped (`hitl_resume_at`). Nodes after the gate run with `hitl_decision` in state (`approved` \| `rejected` \| `modified`).
 
+!!! tip "Pro tip — gate placement"
+    Place `hitl.gate` immediately after the draft/propose step. Resume skips everything before the gate, so SQL and LLM cost is paid once; only post-gate apply/reject branches re-run.
+
 Optional state flags:
 
 | Key | Effect |
@@ -158,6 +172,9 @@ Resume body:
 | 400 | Invalid decision |
 | 409 | Session is not `waiting_hitl` (already closed / resumed) |
 
+!!! warning "Resume is idempotent only while waiting"
+    A second `POST /resume` on a closed session returns **409**. Persist `session_id` from the pause response and poll `GET` until you confirm `waiting_hitl` before resuming.
+
 Product routes (`/rca/analyze`, `/cluster_tuning/recommend`) are **unchanged** — they do not pause unless you add a `hitl.gate` to those graphs.
 
 ---
@@ -175,6 +192,9 @@ Uses the process **StateStore** (default `memory`; Postgres/Cosmos/Redis via `ED
 | Audit | `hitl.pause` · `hitl.resume` · `hitl.close` |
 
 Laptop: memory store is enough for a demo; use Postgres if you need sessions to survive process restart.
+
+!!! tip "Pro tip — local vs durable sessions"
+    Prefer `EDIM_STATE_STORE=memory` for first HITL smoke. Switch to Postgres when you need pause → process restart → resume, or multi-worker demos that share a store.
 
 ---
 
@@ -219,6 +239,9 @@ factory(config) → skip_until_resume(node_id, fn) → adapt_node(fn)
 ```
 
 If you wrap after `adapt_node`, the Decorator would see `{"data": {...}}` and would not find `hitl_resume_at`.
+
+!!! warning "Wrap order is load-bearing"
+    Always keep `factory → skip_until_resume → adapt_node`. Reversing Decorator and Adapter breaks resume skip because `hitl_resume_at` lives on the flat bag, not inside `{"data": ...}`.
 
 ---
 
@@ -268,6 +291,9 @@ Invalid resume (unknown id, not waiting, unknown decision) is `HitlError` → HT
 `MetadataAgent` catches `HitlPaused` and returns `paused.state` (the waiting snapshot). Callers and HTTP handlers treat that as success with `status=waiting_hitl`. If it were a `FoundationError`, observability and API error mapping would treat a normal approval pause as a crash.
 
 Do not `raise HitlError` from the gate for a pause. Do not swallow `HitlPaused` inside a domain node.
+
+!!! tip "Pro tip — treat pause as success"
+    Gate code and HTTP handlers must return **200** with `status=waiting_hitl` when `HitlPaused` is raised. Only `HitlError` (bad session / decision) maps to 400 / 409.
 
 ---
 
@@ -337,7 +363,26 @@ edim_dde_ai/hitl/
 | [YAML schema](yaml-schema.md) | `hitl.enabled` vs `metadata.hitl_required` |
 | [HTTP endpoints](../api/endpoints.md) | Session routes |
 
-<!-- edim-learning-nav -->
 ---
 
-← [Orchestration](orchestration-topology.md) · [Guide home](../README.md) · [Evaluation & quality](evaluation-and-quality.md) →
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Gate never pauses | `hitl.enabled: false` and no `hitl_enabled` in state; or `skip_hitl` | Enable YAML `hitl.enabled` or set state `hitl_enabled: true` |
+| Nodes before gate re-run on resume | Skip Decorator missing / wrong wrap order | Confirm `skip_until_resume` wraps **before** `adapt_node` |
+| HTTP **409** on resume | Session already `closed` / not `waiting_hitl` | `GET` session; only resume once while waiting |
+| HTTP **400** invalid decision | Decision not in `approved` \| `rejected` \| `modified` | Send a allowed `decision` string |
+| Sessions lost after restart | `EDIM_STATE_STORE=memory` | Use Postgres (or other durable backend) for multi-process demos |
+| Pause treated as API error | Caller maps all exceptions to 5xx | Catch / unwrap `HitlPaused`; return 200 + `waiting_hitl` |
+
+---
+
+## Summary
+
+- Pause persists a StateStore session at `hitl.gate`; resume merges the decision and skips nodes before the gate.
+- `HitlPaused` is control flow (success); `HitlError` is the real failure path (400 / 409).
+- Product agents do not HITL until you add a gate; use `hitl_demo` for smoke.
+- **Next →** [Evaluation & quality (D7)](evaluation-and-quality.md)
+
+← [Orchestration](orchestration-topology.md) · [Evaluation & quality](evaluation-and-quality.md) →

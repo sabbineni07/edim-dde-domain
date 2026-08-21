@@ -1,6 +1,6 @@
 # Part G — API host
 
-**Learning path:** G0 · [Home](../README.md)  
+**Learning path:** G0 · [Preface](../README.md)  
 **← Previous:** [External plugins](../build-agents/external-plugins.md) · **Next:** [Configuration](configuration.md) →
 
 ## Chapter overview

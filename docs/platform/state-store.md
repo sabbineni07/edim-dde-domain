@@ -1,8 +1,15 @@
 # Control-plane state store (Postgres · Cosmos · Redis · memory)
 
-**Learning path:** C6 · [Guide home](../README.md)
+**Learning path:** C6 · [Preface](../README.md)  
 **← Previous:** [LangSmith setup](langsmith-setup.md) · **Next:** [Recommendation store](recommendation-store.md) →
 
+## Chapter summary
+
+What the **control-plane state store** is, why it is pluggable (memory / Postgres / Cosmos / Redis), and how it relates to `*.agent.yaml` in source control. Catalog metadata and sessions live here — not vector indexes.
+
+**Outcome:** you pick a backend for local vs deployed without mixing knowledge-plane concerns.
+
+---
 
 This guide explains **what the control plane is**, **why EDIM has a pluggable state store**, how **Postgres (local)** and **Cosmos DB (deployed)** fit, and how this relates to **`*.agent.yaml` in Azure DevOps**.
 
@@ -430,7 +437,14 @@ Failures configuring the store log a warning and fall back to in-memory so `/hea
 - [Recommendation lifecycle store](recommendation-store.md)
 - [Environment variables](../reference/env-vars.md)
 
+## Summary
+
+- StateStore holds catalog/sessions/audit; graphs stay in Git; indexes are retrieval.
+- Prefer Postgres locally when testing persistence; memory for first smoke.
+
+**Next →** [Recommendation store (C6b)](recommendation-store.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [LangSmith setup](langsmith-setup.md) · [Guide home](../README.md) · [Recommendation store](recommendation-store.md) →
+← [LangSmith setup](langsmith-setup.md) · [Preface](../README.md) · [Recommendation store](recommendation-store.md) →

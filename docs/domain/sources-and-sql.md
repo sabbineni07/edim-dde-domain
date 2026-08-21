@@ -1,8 +1,15 @@
 # Sources and SQL
 
-**Learning path:** E1 · [Guide home](../README.md)
+**Learning path:** E1 · [Preface](../README.md)  
 **← Previous:** [Orchestration](../framework/orchestration-topology.md) · **Next:** [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →
 
+## Chapter summary
+
+Named Databricks SQL sources and the generic `domain.sql.query` collect pattern used by bundled agents. Covers skip/override keys that bypass live SQL for dry runs.
+
+**Outcome:** you can read agent YAML SQL nodes and know when collectors no-op.
+
+---
 
 ## Named sources
 
@@ -47,7 +54,14 @@ Before connecting, `domain.sql.query` short-circuits in either case:
 
 Deep dive: [DESIGN_SOURCES_AND_SQL_NODES.md](../DESIGN_SOURCES_AND_SQL_NODES.md)
 
+## Summary
+
+- Sources define shape without secrets; one generic SQL node type collects data.
+- Overrides (`metrics`, `evidence_pack`) skip SQL while LLM nodes still run.
+
+**Next →** [SQL design deep dive (E2)](../DESIGN_SOURCES_AND_SQL_NODES.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Orchestration](../framework/orchestration-topology.md) · [Guide home](../README.md) · [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →
+← [Orchestration](../framework/orchestration-topology.md) · [Preface](../README.md) · [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) →

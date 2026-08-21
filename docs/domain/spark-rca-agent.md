@@ -1,7 +1,22 @@
 # Spark RCA agent — full walkthrough (E3c)
 
-**Learning path:** E3c · [Guide home](../README.md)  
+**Learning path:** E3c · [Preface](../README.md)  
 **← Previous:** [Cluster tuning walkthrough](cluster-tuning-agent.md) · **Next:** [UC telemetry tables](uc-telemetry-tables.md) →
+
+## Chapter summary
+
+This chapter walks through the **`spark_rca`** agent end to end: multi-section UC collectors (or an `evidence_pack` override), classification hints, runbooks and prior outcomes, optional allowlisted web search, RCA synthesis, validation, and quality. Use it to debug failure analysis, extend signal groups or runbooks, or call `/rca/analyze` safely.
+
+**Audience:** ops / data engineers and domain authors. **Outcome:** you can trace each node, supply dry evidence, and distinguish model confidence from deterministic `quality` scores.
+
+## Prerequisites
+
+| Requirement | Notes |
+|-------------|-------|
+| [Cluster tuning walkthrough (E3b)](cluster-tuning-agent.md) | Sibling product agent patterns |
+| [Agents deep dive (E3a)](agents-guide.md) | Shared dependencies hub |
+| [Retrieval & RAG (C7)](../platform/retrieval-and-rag.md) | Runbooks / outcomes corpora |
+| Foundry (live HTTP) | RCA synthesis LLM — [Configuration (G1)](../api/configuration.md) |
 
 **Agent id:** `spark_rca`  
 **Package path:** `edim_dde_domain/agents/spark_rca/`  
@@ -64,6 +79,9 @@ Harness:  case JSON pack/output    → score fixture  or  invoke + Foundry (SQL 
 ```
 
 Quality harness vs prod: [Evaluation & quality §5b](../framework/evaluation-and-quality.md#5b-where-evidence--metrics-come-from-prod-vs-smoke).
+
+!!! tip "Pro tip — dry vs live evidence"
+    Supply `evidence_pack` to skip all SQL collectors while still running classify, RAG, Foundry, and quality. Use live `job_run_id` only when warehouse telemetry is available.
 
 Example (dry):
 
@@ -178,6 +196,9 @@ rag:
 The host separately configures `EDIM_WEB_SEARCH=none|http_json`. Enabling the flag
 without a provider produces an explicit empty context and does not fail RCA.
 
+!!! warning "Web search is bounded and non-fatal"
+    Only sanitized exception-class tokens leave the process, and domains are allowlisted. Provider failure or `EDIM_WEB_SEARCH=none` yields empty web context — RCA synthesis continues.
+
 ---
 
 ## 4. Step-by-step
@@ -205,6 +226,9 @@ ordered `signal_groups` in agent YAML. Python implements the generic
 pattern-strategy loop; patterns, confidence, rationale, priority, and category
 live in YAML. The broad category guides retrieval and is never the final root
 cause by itself. Unknown mechanisms remain `unknown` with their exact signature.
+
+!!! tip "Pro tip — extend via YAML first"
+    Prefer adding a `signal_groups` entry and a runbook page before inventing a new `domain.rca.*` node. Topology changes are for new collect/validate steps, not new failure categories.
 
 ### Step H — `build_retrieval_query`
 
@@ -235,6 +259,9 @@ non-fatal fallback.
 | Outputs | `runbook_hits`, `runbook_context` |
 
 Backend = process `EDIM_RETRIEVAL` (or corpus override in `corpora.yaml`). Empty index → empty context; RCA LLM still runs with a “no hits” note.
+
+!!! tip "Pro tip — empty retrieval is intentional"
+    Missing runbook hits do not fail the graph. The prompt notes “no grounding” so synthesis never silently pretends citations existed.
 
 Knowledge design: [Retrieval & RAG](../platform/retrieval-and-rag.md) · [External add-ons](external-addons.md).
 
@@ -278,6 +305,9 @@ rows keep a **bounded** `evidence_pack` snapshot (anchors + truncated excerpts)
 and omit regenerated prompt context (`runbook_context`, `historical_context`,
 web hits) so Cosmos/Redis payloads stay small while experience indexing still
 has feature material.
+
+!!! tip "Pro tip — gate on quality, not model confidence"
+    Prefer `quality.passed`, dimensions, and findings for product decisions. `root_cause.model_confidence` is not calibrated probability.
 
 ---
 
@@ -429,4 +459,24 @@ Lifecycle API:
 
 ---
 
-← [Cluster tuning walkthrough](cluster-tuning-agent.md) · [Guide home](../README.md) · [UC telemetry tables](uc-telemetry-tables.md) →
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Collectors return empty / SQL errors | Missing UC grants or wrong `job_run_id` | Verify tables/grants or supply `evidence_pack` |
+| **503** Foundry not configured | Missing Azure OpenAI / Foundry env | Configure per [Configuration (G1)](../api/configuration.md) |
+| No runbook grounding | Empty index / `EDIM_RETRIEVAL=none` | Expected — LLM still runs with a “no hits” note; seed FAISS or ingest |
+| Web search never runs | YAML `build_web_search_query.enabled: false` or high-confidence hint | Enable flag and ensure trigger (`low_confidence_or_unknown`) fires |
+| Product gates on weak diagnoses | Using model confidence alone | Gate on `quality.passed` / findings instead |
+| Experience index ignores new RCAs | Only `accepted` / `applied` are indexed | Update recommendation status via lifecycle PATCH |
+
+---
+
+## Summary
+
+- `spark_rca` assembles multi-section evidence (SQL or override), classifies broadly, retrieves runbooks/history, synthesizes with Foundry, then validates and scores quality.
+- Classification hints and web search guide retrieval — they are not the final root cause.
+- The agent diagnoses only; it does not restart jobs, apply fixes, or open tickets.
+- **Next →** [UC telemetry tables (E3d)](uc-telemetry-tables.md)
+
+← [Cluster tuning walkthrough](cluster-tuning-agent.md) · [UC telemetry tables](uc-telemetry-tables.md) →

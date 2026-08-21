@@ -1,8 +1,15 @@
 # Configuration
 
-**Learning path:** G1 · [Guide home](../README.md)
+**Learning path:** G1 · [Preface](../README.md)  
 **← Previous:** [External plugins](../build-agents/external-plugins.md) · **Next:** [HTTP endpoints](endpoints.md) →
 
+## Chapter summary
+
+Runtime configuration for the API host: minimum local env for live SQL + Foundry, observability toggles, and pointers to the full env catalog and deploy guides.
+
+**Outcome:** you can bring up a laptop process that reaches Databricks and Foundry safely.
+
+---
 
 See also [environment variables](../reference/env-vars.md).
 
@@ -110,7 +117,14 @@ Full guide (UI hierarchy, `LANGCHAIN_*` vs `LANGSMITH_*`, Windows steps, trouble
 
 **Deploy (Databricks Apps / Docker / ACA):** [Deploy & hosting](deploy-and-hosting.md).
 
+## Summary
+
+- Prefer env catalog + LangSmith setup for full key lists.
+- Validate with `/health` and a dry agent call before deploy.
+
+**Next →** [HTTP endpoints (G2)](endpoints.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [External plugins](../build-agents/external-plugins.md) · [Guide home](../README.md) · [HTTP endpoints](endpoints.md) →
+← [External plugins](../build-agents/external-plugins.md) · [Preface](../README.md) · [HTTP endpoints](endpoints.md) →

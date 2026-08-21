@@ -1,8 +1,15 @@
 # PII guardrails (BL-014)
 
-**Learning path:** C3 · [Guide home](../README.md)
+**Learning path:** C3 · [Preface](../README.md)  
 **← Previous:** [Key Vault bootstrap](key-vault-bootstrap.md) · **Next:** [Observability](observability.md) →
 
+## Chapter summary
+
+Basic expandable redaction so accidental PII does not reach logs or LangSmith. Current agents target telemetry, not customer PII, but patterns still apply as a safety net.
+
+**Outcome:** you know default redaction labels and where to extend patterns.
+
+---
 
 **Context:** Current EDIM agents (`cluster_tuning`, `spark_rca`) operate on **telemetry** (cluster/job metrics and logs). They are **not expected** to process customer PII. We still apply **basic expandable redaction** so accidental PII does not reach logs or LangSmith.
 
@@ -62,7 +69,14 @@ Document new labels in this page and add unit tests with sample strings.
 - [Security baseline](security-baseline.md)
 - [LangSmith setup](langsmith-setup.md)
 
+## Summary
+
+- Redact before logs and observability backends; expand patterns as needed.
+- Pair with security baseline and LangSmith setup for ops.
+
+**Next →** [Observability (C4)](observability.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Key Vault bootstrap](key-vault-bootstrap.md) · [Guide home](../README.md) · [Observability](observability.md) →
+← [Key Vault bootstrap](key-vault-bootstrap.md) · [Preface](../README.md) · [Observability](observability.md) →

@@ -1,7 +1,15 @@
 # Bundled agents (E3)
 
-**Learning path:** E3 · [Guide home](../README.md)  
+**Learning path:** E3 · [Preface](../README.md)  
 **← Previous:** [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · **Next:** [Agents deep dive](agents-guide.md) →
+
+## Chapter summary
+
+Catalog of agents shipped in `edim-dde-domain` under `agents/` (`cluster_tuning`, `spark_rca`), following the standard package layout. Full node-by-node walkthroughs live in the agents deep-dive section.
+
+**Outcome:** you know which bundled agents exist and where to open the detailed graphs.
+
+---
 
 Shipped inside `edim-dde-domain` under `agents/`. Both follow [agent package layout](../build-agents/agent-package-layout.md) (`helpers/`, `content/`).
 
@@ -121,4 +129,11 @@ HTTP contracts: [endpoints](../api/endpoints.md).
 
 ---
 
-← [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · [Guide home](../README.md) · [Agents deep dive](agents-guide.md) →
+## Summary
+
+- Two product agents ship in-domain; both follow package layout conventions.
+- Dry overrides skip SQL; HTTP contracts are on the API endpoints page.
+
+**Next →** [Agents deep dive (E3a)](agents-guide.md)
+
+← [SQL design deep dive](../DESIGN_SOURCES_AND_SQL_NODES.md) · [Preface](../README.md) · [Agents deep dive](agents-guide.md) →

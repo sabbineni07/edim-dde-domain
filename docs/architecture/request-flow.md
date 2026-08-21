@@ -1,10 +1,19 @@
-# Request flow
+# Request flow (B6)
 
-**Learning path:** B6 · [Guide home](../README.md)
+**Learning path:** B6 · [Preface](../README.md)  
 **← Previous:** [Architecture deck](architecture-deck.md) · **Next:** [Auth and SQL](auth-and-sql.md) →
 
+## Chapter summary
 
-Lifecycle of a typical `POST /api/v1/cluster_tuning/recommend` call (similar idea to documenting job state machines such as [EMR Serverless job states](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/job-states.html)):
+Lifecycle of a typical agent HTTP call from validation and middleware through graph invoke, observability, and error handling. Pair this with config→observability and the platform store/RAG guides.
+
+**Outcome:** you can trace a `POST` from FastAPI into LangGraph and back to the client.
+
+---
+
+## Typical call: `cluster_tuning/recommend`
+
+Lifecycle of a typical `POST /api/v1/cluster_tuning/recommend` call:
 
 ```text
 1. HTTP request
@@ -59,7 +68,14 @@ Client `detail` / `error_code` stay short and safe — **do not** expect stack t
 
 See also [config → observability](config-to-observability.md), [state store](../platform/state-store.md), [retrieval & RAG](../platform/retrieval-and-rag.md), and [LangSmith setup](../platform/langsmith-setup.md).
 
+## Summary
+
+- Request id binding, validation, graph invoke, and safe error surfaces are the core path.
+- Use `X-Request-Id` to correlate LangSmith/logs; never expect stacks in JSON `detail`.
+
+**Next →** [Auth and SQL (B7)](auth-and-sql.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Architecture deck](architecture-deck.md) · [Guide home](../README.md) · [Auth and SQL](auth-and-sql.md) →
+← [Architecture deck](architecture-deck.md) · [Preface](../README.md) · [Auth and SQL](auth-and-sql.md) →

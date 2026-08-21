@@ -1,6 +1,6 @@
 # Core concepts (A2)
 
-**Learning path:** A2 · [Home](../README.md)  
+**Learning path:** A2 · [Preface](../README.md)  
 **← Previous:** [Quickstart](quickstart.md) · **Next:** [Part B — Architecture](../architecture/index.md) →
 
 ## Chapter summary

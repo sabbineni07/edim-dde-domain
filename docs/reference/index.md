@@ -1,6 +1,6 @@
 # Part H — Reference & contribute
 
-**Learning path:** H0 · [Home](../README.md)  
+**Learning path:** H0 · [Preface](../README.md)  
 **← Previous:** [Deploy & hosting](../api/deploy-and-hosting.md) · **Next:** [Environment variables](env-vars.md) →
 
 ## Chapter overview

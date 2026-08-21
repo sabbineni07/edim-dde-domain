@@ -66,4 +66,4 @@ Framework deep dive: `edim-dde-ai/docs/DESIGN.md`.
 
 ---
 
-← [Overview](overview.md) · [Guide home](../README.md) · [Reference architecture](reference-architecture.md) →
+← [Overview](overview.md) · [Preface](../README.md) · [Reference architecture](reference-architecture.md) →

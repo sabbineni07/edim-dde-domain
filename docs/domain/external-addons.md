@@ -1,7 +1,15 @@
 # External add-ons & dependencies (E3e)
 
-**Learning path:** E3e · [Guide home](../README.md)  
+**Learning path:** E3e · [Preface](../README.md)  
 **← Previous:** [UC telemetry tables](uc-telemetry-tables.md) · **Next:** [Agent package layout](../build-agents/agent-package-layout.md) →
+
+## Chapter summary
+
+Catalog of planes and products **outside** YAML graph nodes that bundled agents depend on — or that teams may evaluate alongside EDIM (Foundry, retrieval, Knowledge Assistant, LangSmith, Key Vault).
+
+**Outcome:** you can see required vs optional external dependencies per agent.
+
+---
 
 This page catalogs **planes and products outside the YAML graph nodes** that the bundled agents depend on — or that teams may evaluate alongside EDIM (e.g. Databricks Knowledge Assistant).
 
@@ -157,4 +165,11 @@ Workspace eval notes (separate from this guide): repo root `Databricks_AI_Evalua
 
 ---
 
-← [UC telemetry tables](uc-telemetry-tables.md) · [Guide home](../README.md) · [Agent package layout](../build-agents/agent-package-layout.md) →
+## Summary
+
+- SQL/UC and Foundry are core; retrieval and LangSmith are optional but recommended.
+- Knowledge Assistant remains out-of-band relative to the YAML graph.
+
+**Next →** [Agent package layout (F1)](../build-agents/agent-package-layout.md)
+
+← [UC telemetry tables](uc-telemetry-tables.md) · [Preface](../README.md) · [Agent package layout](../build-agents/agent-package-layout.md) →

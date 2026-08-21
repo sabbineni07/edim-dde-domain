@@ -1,7 +1,15 @@
 # LangSmith setup guide (SDBX / DEV / PROD)
 
-**Learning path:** C5 · [Guide home](../README.md)
+**Learning path:** C5 · [Preface](../README.md)  
 **← Previous:** [Observability](observability.md) · **Next:** [State store](state-store.md) →
+
+## Chapter summary
+
+Hands-on LangSmith configuration for EDIM across SDBX / DEV / PROD: projects, env vars, laptop validation, and how EDIM differs from generic LangSmith quickstarts. R1 scope is tracing plus one project per env.
+
+**Outcome:** you can produce a visible trace from a dry agent call and find it by `X-Request-Id`.
+
+---
 
 Hands-on guide: configure LangSmith for EDIM, validate traces from a Windows or Linux laptop, and understand how this differs from generic LangSmith UI quickstarts.
 
@@ -361,7 +369,14 @@ Traces may include prompt text. EDIM redacts some patterns in **API logs**; Lang
 - [Config → observability flow](../architecture/config-to-observability.md)
 - [Environments](environments.md)
 
+## Summary
+
+- One tracing project per `EDIM_ENV`; datasets/evaluators are later backlog.
+- Validate with `/health` observability field and a dry recommend/analyze call.
+
+**Next →** [State store (C6)](state-store.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Observability](observability.md) · [Guide home](../README.md) · [State store](state-store.md) →
+← [Observability](observability.md) · [Preface](../README.md) · [State store](state-store.md) →

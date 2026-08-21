@@ -1,7 +1,15 @@
 # Agent control plane & routing (design review)
 
-**Learning path:** B9b · [Guide home](../README.md)  
+**Learning path:** B9b · [Preface](../README.md)  
 **← Previous:** [Agent deployment & composition](agent-deployment-and-composition.md) · **Next:** [Environments](../platform/environments.md) →
+
+## Chapter summary
+
+**Design-only** review of a future governance / routing control plane for managed agents. Option B (domain-split Apps + remote invoke) and Option C (hub + location catalog) are **parked** — do not implement from this page.
+
+**Outcome:** reviewers share one vocabulary for registry, gateway vs directory, and phased rollout constraints.
+
+---
 
 **Status:** **Design only — not R1, not scheduled for implementation.**  
 **Decision (2026-08-18):** Option B (domain-split Apps + remote invoke) and Option C (hub + location catalog) are **parked**. This page is the review artifact for a **larger** idea: a **governance / routing control plane** for managed agents. Execute only after architecture sign-off.
@@ -1018,7 +1026,14 @@ EDIM should eventually treat agents as **managed services**: a **live, centraliz
 
 **Do not implement now.** Option B and C stay optional/parked until this design is reviewed and phased.
 
+## Summary
+
+- Treat this page as a review artifact, not an R1 backlog item.
+- Prefer directory + cached resolver over forcing all traffic through a CP gateway.
+
+**Next →** [Environments (C1)](../platform/environments.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Agent deployment & composition](agent-deployment-and-composition.md) · [Guide home](../README.md) · [Environments](../platform/environments.md) →
+← [Agent deployment & composition](agent-deployment-and-composition.md) · [Preface](../README.md) · [Environments](../platform/environments.md) →

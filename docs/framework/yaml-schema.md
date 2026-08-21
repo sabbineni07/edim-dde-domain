@@ -1,8 +1,15 @@
 # YAML schema contract (BL-002)
 
-**Learning path:** D1 · [Guide home](../README.md)
+**Learning path:** D1 · [Preface](../README.md)  
 **← Previous:** [Retrieval & RAG](../platform/retrieval-and-rag.md) · **Next:** [YAML agents](yaml-agents.md) →
 
+## Chapter summary
+
+Canonical config contract for EDIM agents, backed by `edim-dde-ai/schemas/agent.schema.json`. Structural parse during `parse_agent_definition` is authoritative for graph connectivity; JSON Schema covers metadata and extended blocks.
+
+**Outcome:** you know required fields and where validation runs before graphs compile.
+
+---
 
 Canonical config contract for EDIM agents. Machine-readable schema:
 
@@ -254,7 +261,14 @@ edim-dde-ai run echo_agent --input '{"message":"hi"}'
 
 Structural parse remains the source of truth for graph connectivity; JSON Schema covers metadata/extended blocks.
 
+## Summary
+
+- Schema validation is part of load/register — fix YAML before debugging runtime.
+- CLI `edim-dde-ai register*` helpers exercise the same contract.
+
+**Next →** [YAML agents (D2)](yaml-agents.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Retrieval & RAG](../platform/retrieval-and-rag.md) · [Guide home](../README.md) · [YAML agents](yaml-agents.md) →
+← [Retrieval & RAG](../platform/retrieval-and-rag.md) · [Preface](../README.md) · [YAML agents](yaml-agents.md) →

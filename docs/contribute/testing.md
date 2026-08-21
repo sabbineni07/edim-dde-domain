@@ -1,8 +1,15 @@
-# Testing
+# Testing (H4)
 
-**Learning path:** H4 · [Guide home](../README.md)
+**Learning path:** H4 · [Preface](../README.md)  
 **← Previous:** [Glossary](../reference/glossary.md) · **Next:** [Live smoke](live-smoke-test.md) →
 
+## Chapter summary
+
+How to run **`pytest`** across `edim-dde-ai`, `edim-dde-domain`, and `edim-dde-api`. Unit tests are the first gate before dry/live smoke.
+
+**Outcome:** all three packages green offline with stubs where required.
+
+---
 
 ## Packages
 
@@ -34,4 +41,4 @@ For a shared engineer runbook (what info to gather, where to configure, dry vs l
 <!-- edim-learning-nav -->
 ---
 
-← [Glossary](../reference/glossary.md) · [Guide home](../README.md) · [Live smoke](live-smoke-test.md) →
+← [Glossary](../reference/glossary.md) · [Preface](../README.md) · [Live smoke](live-smoke-test.md) →

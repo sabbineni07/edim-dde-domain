@@ -1,7 +1,15 @@
 # Key Vault bootstrap
 
-**Learning path:** C2c · [Guide home](../README.md)  
+**Learning path:** C2c · [Preface](../README.md)  
 **← Previous:** [Authentication flows](authentication-flows.md) · **Next:** [PII guardrails](pii-guardrails.md) →
+
+## Chapter summary
+
+How the API loads secrets from Azure Key Vault at startup: which identity opens the vault, default secret→env mapping, and `EDIM_KV_SECRET_MAP`. Host grants and visual auth flows are linked out.
+
+**Outcome:** you can prove Foundry/SQL-related secrets land in process env before graph invoke.
+
+---
 
 **This page covers:** how the API loads secrets from Azure Key Vault at startup — who opens the vault, default secret→env mapping, and `EDIM_KV_SECRET_MAP`.
 
@@ -241,7 +249,14 @@ Redeploy or **Start** the App with `AZURE_KEY_VAULT_URL` + `AZURE_TENANT_ID` set
 
 Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-deploy-databricks-apps-default).
 
+## Summary
+
+- App SP opens KV; mapped secrets become env vars before agent bootstrap.
+- Prove with logs or direct env secrets if KV is temporarily out of scope.
+
+**Next →** [PII guardrails (C3)](pii-guardrails.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Authentication flows](authentication-flows.md) · [Guide home](../README.md) · [PII guardrails](pii-guardrails.md) →
+← [Authentication flows](authentication-flows.md) · [Preface](../README.md) · [PII guardrails](pii-guardrails.md) →

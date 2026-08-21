@@ -1,9 +1,9 @@
 # Part F — Build agents
 
-**Learning path:** F0 · [Home](../README.md)  
+**Learning path:** F0 · [Preface](../README.md)  
 **← Previous:** [External add-ons](../domain/external-addons.md) · **Next:** [Package layout](agent-package-layout.md) →
 
-## Chapter overview
+## Chapter summary
 
 Part F is the **authoring handbook**: directory layout, registration, and plugin discovery for new YAML agents. Follow this part when adding agents beyond the bundled tuning and RCA graphs.
 

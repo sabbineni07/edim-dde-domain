@@ -1,7 +1,15 @@
 # Orchestration topology (D6)
 
-**Learning path:** D6 · [Guide home](../README.md)  
+**Learning path:** D6 · [Preface](../README.md)  
 **← Previous:** [Content and LLM](content-and-llm.md) · **Next:** [HITL resume](hitl-resume.md) →
+
+## Chapter summary
+
+Multi-agent composition under the rule **one LangGraph per agent**, using allowlisted `invoke_agent` for subgraph / agent-to-agent calls. Deployment topology choices live in Part B.
+
+**Outcome:** you compose agents in-process without ad-hoc Python orchestration in YAML.
+
+---
 
 How multi-agent composition works without breaking the “one LangGraph per agent” rule.
 
@@ -79,7 +87,14 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 | [HITL resume](hitl-resume.md) | `hitl.gate` + StateStore sessions |
 | [External plugins](../build-agents/external-plugins.md) | Loading packs into one runtime |
 
+## Summary
+
+- Use `invoke_agent` for composition; keep one compiled graph per agent id.
+- Cross-app routing and control plane are design/parked elsewhere.
+
+**Next →** [HITL resume](hitl-resume.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Content and LLM](content-and-llm.md) · [Guide home](../README.md) · [HITL resume](hitl-resume.md) →
+← [Content and LLM](content-and-llm.md) · [Preface](../README.md) · [HITL resume](hitl-resume.md) →

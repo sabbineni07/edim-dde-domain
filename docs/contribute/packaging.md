@@ -1,9 +1,13 @@
-# Packaging (wheels, versions, indexes)
+# Packaging (H6)
 
-**Learning path:** H6 · [Guide home](../README.md)  
-**← Previous:** [Windows smoke](windows-smoke-checklist.md) · **Next:** [Guide home](../README.md) →
+**Learning path:** H6 · [Preface](../README.md)  
+**← Previous:** [Windows smoke](windows-smoke-checklist.md) · **Next:** [Documentation style](documentation-style.md) →
 
-How the three EDIM packages are versioned and how they will be published. **Local development still uses editable installs** (`requirements.txt` `-e ../…`). A private index (Artifactory / Azure Artifacts) is **not required** to run R1.
+## Chapter summary
+
+How the three EDIM packages are **versioned** and how they will be published. Local development still uses editable installs (`requirements.txt` `-e ../…`). A private index is **not** required to run R1.
+
+**Outcome:** you know when to bump versions, rebuild vendor wheels, and (later) publish to Artifactory / Azure Artifacts.
 
 ---
 
@@ -90,4 +94,4 @@ Optional split `[rca]` / `[tuning]` so hosts that only load external plugins nee
 <!-- edim-learning-nav -->
 ---
 
-← [Windows smoke](windows-smoke-checklist.md) · [Guide home](../README.md) →
+← [Windows smoke](windows-smoke-checklist.md) · [Documentation style](documentation-style.md) →

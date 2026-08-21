@@ -1,11 +1,14 @@
-# Glossary
+# Glossary (H3)
 
 **Learning path:** H3 · [Preface](../README.md)  
 **← Previous:** [Node type ids](node-type-ids.md) · **Next:** [Testing](../contribute/testing.md) →
 
-Organizational names (**EDIM**, **DDE**) and platform terms used across this guide.
+## Chapter summary
+
+Definitions of organizational names (**EDIM**, **DDE**) and platform terms used across this guide. Prefer this page over inventing synonyms.
 
 ---
+
 | Term | Meaning |
 |------|---------|
 | **EDIM** | **E**nterprise **D**ata & **I**nformation **M**anagement — program under Enterprise Data & Analytics (portfolio or services) |
@@ -50,4 +53,4 @@ Organizational names (**EDIM**, **DDE**) and platform terms used across this gui
 <!-- edim-learning-nav -->
 ---
 
-← [Node type ids](node-type-ids.md) · [Guide home](../README.md) · [Testing](../contribute/testing.md) →
+← [Node type ids](node-type-ids.md) · [Preface](../README.md) · [Testing](../contribute/testing.md) →

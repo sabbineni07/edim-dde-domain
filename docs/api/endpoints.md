@@ -1,8 +1,15 @@
 # HTTP endpoints
 
-**Learning path:** G2 · [Guide home](../README.md)
+**Learning path:** G2 · [Preface](../README.md)  
 **← Previous:** [Configuration](configuration.md) · **Next:** [Deploy & hosting](deploy-and-hosting.md) →
 
+## Chapter summary
+
+HTTP surface of `edim_dde_api.main:app`: health, tuning/RCA recommend routes, recommendation history, knowledge ingest, and debug helpers. Request/response shapes stay in the API models.
+
+**Outcome:** you know which path to call for each product capability.
+
+---
 
 Base app: `edim_dde_api.main:app`
 
@@ -78,7 +85,14 @@ See [request flow](../architecture/request-flow.md) · [config → observability
 
 Curated upsert into the active `RetrievalProvider`. Requires `accepted: true`. Optional `summary` is prepended to `text`. Bulk indexing remains platform Jobs — see [retrieval-and-rag.md](../platform/retrieval-and-rag.md).
 
+## Summary
+
+- Health reports plane backends; recommend routes invoke bundled agents.
+- Knowledge ingest is curated and Acceptance-gated; bulk index stays in Jobs.
+
+**Next →** [Deploy & hosting](deploy-and-hosting.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Configuration](configuration.md) · [Guide home](../README.md) · [Deploy & hosting](deploy-and-hosting.md) →
+← [Configuration](configuration.md) · [Preface](../README.md) · [Deploy & hosting](deploy-and-hosting.md) →

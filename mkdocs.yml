@@ -71,8 +71,8 @@ nav:
       - End-to-end design: architecture/end-to-end-design.md
       - Overview: architecture/overview.md
       - Packages: architecture/packages.md
-      - Reference architecture: architecture/reference-architecture.md
-      - Architecture deck: architecture/architecture-deck.md
+#      - Reference architecture: architecture/reference-architecture.md
+#      - Architecture deck: architecture/architecture-deck.md
       - Request flow: architecture/request-flow.md
       - Auth and SQL: architecture/auth-and-sql.md
       - Config to observability: architecture/config-to-observability.md

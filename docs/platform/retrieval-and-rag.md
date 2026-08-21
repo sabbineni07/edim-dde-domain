@@ -1,7 +1,15 @@
 # Retrieval, similarity search, and RAG (C7)
 
-**Learning path:** C7 · [Guide home](../README.md)  
+**Learning path:** C7 · [Preface](../README.md)  
 **← Previous:** [Recommendation store](recommendation-store.md) · **Next:** [YAML schema](../framework/yaml-schema.md) →
+
+## Chapter summary
+
+Similarity search vs RAG, pluggable `RetrievalProvider` backends (FAISS, Azure AI Search, Databricks Vector Search), and how `spark_rca` uses runbook grounding. Local vs deployed index operations are covered in later sections of this page.
+
+**Outcome:** you can choose a retrieval backend and locate the Azure AI Search walkthrough without confusing indexes with StateStore.
+
+---
 
 This guide explains **similarity search vs RAG**, the pluggable **`RetrievalProvider`** backends (FAISS · Azure AI Search · Databricks Vector Search), how **`spark_rca`** uses runbook grounding, design patterns, and how engineers operate local vs deployed indexes. For a hands-on Azure walkthrough, see [§8 Setting up Azure AI Search](#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
 
@@ -740,4 +748,11 @@ walkthrough: [§8](#8-setting-up-azure-ai-search-for-a-real-retrievalprovider).
 
 ---
 
-← [Recommendation store](recommendation-store.md) · [Guide home](../README.md) · [YAML schema](../framework/yaml-schema.md) →
+## Summary
+
+- Retrieval is the knowledge plane — distinct from control-plane StateStore.
+- `rag.retrieve` nodes ground RCA; curated ingest is Acceptance-gated via the API.
+
+**Next →** [YAML schema (D1)](../framework/yaml-schema.md)
+
+← [Recommendation store](recommendation-store.md) · [Preface](../README.md) · [YAML schema](../framework/yaml-schema.md) →

@@ -1,7 +1,15 @@
 # Authentication flows (local vs Apps / prod)
 
-**Learning path:** C2b-flow · [Guide home](../README.md)  
+**Learning path:** C2b-flow · [Preface](../README.md)  
 **← Previous:** [Access & permissions](access-and-permissions.md) · **Next:** [Key Vault bootstrap](key-vault-bootstrap.md) →
+
+## Chapter summary
+
+Visual end-to-end authentication: who authenticates to what, from the user request through FastAPI to UC, RAG/Search, Foundry, stores, LangSmith, and Key Vault — for local, Apps, and prod-shaped hosts.
+
+**Outcome:** you can explain each hop’s principal without conflating SQL, Foundry, and KV identities.
+
+---
 
 Visual end-to-end auth: **who authenticates to what**, from the user’s request through FastAPI to UC, RAG / Azure AI Search, Foundry, state stores, LangSmith, and Key Vault.
 
@@ -293,4 +301,11 @@ Grant MI on warehouse + UC: [Deploy §6.4](../api/deploy-and-hosting.md#64-aca-s
 
 ---
 
-← [Access & permissions](access-and-permissions.md) · [Guide home](../README.md) · [Key Vault bootstrap](key-vault-bootstrap.md) →
+## Summary
+
+- Local, Apps, and ACA differ mainly in who supplies the warehouse and Foundry credentials.
+- Use companion pages for code resolution order and KV grants.
+
+**Next →** [Key Vault bootstrap (C2c)](key-vault-bootstrap.md)
+
+← [Access & permissions](access-and-permissions.md) · [Preface](../README.md) · [Key Vault bootstrap](key-vault-bootstrap.md) →

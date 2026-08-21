@@ -1,6 +1,6 @@
 # Part C — Platform
 
-**Learning path:** C0 · [Home](../README.md)  
+**Learning path:** C0 · [Preface](../README.md)  
 **← Previous:** [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) · **Next:** [Environments](environments.md) →
 
 ## Chapter overview

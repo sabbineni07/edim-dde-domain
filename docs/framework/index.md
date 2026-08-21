@@ -1,6 +1,6 @@
 # Part D — Framework
 
-**Learning path:** D0 · [Home](../README.md)  
+**Learning path:** D0 · [Preface](../README.md)  
 **← Previous:** [Retrieval & RAG](../platform/retrieval-and-rag.md) · **Next:** [YAML schema](yaml-schema.md) →
 
 ## Chapter overview

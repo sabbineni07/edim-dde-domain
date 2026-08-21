@@ -1,7 +1,15 @@
 # Nodes and routers (D3)
 
-**Learning path:** D3 · [Guide home](../README.md)  
+**Learning path:** D3 · [Preface](../README.md)  
 **← Previous:** [YAML agents](yaml-agents.md) · **Next:** [Conditional edges](conditional-edges.md) →
+
+## Chapter summary
+
+Allowlisted **node types** and **routers** — the Strategy + Registry core of `edim-dde-ai`. Explains how YAML `type` / `router` ids map to Python factories.
+
+**Outcome:** you can extend the graph with a new allowlisted node without forking the builder.
+
+---
 
 How allowlisted **node types** and **routers** work — the Strategy + Registry core of the framework.
 
@@ -219,4 +227,11 @@ with the agent's live policy while the framework contract stays generic.
 
 ---
 
-← [YAML agents](yaml-agents.md) · [Guide home](../README.md) · [Conditional edges](conditional-edges.md) →
+## Summary
+
+- Register factories; keep business logic out of fat node adapters.
+- Prefer config on existing types before inventing new type ids.
+
+**Next →** [Conditional edges (D4)](conditional-edges.md)
+
+← [YAML agents](yaml-agents.md) · [Preface](../README.md) · [Conditional edges](conditional-edges.md) →

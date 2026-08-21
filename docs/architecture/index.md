@@ -1,6 +1,6 @@
 # Part B — Architecture
 
-**Learning path:** B0 · [Home](../README.md)  
+**Learning path:** B0 · [Preface](../README.md)  
 **← Previous:** [Core concepts](../getting-started/concepts.md) · **Next:** [End-to-end design](end-to-end-design.md) →
 
 ## Chapter overview

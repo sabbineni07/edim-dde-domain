@@ -433,4 +433,4 @@ Continue the path:
 
 ---
 
-← [Core concepts](../getting-started/concepts.md) · [Guide home](../README.md) · [Architecture overview](overview.md) →
+← [Core concepts](../getting-started/concepts.md) · [Preface](../README.md) · [Architecture overview](overview.md) →

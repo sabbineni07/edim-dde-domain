@@ -1,14 +1,15 @@
-# Live & dry smoke test guide
+# Live & dry smoke test (H5)
 
-**Learning path:** H5 · [Guide home](../README.md)  
+**Learning path:** H5 · [Preface](../README.md)  
 **← Previous:** [Testing](testing.md) · **Next:** [Windows smoke checklist](windows-smoke-checklist.md) →
 
-**Audience:** any engineer validating EDIM DDE on a laptop or against a shared non-prod stack  
-**Related:** [Quickstart](../getting-started/quickstart.md) · [Configuration](../api/configuration.md) · [Env vars](../reference/env-vars.md) · [Testing](testing.md)
+## Chapter summary
 
-This runbook proves the stack works **beyond unit tests**: API up, agents registered, Foundry reachable (when live), and optionally Databricks SQL.
+Engineer runbook to prove the stack works **beyond unit tests**: API up, agents registered, Foundry reachable (when live), and optionally Databricks SQL. Use on laptop or shared non-prod.
 
-**On Windows?** Prefer the PowerShell-oriented checklist: [windows-smoke-checklist.md](windows-smoke-checklist.md).
+**Audience:** any engineer validating EDIM DDE. **On Windows?** Prefer [Windows smoke (H5b)](windows-smoke-checklist.md).
+
+**Related:** [Quickstart](../getting-started/quickstart.md) · [Configuration](../api/configuration.md) · [Env vars](../reference/env-vars.md)
 
 ---
 
@@ -458,4 +459,4 @@ Open product work: workspace root `BACKLOG.md` (Git; not in this site).
 <!-- edim-learning-nav -->
 ---
 
-← [Testing](testing.md) · [Guide home](../README.md) · [Windows smoke](windows-smoke-checklist.md) →
+← [Testing](testing.md) · [Preface](../README.md) · [Windows smoke](windows-smoke-checklist.md) →

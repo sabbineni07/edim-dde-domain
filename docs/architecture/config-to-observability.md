@@ -1,8 +1,15 @@
 # Config → runtime → observability flow (BL-003)
 
-**Learning path:** B8 · [Guide home](../README.md)
+**Learning path:** B8 · [Preface](../README.md)  
 **← Previous:** [Auth and SQL](auth-and-sql.md) · **Next:** [Agent deployment & composition](agent-deployment-and-composition.md) →
 
+## Chapter summary
+
+End-to-end path from `*.agent.yaml` on disk through bootstrap, HTTP invoke, and the active observability backend (LangSmith, MLflow, or none). Use this when wiring a new host or debugging “no traces.”
+
+**Outcome:** you can follow config → runtime → trace backend without mixing planes.
+
+---
 
 End-to-end path from agent YAML on disk to HTTP response and the active observability backend (LangSmith, MLflow, or none).
 
@@ -78,7 +85,14 @@ See [observability providers](../platform/observability.md).
 - [YAML schema](../framework/yaml-schema.md)
 - [Agent deployment & composition](agent-deployment-and-composition.md)
 
+## Summary
+
+- YAML + content load at bootstrap; observability is selected once per process.
+- Pair with state store and retrieval docs — those are different planes.
+
+**Next →** [Agent deployment & composition (B9)](agent-deployment-and-composition.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [Auth and SQL](auth-and-sql.md) · [Guide home](../README.md) · [Agent deployment & composition](agent-deployment-and-composition.md) →
+← [Auth and SQL](auth-and-sql.md) · [Preface](../README.md) · [Agent deployment & composition](agent-deployment-and-composition.md) →

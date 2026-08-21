@@ -1,11 +1,29 @@
-# Deploy & hosting (Databricks Apps default)
+# Deploy & hosting (G3)
 
-**Learning path:** G3 · [Guide home](../README.md)  
+**Learning path:** G3 · [Preface](../README.md)  
 **← Previous:** [HTTP endpoints](endpoints.md) · **Next:** [Environment variables](../reference/env-vars.md) →
 
-How to package and run the EDIM stack on **Databricks Apps** (default first cut), and how the same artifact moves to **Azure Container Apps** or other container hosts with little rework.
+## Chapter summary
+
+This chapter is the **deployment runbook** for the EDIM DDE API: how to package wheels, configure env, and run the same FastAPI process on **Databricks Apps** (default), **Docker Compose**, and **Azure Container Apps**. Platform engineers and operators use it for first DEV Apps bring-up and host swaps.
+
+**Outcome:** a running `edim-dde-api-*` App (or local Compose stack) that passes `/health` and live or dry agent smoke.
 
 **Deploy artifacts (code):** `edim-dde-api/deploy/`
+
+---
+
+## Prerequisites
+
+| Requirement | Chapter / link |
+|-------------|----------------|
+| Env primer | [Configuration (G1)](configuration.md) |
+| Identities U / A / B | [Access & permissions (C2b)](../platform/access-and-permissions.md) |
+| Key Vault map | [Key Vault bootstrap (C2c)](../platform/key-vault-bootstrap.md) |
+| Local smoke curls | [Live smoke (H5)](../contribute/live-smoke-test.md) |
+
+!!! warning "Secrets"
+    Never commit Foundry client secrets or real SP passwords into `app.yaml`. Use Key Vault or Apps secrets.
 
 ---
 
@@ -200,7 +218,10 @@ Apps installs from the **`deploy/databricks-app/`** folder. It does **not** uplo
 
 `vendor/` is **gitignored** — rebuild with `make vendor-wheels` before each deploy (unless you use Option C below).
 
-**Engineer guide (`/guide`):** local **Docker / laptop only** — MkDocs Material site built by `make guide-site` (also via `make vendor-wheels`) into `deploy/docker/guide-site` → `http://127.0.0.1:8080/guide/`. **Not** included in the Databricks Apps sync bundle.
+**Engineer guide (`/guide`):** MkDocs Material builds into `deploy/docker/guide-site` for **local Docker** (`make guide-site` / `compose-up`). On Databricks Apps, mount is **optional** (`EDIM_MOUNT_GUIDE=1` + copy `guide-site/` into the Apps bundle). Default Apps sync is wheels + `app.yaml` only.
+
+!!! tip "Pro tip — Windows Apps deploy"
+    Use `make vendor-wheels-win`, `make apps-sync`, and `make apps-deploy`. `apps-deploy` stops and starts the App after SNAPSHOT deploy so new wheels load. Git Bash rewrites `/Workspace/...` paths — the PowerShell wrapper unmangles them.
 
 ### 5.3b Packaging / deploy options
 
@@ -442,7 +463,7 @@ Official platform docs: [Configure app.yaml](https://docs.databricks.com/aws/en/
 | `make vendor-wheels` | Build ai + domain + api wheels into `deploy/databricks-app/vendor/` |
 | `make apps-create` | `databricks apps create $(APP_NAME)` |
 | `make apps-sync` | `import-dir` local bundle → `$(WS_SOURCE)` |
-| `make apps-deploy` | Deploy app from `$(WS_SOURCE)` |
+| `make apps-deploy` | Deploy from `$(WS_SOURCE)`, then **stop + start** the App (reload wheels) |
 | `make docker-build` | Build API image only |
 | `make docker-run` | Run API image alone (no Postgres) |
 | `make compose-up` / `compose-down` / `compose-ps` | API + **Postgres** StateStore (both in Docker) |
@@ -597,11 +618,27 @@ When adding a new host, only verify:
 - Use editable `-e ../edim-dde-*` in production Apps/Docker  
 - Fork business logic per cloud  
 - Require Unity Catalog as the **control-plane** store (StateStore stays pluggable)  
-- Hold long HITL HTTP requests (future sessions use StateStore — see HITL notes in [yaml-schema](../framework/yaml-schema.md))
+- Hold long HITL HTTP requests (sessions use StateStore — see [HITL resume](../framework/hitl-resume.md))  
+- Expect `apps-deploy` alone to always reload code — stop/start (now in Makefile) is required on some workspaces  
 
 ---
 
-## 9. Related docs
+## 9. Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `/health` OK, new routes 404 after deploy | App process not restarted | `make apps-deploy` (includes stop/start) or Apps UI Stop → Start |
+| `Public access is not allowed for workspace` | Opening App URL without workspace session | Open via **Apps → Open app** while signed into Databricks |
+| Apps SQL `RequestError` / OpenSession | Missing user auth scope `sql`, no forwarded token, or UC grants | [§5.7](#57-validate-on-apps-closes-p0-apps-token-check); `GET /api/v1/debug/sql-auth` |
+| Foundry 503 on Apps, SQL works | Identity B missing — KV grant or secret map | [Key Vault §7](../platform/key-vault-bootstrap.md#7-grant-databricks-app-sp-key-vault-secrets-user) |
+| `/Workspace` becomes `C:/Program Files/Git/Workspace` | Git Bash path conversion | Use `make apps-sync` / PowerShell wrapper; or `WS_SOURCE=//Workspace/...` |
+| `/guide` 404 on App | Guide not copied / not opted in / old wheel | `make guide-site-win` → `copy-guide-site` → rebuild wheels → sync → deploy; set `EDIM_MOUNT_GUIDE=1` |
+| Compose + `host-run` conflict | Both use port 5432 / `edim-postgres` | Use one path only |
+| ACA SQL fails | MI not granted warehouse / UC | [§6.4](#64-aca-sql-grant-managed-identity-warehouse-uc) |
+
+---
+
+## 10. Related docs
 
 | Doc | Use |
 |-----|-----|
@@ -614,7 +651,18 @@ When adding a new host, only verify:
 | [Live smoke](../contribute/live-smoke-test.md) | Validation curls |
 | [Windows smoke](../contribute/windows-smoke-checklist.md) | Windows local path |
 
+---
+
+## Summary
+
+- **One FastAPI process** (`edim-dde-api`) on every host; ai + domain ship as **wheels**.  
+- **Default host:** Databricks Apps (Option A bundle) — proves **user token → SQL**.  
+- **Second host:** Docker / ACA with the same env **names** and different identity wiring.  
+- After deploy, **stop + start** so wheels and optional `/guide` load.  
+
+**Next →** [Environment variables (H1)](../reference/env-vars.md)
+
 <!-- edim-learning-nav -->
 ---
 
-← [HTTP endpoints](endpoints.md) · [Guide home](../README.md) · [Environment variables](../reference/env-vars.md) →
+← [HTTP endpoints](endpoints.md) · [Environment variables](../reference/env-vars.md) →

@@ -1,6 +1,6 @@
 # Part E — Domain
 
-**Learning path:** E0 · [Home](../README.md)  
+**Learning path:** E0 · [Preface](../README.md)  
 **← Previous:** [Evaluation & quality](../framework/evaluation-and-quality.md) · **Next:** [Sources and SQL](sources-and-sql.md) →
 
 ## Chapter overview

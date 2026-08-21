@@ -1,7 +1,15 @@
 # Design: Sources + Generic SQL Collect Nodes (E2)
 
-**Learning path:** E2 · [Guide home](README.md)  
+**Learning path:** E2 · [Preface](README.md)  
 **← Previous:** [Sources and SQL](domain/sources-and-sql.md) · **Next:** [Bundled agents](domain/bundled-agents.md) →
+
+## Chapter summary
+
+Design and implementation record for declarative sources plus generic SQL collect nodes in `edim-dde-domain`. Phases A–D are implemented; the graph engine in `edim-dde-ai` stays generic.
+
+**Outcome:** you understand why SQL lives in YAML + one node type instead of per-use-case collectors.
+
+---
 
 **Status:** Implemented (Phases A–D)  
 **Scope:** `edim-dde-domain` (+ thin use from `edim-dde-api`)  
@@ -367,4 +375,11 @@ environment      → DATABRICKS_HOST / HTTP_PATH
 
 ---
 
-← [Sources and SQL](domain/sources-and-sql.md) · [Guide home](README.md) · [Bundled agents](domain/bundled-agents.md) →
+## Summary
+
+- Declarative SQL + `domain.sql.query` is the R1 collection model.
+- Non-goals include MCP exposure and user-authored SQL from the UI.
+
+**Next →** [Bundled agents (E3)](domain/bundled-agents.md)
+
+← [Sources and SQL](domain/sources-and-sql.md) · [Preface](README.md) · [Bundled agents](domain/bundled-agents.md) →
