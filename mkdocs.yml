@@ -69,6 +69,7 @@ nav:
   - B — Architecture:
       - "Part B overview": architecture/index.md
       - End-to-end design: architecture/end-to-end-design.md
+      - Inner vs outer architecture: architecture/inner-outer-architecture.md
       - Overview: architecture/overview.md
       - Packages: architecture/packages.md
 #      - Reference architecture: architecture/reference-architecture.md

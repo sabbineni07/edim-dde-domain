@@ -29,6 +29,7 @@ Part B establishes the **system design** of EDIM DDE: planes of responsibility, 
 | Step | Chapter | Focus |
 |------|---------|-------|
 | **B1** | [End-to-end design](end-to-end-design.md) | Master reference — planes, patterns, lifecycle |
+| **B1b** | [Inner vs outer architecture](inner-outer-architecture.md) | Inner (R1) vs outer (planned), R1 vs target |
 | **B2** | [Overview](overview.md) | One-page system sketch |
 | **B3** | [Packages](packages.md) | `ai` / `domain` / `api` ownership |
 | **B4** | [Reference architecture](reference-architecture.md) | Sign-off map, trust boundaries, non-goals |
@@ -40,7 +41,7 @@ Part B establishes the **system design** of EDIM DDE: planes of responsibility, 
 | **B9b** | [Agent control plane](agent-control-plane.md) | **Design only** — parked for post-R1 |
 
 !!! note "Reading order"
-    **B1** is the canonical deep dive. **B2–B3** are executive summaries. **B6–B8** are implementation companions. **B9b** is optional design review material — not required for R1 delivery.
+    **B1** is the canonical deep dive. **B1b** defines inner (what we run) vs outer (what we plan). **B2–B3** are executive summaries. **B6–B8** are implementation companions. **B9b** is optional design review material — not required for R1 delivery.
 
 ---
 

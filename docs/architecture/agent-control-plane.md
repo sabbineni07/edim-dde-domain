@@ -15,7 +15,7 @@
 **Decision (2026-08-18):** Option B (domain-split Apps + remote invoke) and Option C (hub + location catalog) are **parked**. This page is the review artifact for a **larger** idea: a **governance / routing control plane** for managed agents. Execute only after architecture sign-off.
 
 **Audience:** platform architects, security, SRE, agent authors.  
-**Not this page:** how to call `invoke_agent` in YAML today — [Orchestration topology](../framework/orchestration-topology.md). How to deploy one vs many Apps **without** a control plane — [Agent deployment & composition](agent-deployment-and-composition.md).
+**Not this page:** how to call `invoke_agent` in YAML today — [Orchestration topology](../framework/orchestration-topology.md). How to deploy one vs many Apps **without** a control plane — [Agent deployment & composition](agent-deployment-and-composition.md). What we run today (inner) vs what we plan for the platform (outer) — [Inner vs outer architecture](inner-outer-architecture.md).
 
 ---
 

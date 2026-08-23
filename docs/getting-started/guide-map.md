@@ -16,7 +16,7 @@ This page is the **table of contents** for the EDIM DDE Engineer Guide. Sidebar 
 | **New to EDIM** | Preface → A1 Quickstart → A2 Concepts → [Part B](../architecture/index.md) |
 | **Platform / deploy** | A1 → [Part C](../platform/index.md) → [Part G](../api/index.md) → H5 smoke |
 | **Agent author** | A2 → [Part D](../framework/index.md) → [Part F](../build-agents/index.md) |
-| **Architect** | A2 → B1 End-to-end design → B4 Reference architecture |
+| **Architect** | A2 → B1 End-to-end design → B1b Inner vs outer → B4 Reference architecture |
 | **Operator / SRE** | G2 Endpoints → H5 Live smoke → C2b Access & permissions |
 
 ---
@@ -38,6 +38,7 @@ This page is the **table of contents** for the EDIM DDE Engineer Guide. Sidebar 
 | Step | Chapter | Description |
 |------|---------|-------------|
 | **B1** | [End-to-end design](../architecture/end-to-end-design.md) | Master design reference |
+| **B1b** | [Inner vs outer architecture](../architecture/inner-outer-architecture.md) | What we run (inner) vs what we plan (outer) |
 | **B2** | [Overview](../architecture/overview.md) | System sketch |
 | **B3** | [Packages](../architecture/packages.md) | Package boundaries |
 | **B4** | [Reference architecture](../architecture/reference-architecture.md) | Sign-off map |

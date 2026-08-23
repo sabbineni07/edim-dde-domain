@@ -1,7 +1,7 @@
 # Architecture overview (B2)
 
 **Learning path:** B2 · [Preface](../README.md)  
-**← Previous:** [End-to-end design (B1)](end-to-end-design.md) · **Next:** [Packages (B3)](packages.md) →
+**← Previous:** [Inner vs outer architecture (B1b)](inner-outer-architecture.md) · **Next:** [Packages (B3)](packages.md) →
 
 ## Chapter summary
 
@@ -48,7 +48,7 @@ edim-dde-ai  (v1.0.0)
 | Plane | Responsibility |
 |-------|----------------|
 | **Source control** | Azure DevOps / Git — `*.agent.yaml`, prompts, runbooks, CI |
-| **Control plane** | StateStore — catalog metadata, sessions, audit. **Later (parked):** same plane may add location/policy/routing — not a new plane. [B9b](agent-control-plane.md) |
+| **Control plane** | **Narrow (R1):** StateStore — catalog, sessions, audit. **Target:** same plane may add location/policy/routing — not a new plane. [B9b](agent-control-plane.md) · [Inner vs outer](inner-outer-architecture.md) |
 | **Knowledge / retrieval** | RetrievalProvider — similarity search indexes (not StateStore) |
 | **Data plane** | LangGraph + Databricks + Foundry — do the work |
 | **Observability** | LangSmith / MLflow — traces and eval |
@@ -62,6 +62,7 @@ edim-dde-ai  (v1.0.0)
 
 ## Presentation
 
+- [Inner vs outer architecture](inner-outer-architecture.md) — what we run (inner) vs what we plan (outer)
 - [Reference architecture](reference-architecture.md) · [Architecture deck](architecture-deck.md)
 - SVGs: [context](diagrams/r1-system-context.svg) · [sequence](diagrams/r1-request-sequence.svg) · [envs](diagrams/r1-environments.svg)
 

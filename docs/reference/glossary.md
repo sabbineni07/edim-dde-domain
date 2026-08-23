@@ -30,8 +30,12 @@ Definitions of organizational names (**EDIM**, **DDE**) and platform terms used 
 | **HITL** | Human-in-the-loop — pause at `hitl.gate`, persist session, resume via `/api/v1/sessions/{id}/resume`. Guide: [HITL resume](../framework/hitl-resume.md) |
 | **LangSmith** | LangChain tracing / eval product used for EDIM observability |
 | **Observability provider** | Pluggable backend in `edim-dde-ai` (`langsmith` \| `mlflow` \| `none`) |
-| **Control plane** | Catalog, sessions, audit — managed via `StateStore`, not SQL/LLM work. **Not** the future routing/governance plane — see [Agent control plane](../architecture/agent-control-plane.md) |
-| **Agent control plane** | **Design only:** live location/policy/health repository + optional gateway. Does not execute graphs. Option B/C parked pending review |
+| **Control plane (narrow)** | R1: catalog, sessions, audit via `StateStore` — not SQL/LLM work |
+| **Control plane (target)** | Later: location/policy/health/gateway on the **same** plane — [Agent control plane](../architecture/agent-control-plane.md) · [Inner vs outer](../architecture/inner-outer-architecture.md) |
+| **Control plane** | Prefer **narrow** vs **target** above; legacy shorthand for narrow StateStore |
+| **Agent control plane** | **Design only:** live location/policy/health repository + optional gateway. Does not execute graphs. Option B/C parked — Phases 4–5 |
+| **Inner architecture** | One agent: orchestrator, tools, model client, memory, optional HITL/eval — R1 ships this. [Inner vs outer](../architecture/inner-outer-architecture.md) |
+| **Outer architecture** | Multi-agent platform: gateways, registries, rich CP, AuthZ/FinOps — target only |
 | **Location registry** | Future: `agent_id` + env → where to invoke (not `AgentRecord` routing). Design: [Agent control plane](../architecture/agent-control-plane.md) |
 | **`span_id` / `parent_span_id`** | Proposed per-invoke ids under a shared `request_id` for nested/remote agents. **Not implemented** — see control-plane §12 |
 | **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |

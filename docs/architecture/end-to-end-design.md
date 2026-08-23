@@ -1,7 +1,7 @@
 # End-to-end design (B1)
 
 **Learning path:** B1 · [Preface](../README.md)  
-**← Previous:** [Part B overview](index.md) · **Next:** [Architecture overview](overview.md) →
+**← Previous:** [Part B overview](index.md) · **Next:** [Inner vs outer architecture](inner-outer-architecture.md) →
 
 ## Chapter summary
 
@@ -10,6 +10,8 @@ This is the **canonical architecture chapter** for EDIM DDE. It defines planes o
 **Prerequisites:** [Core concepts (A2)](../getting-started/concepts.md) · [Part B overview](index.md)
 
 **Outcome:** you can explain how one HTTP request flows through API, domain, LangGraph, SQL, LLM, and observability backends.
+
+**Also read:** [Inner vs outer architecture (B1b)](inner-outer-architecture.md) — what we run (inner) vs what we plan (outer), R1 vs target.
 
 ---
 
@@ -90,6 +92,15 @@ Keep these planes separate — they solve different problems and use different s
 | Traces | Observability | LangSmith / MLflow |
 
 **How many Apps we deploy is not a seventh plane.** R1 is one App with many agents. Ideas for splitting Apps or a hub location map are **deploy topology** (below), not extra boxes in the diagram.
+
+**Control plane has two scopes (same plane):**
+
+| Scope | Meaning | Status |
+|-------|---------|--------|
+| **Narrow (R1)** | StateStore: agent catalog metadata, HITL sessions, audit | Shipped |
+| **Target (later)** | Location, policy, health, optional gateway — [agent control plane](agent-control-plane.md) | Design / Phase 4–5 |
+
+See [Inner vs outer architecture](inner-outer-architecture.md) for the inner/outer dual-view and R1 vs target.
 
 ### 2.1 Control plane: R1 vs later routing (not a new plane)
 
@@ -426,11 +437,12 @@ Do **not** put embeddings in Cosmos/Postgres StateStore, or agent YAML in the ve
 
 Continue the path:
 
-1. [Architecture overview](overview.md) — compact sketch  
-2. [Packages](packages.md) — ownership  
-3. [Reference architecture](reference-architecture.md) — sign-off  
-4. Then Part C platform docs starting at [Environments](../platform/environments.md)
+1. [Inner vs outer architecture](inner-outer-architecture.md) — what we run vs what we plan  
+2. [Architecture overview](overview.md) — compact sketch  
+3. [Packages](packages.md) — ownership  
+4. [Reference architecture](reference-architecture.md) — sign-off  
+5. Then Part C platform docs starting at [Environments](../platform/environments.md)
 
 ---
 
-← [Core concepts](../getting-started/concepts.md) · [Preface](../README.md) · [Architecture overview](overview.md) →
+← [Core concepts](../getting-started/concepts.md) · [Preface](../README.md) · [Inner vs outer](inner-outer-architecture.md) →
