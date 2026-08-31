@@ -19,14 +19,18 @@ Lookup catalog of **`EDIM_*`**, Databricks, Azure, and plane configuration varia
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
 | `EDIM_STATE_STORE` | API lifespan / AI | **Control plane** backend: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`). Holds agent catalog, sessions, audit — see [§ State vs recommendation stores](#state-store-vs-recommendation-store) |
+| `EDIM_CONVERSATION_STORE` | API lifespan / AI | Conversation-memory backend: `memory` \| `postgres` \| `lakebase` \| `cosmos` \| `redis` (default inherits `EDIM_STATE_STORE`). Uses separate conversation tables/keys; not product history |
 | `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | **Product history** backend: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`). Holds tuning/RCA recommendation rows + status |
-| `EDIM_DATABASE_URL` | Postgres store | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore) |
+| `EDIM_DATABASE_URL` | Postgres stores | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore + ConversationStore when selected) |
+| `EDIM_LAKEBASE_DATABASE_URL` | Lakebase conversation store | Optional PostgreSQL-compatible DSN used when `EDIM_CONVERSATION_STORE=lakebase` |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |
 | `EDIM_COSMOS_KEY` | Cosmos store | Account key (prefer Key Vault in PROD) |
 | `EDIM_COSMOS_DATABASE` | Cosmos store | Database id (default `edim`) |
 | `EDIM_COSMOS_AGENTS_CONTAINER` | Cosmos store | Container id (default `agents`) |
 | `EDIM_COSMOS_SESSIONS_CONTAINER` | Cosmos store | Container id (default `sessions`) |
 | `EDIM_COSMOS_AUDIT_CONTAINER` | Cosmos store | Container id (default `audit`) |
+| `EDIM_COSMOS_CONVERSATION_MESSAGES_CONTAINER` | Cosmos conversation store | Container id (default `conversation_messages`) |
+| `EDIM_COSMOS_CONVERSATION_SUMMARIES_CONTAINER` | Cosmos conversation store | Container id (default `conversation_summaries`) |
 | `EDIM_COSMOS_RECOMMENDATIONS_CONTAINER` | Cosmos recommendation store | Container id (default `recommendations`) |
 | `EDIM_REDIS_URL` | Redis store | e.g. `redis://localhost:6379/0` |
 | `EDIM_GIT_SHA` | Catalog sync | Optional git SHA stamped on agent records |
@@ -96,23 +100,25 @@ These are **two different planes**. They often share Postgres/Cosmos connection 
 
 ```text
 EDIM_STATE_STORE          →  agents / sessions / audit     (control plane)
+EDIM_CONVERSATION_STORE   →  chat messages / summaries      (conversation memory)
 EDIM_RECOMMENDATION_STORE →  recommend / RCA history rows  (product history)
 ```
 
-| Question | `EDIM_STATE_STORE` | `EDIM_RECOMMENDATION_STORE` |
-|----------|--------------------|------------------------------|
-| What is it? | Platform catalog + session/audit | Durable outcomes from agent HTTP calls |
-| Example contents | `{ "agent_id": "cluster_tuning", "lifecycle": "approved", … }` | `{ "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": { … } }` |
-| Written by | Lifespan sync / HITL sessions | `POST /api/v1/cluster_tuning/recommend`, `POST /api/v1/rca/analyze` |
-| Read by | Catalog / `/health` / HITL get-resume | List/get/patch APIs, prompt historical context, experience index |
-| Typical local | `postgres` | unset → inherits postgres |
-| Typical deployed | `cosmos` | unset → inherits cosmos, or set `cosmos` explicitly |
+| Question | `EDIM_STATE_STORE` | `EDIM_CONVERSATION_STORE` | `EDIM_RECOMMENDATION_STORE` |
+|----------|--------------------|---------------------------|------------------------------|
+| What is it? | Platform catalog + session/audit | User/assistant messages + summaries | Durable outcomes from agent HTTP calls |
+| Example contents | `{ "agent_id": "cluster_tuning", "lifecycle": "approved", … }` | `{ "conversation_id": "…", "role": "user", "content": "…" }` | `{ "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": { … } }` |
+| Written by | Lifespan sync / HITL sessions | Agent conversation requests | `POST /api/v1/cluster_tuning/recommend`, `POST /api/v1/rca/analyze` |
+| Read by | Catalog / `/health` / HITL get-resume | Memory policy before LLM calls | List/get/patch APIs, prompt historical context, experience index |
+| Typical local | `postgres` | unset → inherits postgres | unset → inherits postgres |
+| Typical deployed | `cosmos` | unset → inherits cosmos | unset → inherits cosmos, or set `cosmos` explicitly |
 | Disable? | No | `EDIM_RECOMMENDATION_STORE=none` |
 
 ```bash
 # Usual: both planes on the same backend
 export EDIM_STATE_STORE=cosmos
 # leave EDIM_RECOMMENDATION_STORE unset → also cosmos
+# leave EDIM_CONVERSATION_STORE unset → also cosmos, using separate containers
 
 # History off, catalog still on
 export EDIM_STATE_STORE=postgres

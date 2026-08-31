@@ -15,7 +15,7 @@ Base app: `edim_dde_api.main:app`
 
 | Method | Path | Request | Response |
 |--------|------|---------|----------|
-| GET | `/health` | — | `{status, agents, version, observability, state_store, recommendation_store, retrieval, web_search}` |
+| GET | `/health` | — | `{status, agents, version, observability, state_store, conversation_store, recommendation_store, retrieval, web_search}` |
 | POST | `/api/v1/cluster_tuning/recommend` | `TuningRequest` | `TuningResponse` |
 | GET | `/api/v1/cluster_tuning/recommendations` | query filters | `list[RecommendationHistoryItem]` |
 | GET | `/api/v1/cluster_tuning/recommendations/{id}` | — | `RecommendationHistoryItem` |
@@ -36,7 +36,29 @@ OpenAPI: `http://localhost:8080/docs` when uvicorn is running.
 
 **Breaking (hard cutover):** `/api/v1/recommendations` and unversioned `/api/recommendations` are **not** registered — use `/api/v1/cluster_tuning/recommend`.
 
-Response models project agent state explicitly (RCA requires `result`; no full-state fallback). RCA responses may include richer fields (`job_status`, `evidence_analysis`, structured `recommendations`, cited `evidence`, `request_id`, …). `evidence` rows carry a `backfilled` flag and the response sets `evidence_backfilled`: when the model cites nothing resolvable these are labeled pack-preview rows, not model citations (see the [Spark-RCA agent guide](../domain/spark-rca-agent.md#step-n--validate_output)).
+Response models project agent state explicitly (RCA requires `result`; no full-state fallback). Memory-enabled RCA and tuning responses include a `conversation_id`; send it back with an optional `message` to ask a follow-up question. The framework applies the agent's YAML memory policy before LLM calls; omitted memory defaults to `strategy: none`. Conversation memory is separate from HITL sessions and RecommendationStore product history. RCA responses may include richer fields (`job_status`, `evidence_analysis`, structured `recommendations`, cited `evidence`, `request_id`, …). `evidence` rows carry a `backfilled` flag and the response sets `evidence_backfilled`: when the model cites nothing resolvable these are labeled pack-preview rows, not model citations (see the [Spark-RCA agent guide](../domain/spark-rca-agent.md#step-n--validate_output)).
+
+### Conversational follow-ups
+
+The bundled `spark_rca` and `cluster_tuning` agents accept:
+
+```json
+{
+  "conversation_id": "<id returned by an earlier response>",
+  "message": "Can we reduce the worker count further?"
+}
+```
+
+Include the required job identity and evidence/metrics fields as usual. For an
+agent with an enabled memory strategy, a new conversation is created when
+`conversation_id` is omitted. The `message` is stored in the separate
+conversation-memory store and is added to the current LLM request; it is not
+written to RCA/tuning product history.
+
+Agents with `strategy: none` run without conversation history and do not return
+a `conversation_id`. A `message` is still accepted as a standalone question,
+but supplying a `conversation_id` returns HTTP `422` because the agent cannot
+evaluate that follow-up with its prior context.
 
 ### Cluster tuning — guardrail retries
 

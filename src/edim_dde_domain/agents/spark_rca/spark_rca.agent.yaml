@@ -37,6 +37,14 @@ rag:
   search_mode: hybrid
   cite: true
 
+# Conversation memory is separate from RCA RecommendationStore history.
+# Engineers can ask follow-up questions using conversation_id + message.
+memory:
+  strategy: window
+  k: 10
+  max_tokens: 4000
+  max_chars: 16000
+
 graph:
   nodes:
     - id: collect_failure_anchors
