@@ -101,6 +101,13 @@ rag:
   search_mode: hybrid      # vector | keyword | hybrid
   cite: true               # require answers to reference retrieved doc ids / evidence refs
 
+memory:
+  strategy: window         # none | window | summary | summary_buffer | vector
+  k: 10                     # conversation turns
+  max_tokens: 4000          # context guardrail; turn count alone is not enough
+  max_chars: 16000
+  store: conversation       # logical store; host selects Postgres/Redis/Cosmos/Lakebase
+
 security:
   pii_redaction: true
   output_policy: null
@@ -115,6 +122,37 @@ graph:
   nodes: [...]
   edges: [...]
 ```
+
+### `memory`
+
+Conversation memory is opt-in per agent. When the block is omitted, empty, or
+`null`, the framework uses `strategy: none`: it does not load or persist
+conversation history. Memory is loaded only when the request has a
+`conversation_id` and the selected strategy is enabled; a non-conversational
+request does not receive unrelated history.
+
+If an agent has `strategy: none`, a request with `conversation_id` is rejected
+because the follow-up could otherwise be evaluated without its prior context.
+A request with only `message` remains valid and is treated as a standalone
+question. Previously stored conversation records are retained but ignored until
+an enabled strategy is configured.
+
+| Field | Meaning |
+|-------|---------|
+| `strategy` | `none`, `window`, `summary`, `summary_buffer`, or `vector` |
+| `k` / `turns` | Number of recent user/assistant turns for the window/buffer |
+| `max_tokens` / `max_chars` | Hard prompt-context guardrails |
+| `store` | Logical conversation store; connection settings remain host configuration |
+| `include_tool_messages` | Include tool messages only when explicitly enabled |
+| `summary_trigger_tokens` | Approximate transcript size that triggers summary maintenance |
+| `summary_max_tokens` | Maximum stored summary size |
+| `corpus` / `top_k` | Vector-memory corpus and maximum semantic hits |
+| `similarity_threshold` | Minimum score for vector-memory hits |
+
+Conversation messages and summaries use `ConversationStore`; they are not
+RCA/tuning product history, HITL session state, or LangGraph checkpoints.
+Historical content is marked untrusted before it is sent to the model, and
+every strategy applies both a turn limit and a context-size limit.
 
 ### `metadata.hitl_required` vs `hitl.enabled`
 

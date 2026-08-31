@@ -96,6 +96,13 @@ Example **audit** event:
 
 **Not in StateStore:** HTTP recommendation bodies, job sizing outcomes, RCA analyses — those go to **`EDIM_RECOMMENDATION_STORE`** ([Recommendation store](recommendation-store.md)).
 
+**Conversation memory is also separate:** `EDIM_CONVERSATION_STORE` persists
+user/assistant messages and summaries for agents that have a `memory` YAML
+policy. It may use the same physical PostgreSQL, Lakebase, Redis, or Cosmos
+backend, but it uses dedicated tables/keys/containers and is not a replacement
+for StateStore sessions, RecommendationStore product history, or LangGraph
+execution checkpoints.
+
 ```bash
 # Choose the control-plane backend
 export EDIM_STATE_STORE=postgres   # local Compose

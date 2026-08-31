@@ -36,6 +36,8 @@ Definitions of organizational names (**EDIM**, **DDE**) and platform terms used 
 | **`span_id` / `parent_span_id`** | Proposed per-invoke ids under a shared `request_id` for nested/remote agents. **Not implemented** — see control-plane §12 |
 | **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |
 | **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
+| **ConversationStore** | Separate message/summary backend for conversational memory: `memory` \| `postgres` \| `lakebase` \| `cosmos` \| `redis` |
+| **Conversation memory** | Bounded user/assistant context selected by an agent's YAML policy; separate from HITL sessions, RCA/tuning product history, and graph checkpoints |
 | **RecommendationStore** | Pluggable product-history backend for tuning (and future) recommendations: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Experience index** | Derived resource-feature/action cards from RecommendationStore writes, upserted into a RetrievalProvider corpus for **feature** similarity (not job_id); see Retrieval & RAG §6c |
 | **Agent catalog** | Metadata rows (`AgentRecord`) synced from registered YAML agents at bootstrap |
