@@ -15,7 +15,12 @@ This is the **canonical architecture chapter** for EDIM DDE. It defines planes o
 
 ## 1. Purpose and hybrid model
 
-EDIM DDE is a **YAML-driven LangGraph agent platform** from the **Enterprise Data & Information Management (EDIM)** program, built by **Digital Data Engineering (DDE)**. It targets data platform reliability use cases (Spark RCA, cluster tuning), hosted as a thin FastAPI app on Databricks Apps / local.
+EDIM DDE is a **YAML-driven LangGraph agent platform** from the **Enterprise
+Data & Information Management (EDIM)** program, built by **Digital Data
+Engineering (DDE)**. It targets data platform reliability use cases (Spark
+RCA, cluster tuning), with a host-neutral graph package and thin adapters for
+ACA Native, Standalone Agent Server on ACA, Full self-hosted LangSmith on AKS,
+and Databricks Apps compatibility.
 
 | Layer | Responsibility | Must not |
 |-------|----------------|----------|
@@ -70,7 +75,7 @@ Keep these planes separate — they solve different problems and use different s
 └─────────────────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ OBSERVABILITY PLANE                                                     │
-│  ObservabilityProvider: langsmith | mlflow | none                       │
+│  OpenTelemetry/Application Insights; LangSmith; MLflow; or none         │
 │  Side channel — does not own business state                             │
 └─────────────────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -148,6 +153,19 @@ edim-dde-ai
 **Slide-ready contract:** ai = reusable runtime · domain = Databricks + product semantics · api = thin HTTP host.
 
 Detail: [packages.md](packages.md).
+
+### 3.1 Hosting adapters
+
+The host is selected outside the YAML graph:
+
+| Target | Adapter boundary | Public runtime surface |
+|---|---|---|
+| ACA Native | `edim-dde-api` FastAPI process + ACA identity | EDIM REST API |
+| Standalone Agent Server on ACA | Explicit graph factory + Agent Server manifest | LangGraph runs/threads/streaming |
+| Full self-hosted LangSmith on AKS | LangSmith platform + Agent Server deployment | Private LangSmith UI/control plane and Agent Server |
+| Databricks Apps | `app.yaml` + FastAPI process | EDIM REST API |
+
+Packaging and operational steps: [Deployment targets and release runbook](../api/deployment-targets.md).
 
 ---
 
@@ -404,7 +422,7 @@ Do **not** put embeddings in Cosmos/Postgres StateStore, or agent YAML in the ve
 | `EDIM_ENV` | `sdbx` | `dev` | `prod` |
 | State store | postgres / memory | postgres | **cosmos** |
 | Retrieval | faiss (local or Volume) | faiss / Azure | **azure_ai_search** |
-| Observability | LangSmith project per env | same | same + PII |
+| Observability | Azure-native or self-hosted LangSmith | same | same + PII |
 
 → [environments.md](../platform/environments.md)
 

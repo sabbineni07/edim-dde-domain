@@ -5,7 +5,10 @@
 
 ## Chapter summary
 
-Directory convention for every product or plugin agent: required YAML and `nodes.py`, recommended `logic.py`, optional `helpers/` and `content/`.
+Directory convention for every product or plugin agent: required YAML and
+`nodes.py`, recommended `logic.py`, optional `helpers/` and `content/`. The
+same package is the graph artifact for ACA Native, Standalone Agent Server on
+ACA, and Full self-hosted LangSmith Deployment on AKS.
 
 **Outcome:** you can scaffold a package that bootstrap and plugins will discover.
 
@@ -32,6 +35,22 @@ agents/<agent_id>/
 | `logic.py` | Graph steps; orchestrate helpers |
 | `helpers/` | Pure policy/data (sizing, guardrails, evidence assembly, …) |
 | `content/` | Prompt/skill files referenced by `llm_chain` |
+
+## Deployment contract
+
+The agent package must be host-neutral:
+
+- YAML contains topology and non-secret configuration, not credentials.
+- `nodes.py` registers allowlisted node types; it does not choose a host.
+- `logic.py` contains product behavior and returns partial state updates.
+- Graph construction must not call SQL, Foundry, Key Vault, or LangSmith.
+- Runtime providers and identities arrive through environment configuration.
+
+ACA Native uses the FastAPI host and `build_graph()`. The optional Agent Server
+adapter uses `build_flat_graph()` and an explicit graph factory such as
+`cluster_tuning_graph`. Full self-hosted LangSmith consumes the same packaged
+factory through its Agent Server deployment process. See [Deployment targets
+and release runbook](../api/deployment-targets.md).
 
 ## Naming
 

@@ -106,7 +106,9 @@ This page is the **table of contents** for the EDIM DDE Engineer Guide. Sidebar 
 
 | Step | Chapter | Description |
 |------|---------|-------------|
-| **G1–G3** | Config, endpoints, deploy | HTTP host |
+| **G1–G2** | Config, endpoints | HTTP host |
+| **G3a** | [Deployment targets](../api/deployment-targets.md) | Package and select a host |
+| **G3** | [Deploy & hosting](../api/deploy-and-hosting.md) | Compatibility commands |
 
 ---
 

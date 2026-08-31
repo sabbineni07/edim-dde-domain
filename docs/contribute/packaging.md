@@ -5,7 +5,10 @@
 
 ## Chapter summary
 
-How the three EDIM packages are **versioned** and how they will be published. Local development still uses editable installs (`requirements.txt` `-e ../…`). A private index is **not** required to run R1.
+How the three EDIM packages are **versioned**, assembled into the shared graph
+artifact, and published. Local development still uses editable installs
+(`requirements.txt` `-e ../…`). A private index is **not** required for the
+local ACA Native baseline.
 
 **Outcome:** you know when to bump versions, rebuild vendor wheels, and (later) publish to Artifactory / Azure Artifacts.
 
@@ -28,6 +31,23 @@ edim-dde-api  →  edim-dde-domain  →  edim-dde-ai
 ```
 
 Until then, `edim-dde-api/requirements.txt` and `pip install -e ".[dev]"` with sibling checkouts remain the supported path. Do **not** add unpublished names as hard `pyproject` dependencies — `pip install edim-dde-domain` from PyPI would fail.
+
+## 1.1 One package, three target adapters
+
+The release artifact is the versioned YAML, prompt/content files, registered
+node code, and the three package wheels. The host adapter is selected at
+deployment time:
+
+| Target | Adapter/artifact |
+|---|---|
+| ACA Native | `edim-dde-api` wheel + production Dockerfile + FastAPI command |
+| Standalone Agent Server on ACA | Same wheels/content + explicit graph factory + `langgraph.json` + Agent Server runtime |
+| Full self-hosted LangSmith on AKS | Same graph package consumed by the platform’s Agent Server deployment |
+| Databricks Apps | Same wheels/content in `deploy/databricks-app/` |
+
+Do not create a target-specific copy of an agent YAML or business rule. A
+target-specific difference belongs in the host command, manifest, environment,
+identity, or platform resources.
 
 ---
 
@@ -65,7 +85,7 @@ Artifacts land in `dist/*.whl`. Extras that pull optional backends:
 
 ---
 
-## 4. Private index (deferred ops)
+## 4. Private index (recommended for durable CI/CD)
 
 Pin versions in the **Apps / CI** `requirements.txt` once wheels are on Artifactory or Azure Artifacts. See [Deploy & hosting](../api/deploy-and-hosting.md) §5.3b. Vendor/`vendor/` is a temporary Apps workaround — stop relying on it when the index is live.
 
@@ -79,7 +99,23 @@ Checklist when the index is ready:
 
 ---
 
-## 5. Slim domain extras (later)
+## 5. Target packaging checklist
+
+Before a target artifact is promoted:
+
+1. Run schema, unit, graph-shape, and smoke tests.
+2. Build all three wheels from the same commit.
+3. Confirm YAML and prompt/content files are inside the domain wheel.
+4. Scan wheels and images for secrets and vulnerable dependencies.
+5. Record wheel hashes or the image digest.
+6. Inject environment-specific values and secrets only at runtime.
+7. Test the target’s graph import and `/health` or Agent Server readiness.
+8. Promote the same immutable artifact; do not rebuild between environments.
+
+Detailed commands and target-specific deployment steps are in [Deployment
+targets and release runbook](../api/deployment-targets.md).
+
+## 6. Slim domain extras (later)
 
 Optional split `[rca]` / `[tuning]` so hosts that only load external plugins need not ship product YAML. **Not done in this pass** — re-review when a second consumer exists.
 

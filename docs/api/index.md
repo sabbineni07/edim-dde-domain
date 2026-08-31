@@ -5,13 +5,16 @@
 
 ## Chapter overview
 
-Part G documents **`edim-dde-api`**: environment configuration, HTTP surface, and deployment targets (Databricks Apps default, Docker, Azure Container Apps).
+Part G documents **`edim-dde-api`**: environment configuration, HTTP surface,
+and deployment targets. ACA Native is the standard host; Standalone Agent
+Server on ACA and Full self-hosted LangSmith Deployment on AKS are optional
+targets. Databricks Apps remains a compatibility path.
 
 **After completing Part G you will:**
 
 - Configure a minimal working API for local and Apps hosts.
 - Invoke bundled agents via `/api/v1/*` and interpret OpenAPI models.
-- Package wheels, sync bundles, and deploy with stop/start semantics.
+- Package the shared YAML graph artifact and deploy it to the selected host.
 
 ---
 
@@ -30,7 +33,8 @@ Part G documents **`edim-dde-api`**: environment configuration, HTTP surface, an
 |------|---------|-------|
 | **G1** | [Configuration](configuration.md) | Required env vars |
 | **G2** | [HTTP endpoints](endpoints.md) | OpenAPI surface |
-| **G3** | [Deploy & hosting](deploy-and-hosting.md) | Apps, Docker, ACA |
+| **G3a** | [Deployment targets and release runbook](deployment-targets.md) | Target selection, packaging, rollout |
+| **G3** | [Deploy & hosting](deploy-and-hosting.md) | Apps, Docker, ACA compatibility commands |
 
 ---
 
@@ -39,8 +43,10 @@ Part G documents **`edim-dde-api`**: environment configuration, HTTP surface, an
 | Host | SQL identity | Typical first use |
 |------|--------------|-------------------|
 | **Local uvicorn + Docker Postgres** | `az login` on host | Developer smoke |
-| **Databricks Apps** | User `X-Forwarded-Access-Token` | DEV/PROD API |
-| **Azure Container Apps** | Container managed identity | Portable container deploy |
+| **ACA Native** | Container managed identity | Standard DEV/PROD API |
+| **Standalone Agent Server on ACA** | ACA identity + Agent Server config | LangGraph runs/threads/streaming |
+| **Full self-hosted LangSmith on AKS** | AKS workload identity | Private LangSmith platform |
+| **Databricks Apps** | User `X-Forwarded-Access-Token` | Compatibility/data-local workloads |
 
 !!! note "Engineer guide (`/guide`)"
     MkDocs HTML is **local Docker** or **optional Apps mount** (`EDIM_MOUNT_GUIDE=1`). It is not required for agent runtime.

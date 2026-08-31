@@ -51,8 +51,8 @@ One **deployed App / process** = one **`EDIM_ENV`**. That value is **identity an
 | Tracing verbosity | High OK | On | On + PII redaction |
 | Agent YAML changes | Experimental OK | Feature branches | Approved versions only |
 | Foundry auth | `az login` or SP | SP or `az login` | **`EDIM_FOUNDRY_*` from Key Vault** |
-| Typical **host** (runtime) | Local / SDBX Apps | Local or DEV Apps | **Databricks Apps** (ACA optional) |
-| Databricks App name (API) | `edim-dde-api-sdbx` (optional) | **`edim-dde-api-dev`** | `edim-dde-api-prod` |
+| Typical **host** (runtime) | Local / ACA Native / Apps compatibility | Local or ACA Native | **ACA Native** (Agent Server or full LangSmith optional) |
+| Databricks App name (compatibility) | `edim-dde-api-sdbx` (optional) | `edim-dde-api-dev` (optional) | `edim-dde-api-prod` (optional) |
 
 Hosting & identity: [Deploy & hosting](../api/deploy-and-hosting.md) §5 (naming + packaging) · [Access & permissions](access-and-permissions.md) · [Key Vault bootstrap](key-vault-bootstrap.md).  
 Agent packing / one vs many apps: [Agent deployment & composition](../architecture/agent-deployment-and-composition.md).
@@ -85,7 +85,10 @@ Promotion checklist (manual for now):
 4. Secrets present in target Key Vault
 5. Table FQNs and Foundry deployment confirmed for target env
 
-**Hosting:** first cut = **Databricks Apps**; portable Docker image for Azure Container Apps — see [Deploy & hosting](../api/deploy-and-hosting.md).
+**Hosting:** standard = **ACA Native**. Standalone Agent Server on ACA and
+Full self-hosted LangSmith Deployment on AKS are optional per agent/environment;
+Databricks Apps is retained for compatibility and data-local workloads. See
+[Deployment targets](../api/deployment-targets.md).
 
 ---
 

@@ -5,21 +5,25 @@
 
 ## Chapter summary
 
-A **one-page system sketch** of the three-package stack and plane boundaries. For patterns, lifecycle detail, and invariants, read **[End-to-end design (B1)](end-to-end-design.md)** first.
+A **one-page system sketch** of the three-package stack and plane boundaries.
+For deployment selection, packaging, and rollout detail, read
+**[Deployment targets and release runbook](../api/deployment-targets.md)**. For
+patterns, lifecycle detail, and invariants, read **[End-to-end design
+(B1)](end-to-end-design.md)** first.
 
 ---
 
 ## System sketch
 
 ```text
-Client (curl / future UI / Databricks Apps)
+Client (curl / future UI / Databricks Apps / APIM)
         │
         ▼
-edim-dde-api  (v1.0.0)
+ACA Native: edim-dde-api  (v1.0.0)
   • CORS (EDIM_CORS_ORIGINS)
   • DatabricksUserTokenMiddleware
   • Key Vault secret bootstrap (optional)
-  • ObservabilityProvider (LangSmith / MLflow / none)
+  • ObservabilityProvider (Azure-native / LangSmith / MLflow / none)
   • StateStore (memory / postgres / cosmos / redis)  ← control plane
   • RetrievalProvider (faiss / azure / databricks / …) ← knowledge
   • lifespan: bootstrap_agents() + sync catalog + Foundry lazy
@@ -40,6 +44,11 @@ edim-dde-ai  (v1.0.0)
         ├─ rag.retrieve ──► FAISS / Azure AI Search / DBX VS (knowledge)
         └─ StateStore ──► Postgres (local) / Cosmos (deploy) (control plane)
 ```
+
+The same YAML graph package can instead be loaded by the optional Standalone
+Agent Server on ACA or by Full self-hosted LangSmith Deployment on AKS. Those
+targets change the runtime API and platform resources; they do not change the
+agent topology or domain rules.
 
 ---
 

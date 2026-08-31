@@ -247,7 +247,7 @@ Redeploy or **Start** the App with `AZURE_KEY_VAULT_URL` + `AZURE_TENANT_ID` set
 
 **Quick prove-out without KV:** Apps → Environment / secrets → set `EDIM_FOUNDRY_CLIENT_ID`, `EDIM_FOUNDRY_CLIENT_SECRET`, `EDIM_FOUNDRY_TENANT_ID` directly; temporarily unset `AZURE_KEY_VAULT_URL` if you only want to validate Foundry.
 
-Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-deploy-databricks-apps-default).
+Full Apps create/deploy: [Deploy & hosting §5](../api/deploy-and-hosting.md#5-deploy-databricks-apps-compatibility-target).
 
 ## Summary
 

@@ -1,17 +1,22 @@
-# LangSmith setup guide (SDBX / DEV / PROD)
+# Self-hosted LangSmith setup guide (SDBX / DEV / PROD)
 
 **Learning path:** C5 · [Preface](../README.md)  
 **← Previous:** [Observability](observability.md) · **Next:** [State store](state-store.md) →
 
 ## Chapter summary
 
-Hands-on LangSmith configuration for EDIM across SDBX / DEV / PROD: projects, env vars, laptop validation, and how EDIM differs from generic LangSmith quickstarts. R1 scope is tracing plus one project per env.
+Hands-on self-hosted LangSmith configuration for EDIM across SDBX / DEV /
+PROD: projects, env vars, tracing validation, and the distinction between
+using LangSmith as a tracing destination and operating the full LangSmith
+platform. LangSmith Cloud is not an EDIM deployment target.
 
 **Outcome:** you can produce a visible trace from a dry agent call and find it by `X-Request-Id`.
 
 ---
 
-Hands-on guide: configure LangSmith for EDIM, validate traces from a Windows or Linux laptop, and understand how this differs from generic LangSmith UI quickstarts.
+Hands-on guide: configure the enterprise LangSmith instance for EDIM, validate
+traces from a Windows or Linux laptop, and understand how this differs from
+generic LangSmith UI quickstarts.
 
 **R1 scope:** tracing + one **tracing project** per EDIM env.  
 **Later:** datasets, evaluators, CI quality gates (backlog BL-029 / BL-033).
@@ -106,7 +111,7 @@ Product agents in `edim-dde-domain` **do not** import LangSmith — tracing stay
 | `LANGCHAIN_ENDPOINT` | Self-hosted | API base URL (SaaS default: `https://api.smith.langchain.com`) |
 | `EDIM_LANGSMITH_ENABLED` | Optional | **Off switch only** — set `false` to force EDIM to ignore tracing env |
 
-Example (DEV, SaaS):
+Example (DEV, self-hosted):
 
 ```bash
 EDIM_ENV=dev
@@ -115,7 +120,7 @@ EDIM_OBSERVABILITY=langsmith
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=lsv2_pt_...
 LANGCHAIN_PROJECT=edim-dde-dev
-LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+LANGCHAIN_ENDPOINT=https://<self-hosted-langsmith-api>/api/v1
 ```
 
 Example (self-hosted):
@@ -234,22 +239,33 @@ Suggested project names:
 
 ---
 
-## 6. Self-hosted vs SaaS
+## 6. Self-hosted deployment versus tracing
 
-| Option | When |
-|--------|------|
-| **LangSmith Cloud** | Laptop / SDBX spikes; traces leave the machine |
-| **Enterprise self-hosted** | Data residency / enterprise policy |
+| Option | EDIM status | When |
+|--------|-------------|------|
+| **LangSmith Cloud** | Not approved | Do not send EDIM production or development traces to SaaS |
+| **Self-hosted tracing endpoint** | Supported | ACA Native, local, or another EDIM host sends traces to the private LangSmith API |
+| **Full self-hosted LangSmith Deployment on AKS** | Optional | The platform team operates the LangSmith UI/control plane and Agent Server inside Azure |
 
 Self-hosted endpoint example:
 
 ```bash
-LANGCHAIN_ENDPOINT=https://lngch-sdbx-eus.example.net/api/v1
+LANGCHAIN_ENDPOINT=https://<self-hosted-langsmith-api>/api/v1
 ```
 
-Ensure the API process can reach that host (VPN / firewall). The API key must be issued **from that instance**, not from SaaS.
+Ensure the API process can reach that private host through VNet, private DNS,
+or approved VPN/firewall routes. The API key must be issued from that
+self-hosted instance, not from SaaS.
 
-Enterprise Docker/K8s: [Self-host LangSmith](https://docs.langchain.com/langsmith/self-hosted) (license required).
+Full platform installation: [Deployment targets](../api/deployment-targets.md) §6.
+The platform team must use the vendor’s version-matched installation
+instructions, license process, Helm values, backing-service requirements,
+backup policy, and upgrade procedure:
+[Self-host LangSmith](https://docs.langchain.com/langsmith/self-hosted).
+
+The application team does not install or upgrade the AKS control plane as part
+of an EDIM graph release. It supplies the versioned graph package and validates
+the Agent Server import or tracing path.
 
 ---
 
