@@ -177,13 +177,23 @@ analysis on the same job/analysis context. The framework prepends a
 |-------|---------|
 | `initialize_entry` | Graph node for the first-turn pipeline (defaults to graph entry) |
 | `converse_entry` | Graph node for explanation / Q&A follow-ups |
-| `regenerate_entry` | Graph node to rerun recommendation generation |
+| `regenerate_entry` | Graph node to rerun recommendation / diagnosis generation |
 | `regenerate_phrases` | Lowercase substring phrases that select the regenerate path |
+
+Typical product wiring:
+
+| Agent | initialize | converse | regenerate |
+|-------|------------|----------|------------|
+| `cluster_tuning` | `collect_metrics` | `prepare_explanation_payload` | `prepare_sizing_payload` |
+| `spark_rca` | `collect_failure_anchors` | `prepare_explanation_payload` | `prepare_llm_payload` |
 
 Hosts pass `thread_id` (or `conversation_id`) on follow-up requests. Set
 `memory.strategy: none` for single end-to-end runs with no follow-ups.
 
 Checkpointer selection is host configuration (`EDIM_CHECKPOINTER=memory|postgres`).
+Local Docker Compose defaults to `EDIM_OBSERVABILITY=none` and forces
+`LANGCHAIN_TRACING_V2=false` so a shared `.env` with LangSmith keys does not
+spam unreachable endpoints.
 
 ### `metadata.hitl_required` vs `hitl.enabled`
 

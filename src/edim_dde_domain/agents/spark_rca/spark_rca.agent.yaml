@@ -46,13 +46,17 @@ memory:
 
 session:
   initialize_entry: collect_failure_anchors
-  converse_entry: prepare_llm_payload
+  # Converse: explain / Q&A on checkpointed evidence + result (no SQL recollect).
+  converse_entry: prepare_explanation_payload
+  # Regenerate: re-run RCA synthesis from prepare_llm_payload using same context.
   regenerate_entry: prepare_llm_payload
   regenerate_phrases:
     - re-analyze
     - regenerate
     - retry
     - different root cause
+    - rediagnose
+    - re-diagnose
 
 graph:
   nodes:
@@ -326,6 +330,13 @@ graph:
       type: domain.rca.validate_output
     - id: evaluate_output
       type: domain.rca.evaluate_output
+    - id: prepare_explanation_payload
+      type: domain.rca.prepare_explanation_payload
+    - id: generate_explanation
+      type: llm_chain
+      chain: explanation
+      output_key: explanation
+      attach_skills: false
 
   edges:
     - [START, collect_failure_anchors]
@@ -346,3 +357,5 @@ graph:
     - [parse_llm_json, validate_output]
     - [validate_output, evaluate_output]
     - [evaluate_output, END]
+    - [prepare_explanation_payload, generate_explanation]
+    - [generate_explanation, END]

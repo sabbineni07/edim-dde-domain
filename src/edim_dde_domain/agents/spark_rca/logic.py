@@ -11,6 +11,10 @@ Each public function here is the body of a ``domain.rca.*`` LangGraph node
       → prepare_llm_payload → synthesize (llm_chain)
       → parse_llm_json → validate_output → evaluate_output → END
 
+    Session follow-ups (checkpoint-backed):
+      converse   → prepare_explanation_payload → generate_explanation → END
+      regenerate → prepare_llm_payload → synthesize → … → END
+
 Authoritative signal is always the live ``evidence_pack``. History, runbooks,
 and optional web search are **secondary** context lanes and must never block
 the request when empty or when providers fail.
@@ -341,6 +345,49 @@ def prepare_llm_payload(state: dict[str, Any]) -> dict[str, Any]:
         "web_search_context": _s(web_search_context)
         if web_search_context
         else "(web search disabled, not triggered, unavailable, or empty)",
+    }
+
+
+def prepare_explanation_payload(state: dict[str, Any]) -> dict[str, Any]:
+    """Stringify the completed RCA result for the explanation follow-up chain.
+
+    Used by the session ``converse`` path so engineers can ask clarifying
+    questions against the same evidence and diagnosis without re-running SQL.
+
+    Args:
+        state: Checkpointed state after initialize (``result``, ``evidence_pack``,
+            optional ``conversation_context``, history / runbook context).
+
+    Returns:
+        Prompt field patch for ``content/prompts/explanation.human.md``.
+    """
+    result = state.get("result")
+    if not isinstance(result, dict):
+        result = {}
+    pack = state.get("evidence_pack")
+    if not isinstance(pack, dict):
+        pack = {}
+    history = str(state.get("historical_context") or "")
+    if len(history) > 3000:
+        history = history[:2980] + "\n…[truncated]"
+    runbooks = str(state.get("runbook_context") or "")
+    if len(runbooks) > 2000:
+        runbooks = runbooks[:1980] + "\n…[truncated]"
+    conversation = str(state.get("conversation_context") or "").strip()
+    user_message = str(
+        state.get("user_message") or state.get("message") or ""
+    ).strip()
+    return {
+        "result_text": dumps(result) if result else "(no prior RCA result on session)",
+        "evidence_pack_text": dumps(pack) if pack else "(no evidence_pack on session)",
+        "classification_hint_text": dumps(state.get("classification_hint") or {})
+        if state.get("classification_hint")
+        else "(none)",
+        "historical_context": history or "(no prior RCA history retrieved)",
+        "runbook_context": runbooks
+        or "(no runbook hits retrieved — retrieval disabled or empty index)",
+        "conversation_context": conversation or "(no prior conversation messages)",
+        "user_question": user_message or "(no follow-up question provided)",
     }
 
 
