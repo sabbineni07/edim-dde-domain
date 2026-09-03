@@ -37,13 +37,22 @@ rag:
   search_mode: hybrid
   cite: true
 
-# Conversation memory is separate from RCA RecommendationStore history.
-# Engineers can ask follow-up questions using conversation_id + message.
+# Conversation memory uses LangGraph checkpoints keyed by conversation_id / thread_id.
 memory:
   strategy: window
   k: 10
   max_tokens: 4000
   max_chars: 16000
+
+session:
+  initialize_entry: collect_failure_anchors
+  converse_entry: prepare_llm_payload
+  regenerate_entry: prepare_llm_payload
+  regenerate_phrases:
+    - re-analyze
+    - regenerate
+    - retry
+    - different root cause
 
 graph:
   nodes:
