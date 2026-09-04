@@ -99,7 +99,8 @@ Example **audit** event:
 **Session checkpoints are separate:** `EDIM_CHECKPOINTER` persists LangGraph
 execution state and in-thread messages for agents with a `memory` + `session`
 YAML policy. It is not a replacement for StateStore HITL sessions or
-RecommendationStore product history.
+RecommendationStore product history. Local Compose / `host-run` default to
+``postgres`` (same ``EDIM_DATABASE_URL``) so follow-ups survive API restarts.
 
 ```bash
 # Choose the control-plane backend

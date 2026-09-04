@@ -19,7 +19,7 @@ Lookup catalog of **`EDIM_*`**, Databricks, Azure, and plane configuration varia
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
 | `EDIM_STATE_STORE` | API lifespan / AI | **Control plane** backend: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`). Holds agent catalog, sessions, audit — see [§ State vs recommendation stores](#state-store-vs-recommendation-store) |
-| `EDIM_CHECKPOINTER` | API lifespan / AI | LangGraph session checkpoints for multi-turn analysis: `memory` \| `postgres` (default `memory`) |
+| `EDIM_CHECKPOINTER` | API lifespan / AI | LangGraph session checkpoints for multi-turn analysis: `memory` \| `postgres` (Compose / recommended local default `postgres`; process default `memory` if unset) |
 | `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | **Product history** backend: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`). Holds tuning/RCA recommendation rows + status |
 | `EDIM_DATABASE_URL` | Postgres stores | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore + checkpointer when selected) |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |
@@ -107,7 +107,7 @@ EDIM_RECOMMENDATION_STORE →  recommend / RCA history rows  (product history)
 | Example contents | `{ "agent_id": "cluster_tuning", "lifecycle": "approved", … }` | Checkpoint blob keyed by `thread_id` | `{ "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": { … } }` |
 | Written by | Lifespan sync / HITL sessions | Session-enabled agent invokes | `POST /api/v1/cluster_tuning/recommend`, `POST /api/v1/rca/analyze` |
 | Read by | Catalog / `/health` / HITL get-resume | Session router on follow-up turns | List/get/patch APIs, prompt historical context, experience index |
-| Typical local | `postgres` | `memory` or `postgres` | unset → inherits postgres |
+| Typical local | `postgres` | `postgres` (Compose default; use `memory` only for ephemeral tests) | unset → inherits postgres |
 | Typical deployed | `cosmos` | `postgres` | unset → inherits cosmos, or set `cosmos` explicitly |
 | Disable? | No | Use `memory.strategy: none` on agent | `EDIM_RECOMMENDATION_STORE=none` |
 
@@ -116,8 +116,10 @@ EDIM_RECOMMENDATION_STORE →  recommend / RCA history rows  (product history)
 export EDIM_STATE_STORE=cosmos
 # leave EDIM_RECOMMENDATION_STORE unset → also cosmos
 
-# Session checkpoints in-process for local dev
-export EDIM_CHECKPOINTER=memory
+# Durable session checkpoints (same Postgres DSN as StateStore)
+export EDIM_CHECKPOINTER=postgres
+# Ephemeral in-process checkpoints (lost on API restart):
+# export EDIM_CHECKPOINTER=memory
 
 # History off, catalog still on
 export EDIM_STATE_STORE=postgres

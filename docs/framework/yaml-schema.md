@@ -190,7 +190,8 @@ Typical product wiring:
 Hosts pass `thread_id` (or `conversation_id`) on follow-up requests. Set
 `memory.strategy: none` for single end-to-end runs with no follow-ups.
 
-Checkpointer selection is host configuration (`EDIM_CHECKPOINTER=memory|postgres`).
+Checkpointer selection is host configuration (`EDIM_CHECKPOINTER=memory|postgres`;
+Compose defaults to ``postgres`` so follow-ups survive API restarts).
 Local Docker Compose defaults to `EDIM_OBSERVABILITY=none` and forces
 `LANGCHAIN_TRACING_V2=false` so a shared `.env` with LangSmith keys does not
 spam unreachable endpoints.
