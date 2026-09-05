@@ -33,12 +33,25 @@ rag:
   corpus: cluster-tuning-guidance
 
 # Conversation memory is separate from RecommendationStore product history.
-# Engineers can ask follow-up questions using conversation_id + message.
+# Engineers can ask follow-up questions using thread_id + message.
 memory:
   strategy: window
   k: 10
   max_tokens: 4000
   max_chars: 16000
+
+# Session routing for checkpoint-backed multi-turn analysis on the same job_run_id.
+session:
+  initialize_entry: collect_metrics
+  converse_entry: prepare_explanation_payload
+  regenerate_entry: prepare_sizing_payload
+  regenerate_phrases:
+    - cheaper
+    - smaller
+    - reduce
+    - regenerate
+    - retry
+    - different recommendation
 
 graph:
   nodes:

@@ -19,6 +19,7 @@ Registered type ids
 * ``domain.rca.load_historical_context`` — experience + store shelf
 * ``domain.rca.build_web_search_query`` — opt-in sanitized egress query
 * ``domain.rca.prepare_llm_payload``
+* ``domain.rca.prepare_explanation_payload``
 * ``domain.rca.parse_llm_json``
 * ``domain.rca.validate_output``
 * ``domain.rca.evaluate_output``
@@ -121,6 +122,16 @@ def prepare_llm_payload_factory(_config: dict[str, Any]):
 
     def _node(state: dict[str, Any]) -> dict[str, Any]:
         return logic.prepare_llm_payload(state)
+
+    return _node
+
+
+@register_node("domain.rca.prepare_explanation_payload")
+def prepare_explanation_payload_factory(_config: dict[str, Any]):
+    """Flatten checkpointed RCA result for ``explanation.human.md`` follow-ups."""
+
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.prepare_explanation_payload(state)
 
     return _node
 

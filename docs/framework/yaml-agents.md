@@ -42,6 +42,9 @@ graph:
 - `START` / `END` are reserved edge endpoints  
 - Prefer `[START, entry_node]` or set `graph.entry`  
 - Node `type` must be registered before `create_agent` builds the graph  
+- Multi-turn: add `memory` + `session` (initialize / converse / regenerate). FastAPI
+  compiles via `build_session_graph`; host sets `EDIM_CHECKPOINTER`. Details:
+  [YAML schema — session](yaml-schema.md#session)
 
 Compiled agents are **cached** after first `create_agent`; re-registering YAML invalidates that id.
 

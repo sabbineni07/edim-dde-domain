@@ -5,7 +5,11 @@
 
 ## Chapter summary
 
-This chapter defines the three runtime identities — **U** (user), **A** (host), **B** (Foundry) — and which identity runs **SQL**, **Foundry**, and **Key Vault** on Local, Databricks Apps, and Azure Container Apps. Platform engineers use it when wiring Apps authorization, KV grants, or ACA managed identity.
+This chapter defines the three runtime identities — **U** (user), **A** (host),
+**B** (Foundry) — and which identity runs **SQL**, **Foundry**, and **Key
+Vault** on Local, Databricks Apps, ACA Native, Standalone Agent Server on ACA,
+and AKS. Platform engineers use it when wiring ingress authorization, KV
+grants, workload identity, or ACA managed identity.
 
 **Outcome:** you can map every credential failure to the correct identity and host without mixing Foundry SP into SQL’s `DefaultAzureCredential` chain.
 
@@ -18,12 +22,14 @@ This chapter defines the three runtime identities — **U** (user), **A** (host)
 | Trust boundaries / roles | [Security baseline (C2)](security-baseline.md) |
 | Token resolution code | [Auth and SQL (B7)](../architecture/auth-and-sql.md) |
 | Vault load order | [Key Vault bootstrap (C2c)](key-vault-bootstrap.md) |
-| Apps / ACA packaging | [Deploy & hosting (G3)](../api/deploy-and-hosting.md) |
+| Deployment targets | [Deployment targets and release runbook](../api/deployment-targets.md) |
 
 !!! note "Scope of this page"
     Visual end-to-end auth diagrams: [Authentication flows](authentication-flows.md). ACA MI warehouse grants: [Deploy §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc).
 
-**No separate code forks per host** — one API process; behavior follows env + credential resolution.
+**No separate code forks per host** — the shared graph package is reused;
+behavior follows the selected host adapter, environment, and credential
+resolution.
 
 ---
 
@@ -56,11 +62,11 @@ This chapter defines the three runtime identities — **U** (user), **A** (host)
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Identity | Used for | Databricks Apps | ACA / Docker | Local machine |
-|----------|----------|-----------------|--------------|---------------|
-| **U** | SQL as end user | Forwarded access token | Usually **absent** | N/A (`az login` is you) |
-| **A** | Open KV / platform Azure | App SP (`DATABRICKS_CLIENT_*`) | Container **managed identity** | `az login` |
-| **B** | Foundry LLM | Secrets → `EDIM_FOUNDRY_*` SP, or API key, or `az login` | Same (KV or ACA secret refs) | `az login`, `.env` SP, or API key |
+| Identity | Used for | Databricks Apps | ACA Native / Agent Server | Full LangSmith on AKS | Local machine |
+|----------|----------|-----------------|--------------------------|-------------------------|--------------|
+| **U** | SQL/UI end user | Forwarded access token | Usually **absent**; ingress authenticates the caller | Entra user for UI; service calls use workload identity | `az login` user |
+| **A** | Open KV / platform Azure | App SP (`DATABRICKS_CLIENT_*`) | Container managed identity | AKS workload identity | `az login` |
+| **B** | Foundry LLM | Secrets → `EDIM_FOUNDRY_*` SP, or API key | Same (KV or ACA secret refs) | Platform-managed secret or workload identity | `az login`, `.env` SP, or API key |
 
 Creating an Entra SP and storing its client id/secret in KV for Foundry = **Identity B only**.
 
@@ -77,7 +83,8 @@ Creating an Entra SP and storing its client id/secret in KV for Foundry = **Iden
 | **Databricks Apps** | `app.yaml` + Apps runtime | **Identity U** (`X-Forwarded-Access-Token`) | **Identity B** from KV or Apps secrets | **Identity A** = App SP | `deploy/databricks-app/` |
 | **Docker (local/CI)** | `deploy/docker/Dockerfile` | Same as local or MI | SP via `EDIM_FOUNDRY_*` / KV | Inject secrets or host `az login` | Same image as ACA |
 | **Azure Container Apps** | Same Docker image | **Identity A** = container MI | Identity B → `EDIM_FOUNDRY_*` | **Identity A** = ACA MI | ACR + ACA env |
-| **AKS / App Service** (later) | Same image / startup CMD | Same pattern as ACA | Same | Workload MI | Same env contract |
+| **Standalone Agent Server on ACA** | Agent Server image + graph manifest | **Identity A** = ACA MI | Identity B → `EDIM_FOUNDRY_*` | **Identity A** = ACA MI | Target bundle |
+| **Full self-hosted LangSmith on AKS** | Vendor platform + Agent Server bundle | Platform workload identity | Platform secret/workload identity | AKS workload identity | Versioned platform artifact |
 
 **Why `EDIM_FOUNDRY_*`:** SQL’s `DefaultAzureCredential` auto-reads `AZURE_CLIENT_*`. Foundry must use dedicated names so ACA SQL stays on the **MI**, not the Foundry SP. Details: [Key Vault bootstrap](key-vault-bootstrap.md).
 

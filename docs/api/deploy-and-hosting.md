@@ -5,9 +5,14 @@
 
 ## Chapter summary
 
-This chapter is the **deployment runbook** for the EDIM DDE API: how to package wheels, configure env, and run the same FastAPI process on **Databricks Apps** (default), **Docker Compose**, and **Azure Container Apps**. Platform engineers and operators use it for first DEV Apps bring-up and host swaps.
+This chapter is the **compatibility runbook** for the EDIM DDE API: how to
+package wheels, configure env, and run the FastAPI host on Databricks Apps,
+Docker Compose, and ACA Native. The target-selection matrix and detailed
+runbooks for all three supported hosting options are in
+[Deployment targets and release runbook](deployment-targets.md).
 
-**Outcome:** a running `edim-dde-api-*` App (or local Compose stack) that passes `/health` and live or dry agent smoke.
+**Outcome:** a packaged, configured runtime that passes `/health` and live or
+dry agent smoke on its selected host.
 
 **Deploy artifacts (code):** `edim-dde-api/deploy/`
 
@@ -27,14 +32,14 @@ This chapter is the **deployment runbook** for the EDIM DDE API: how to package 
 
 ---
 
-## 1. Approach (one app, many hosts)
+## 1. Approach (one graph package, many hosts)
 
 | Principle | Meaning |
 |-----------|---------|
-| **One deployable** | Only **`edim-dde-api`** is hosted. It depends on `edim-dde-domain` + `edim-dde-ai` as **wheels**. |
-| **Same entrypoint** | Always `uvicorn edim_dde_api.main:app`. |
+| **One graph package** | YAML, registered nodes, prompts, and domain logic are shared. |
+| **Host-specific entrypoint** | ACA Native uses FastAPI; Agent Server uses an allowlisted graph factory; full LangSmith uses its platform runtime. |
 | **Env contract** | Warehouse, Foundry, CORS, planes (`EDIM_*`) are **configuration**, not code forks. |
-| **Thin host adapters** | Databricks = `app.yaml` + port; containers = `Dockerfile` + `PORT`. |
+| **Thin host adapters** | Databricks = `app.yaml`; ACA = image + identity; Agent Server = manifest + graph factory. |
 | **Secrets outside Git** | Key Vault / Apps secrets / ACA secret refs → same env **names**. |
 
 How many agents per app (one runtime vs domain split vs hub):  
@@ -51,26 +56,28 @@ How many agents per app (one runtime vs domain split vs hub):
                 │
      ┌──────────┼──────────┐
      ▼          ▼          ▼
- Databricks  Azure ACA   (AKS / App Service / …)
-   Apps       (Docker)
-  app.yaml    same image
+ Databricks  ACA Native   Agent Server / LangSmith
+   Apps       Docker       platform runtime
+  app.yaml    same core    packaged graph factory
 ```
 
-**Do not** deploy three separate services for R1, and do not bake UC FQNs into the image.
+**Do not** fork business logic for a host, bake secrets/UC FQNs into an image,
+or select the runtime from an untrusted request.
 
 ---
 
-## 2. Why Databricks Apps is the default (first cut)
+## 2. Target selection (current architecture)
 
-| Reason | Detail |
-|--------|--------|
-| **Auth already matches** | API middleware expects `X-Forwarded-Access-Token` for warehouse SQL — that is the Apps user OAuth path. |
-| **Data locality** | SQL warehouse + Unity Catalog tables live in the same workspace you are validating against. |
-| **Least new infra** | No container registry or ACA required to prove prod-like SQL + LLM. |
-| **P0 gap closure** | Live laptop smoke used `az login`; Apps deploy proves **forwarded user token → SQL**. |
-| **Still portable** | The app remains a plain FastAPI process; Docker/ACA reuse the same wheels and env names. |
+| Target | Status | Primary reason |
+|--------|--------|----------------|
+| **ACA Native** | **Standard** | Azure networking, managed identity, scaling, and API ownership |
+| **Standalone Agent Server on ACA** | Optional | Ready-made LangGraph threads, runs, streaming, and runtime APIs |
+| **Full self-hosted LangSmith Deployment on AKS** | Optional | Private LangSmith control plane/UI plus Agent Server |
+| **Databricks Apps** | Compatibility path | Data-local pilots and workloads whose tools are entirely in Databricks |
 
-**Not** “Databricks forever.” Azure Container Apps (or AKS) is the second host when you need VNet isolation, scale rules, or non-Databricks callers with SP/MI auth.
+See [Deployment targets and release runbook](deployment-targets.md) before
+starting a new deployment. Databricks Apps remains documented below for
+existing workloads; it is no longer the default architecture.
 
 ---
 
@@ -156,14 +163,14 @@ Vault / secret map: [Key Vault bootstrap](../platform/key-vault-bootstrap.md)
 
 **Code:** one credential resolver for all hosts — no per-host Python forks. Foundry SP uses `EDIM_FOUNDRY_*` so it does not collide with SQL’s `DefaultAzureCredential`.
 
-### 4.3 Optional planes (first cut defaults)
+### 4.3 Optional planes (target-neutral defaults)
 
-| Variable | Suggested first Apps deploy |
+| Variable | Suggested local/ACA Native baseline |
 |----------|-----------------------------|
-| `EDIM_OBSERVABILITY` | `none` (turn on LangSmith when BL-029 is ready) |
-| `EDIM_STATE_STORE` | `memory` |
+| `EDIM_OBSERVABILITY` | `none` locally; Azure-native telemetry or self-hosted LangSmith by target |
+| `EDIM_STATE_STORE` | `postgres` for shared/runtime environments; `memory` only for isolated tests |
 | `EDIM_RETRIEVAL` | `none` |
-| `EDIM_STRICT_STARTUP` | `1` on DEV/PROD |
+| `EDIM_STRICT_STARTUP` | `1` on deployed environments |
 | `EDIM_REQUIRE_SQL` | `1` when you require warehouse for all calls |
 | `EDIM_CORS_ORIGINS` | Set only if a browser UI calls the API |
 
@@ -181,7 +188,7 @@ Template values live in `app.yaml` as `REPLACE_*` — replace per workspace befo
 
 ---
 
-## 5. Deploy — Databricks Apps (default)
+## 5. Deploy — Databricks Apps (compatibility target)
 
 **Makefile (from `edim-dde-api/`):** `make help` · `make vendor-wheels` · `make apps-create` · `make apps-deploy`  
 (see [Makefile targets](#59-makefile-targets-edim-dde-api)).
@@ -475,22 +482,32 @@ Variables: `APP_NAME`, `WS_SOURCE`, `EDIM_AI_PATH`, `EDIM_DOMAIN_PATH`, `PYTHON`
 
 ---
 
-## 6. Deploy — Docker / Azure Container Apps (second host)
+## 6. Deploy — Docker / ACA Native (standard container target)
 
-Same wheels, same env **names**, different glue.
+Same core wheels and env **names**, different host glue. For the complete ACA
+Native production procedure, including ACR, managed identity, workload
+profiles, scaling, workers, and rollback, use
+[Deployment targets](deployment-targets.md) §4.
 
-**Postgres in this stack:** used only as the optional **control-plane StateStore** (`EDIM_STATE_STORE=postgres`) for agent catalog / sessions — **not** for Databricks SQL / UC telemetry. See [State store](../platform/state-store.md).
+**Postgres in this stack:** control-plane **StateStore** (`EDIM_STATE_STORE=postgres`),
+optional **RecommendationStore**, and LangGraph **checkpointer**
+(`EDIM_CHECKPOINTER=postgres`) for multi-turn analysis — **not** for Databricks
+SQL / UC telemetry. See [State store](../platform/state-store.md) · [Env vars](../reference/env-vars.md).
 
 ### 6.1 Docker Compose (API + Postgres) — recommended locally
 
-Postgres is included as the **control-plane StateStore** (`EDIM_STATE_STORE=postgres`). Use this stack for **local end-to-end** dry smoke (API + Postgres + Foundry; SQL skipped via overrides).
+Postgres backs StateStore + checkpointer. Use this stack for **local end-to-end**
+dry smoke (API + Postgres + Foundry; SQL skipped via `metrics` / `evidence_pack`
+overrides). Session smoke covers initialize / converse / regenerate and returns
+`conversation_id`.
 
 From `edim-dde-api/`:
 
 ```bash
 # Put Foundry (+ optional Databricks) vars in ../edim-dde-domain/.env
 make compose-up          # vendor-wheels + API + Postgres
-make e2e-dry             # /health (assert state_store=postgres) + dry tuning + dry RCA
+make e2e-dry             # /health (state_store + checkpointer=postgres) + dry tuning/RCA sessions
+make e2e-durable         # restart API mid-session (durable checkpointer)
 # or one shot:
 make e2e-local
 
@@ -501,8 +518,9 @@ make compose-down
 | Target | What it does |
 |--------|----------------|
 | `make compose-up` | Build/start **api** + **postgres** |
-| `make e2e-health` | Wait for `/health`; require `state_store=postgres` |
-| `make e2e-dry` | Dry E2E script (`deploy/scripts/e2e_smoke.sh`) |
+| `make e2e-health` | Wait for `/health`; require `state_store=postgres` (checkpointer asserted in `e2e_smoke.sh`) |
+| `make e2e-dry` | Dry session smoke — init/converse/regen (`deploy/scripts/e2e_smoke.sh`) |
+| `make e2e-durable` | Dry smoke + API restart mid-thread |
 | `make e2e-local` | `compose-up` then `e2e-dry` |
 
 Compose file: `edim-dde-api/docker-compose.yml`
@@ -510,7 +528,7 @@ Compose file: `edim-dde-api/docker-compose.yml`
 | Service | Port | Role |
 |---------|------|------|
 | `api` | 8080 | FastAPI (`edim_dde_api.main:app`) |
-| `postgres` | 5432 | StateStore (`postgresql://edim:edim@postgres:5432/edim`) |
+| `postgres` | 5432 | StateStore + RecommendationStore + checkpointer (`postgresql://edim:edim@postgres:5432/edim`) |
 | `redis` | 6379 | Optional (`docker compose --profile redis up -d`) |
 
 **Dry E2E** needs Foundry in `.env` (warehouse optional). **Live SQL** against the same containers: set `DATABRICKS_*` in `.env`, recreate `api`, then run live curls from [Live smoke §5](../contribute/live-smoke-test.md) with `BASE=http://127.0.0.1:8080` (and `az login` on the **host** does not inject into the container — use `EDIM_FOUNDRY_*` and, for SQL from the container, a path that works inside Docker, or run live SQL smoke on Apps/host uvicorn).
@@ -603,12 +621,13 @@ When adding a new host, only verify:
 4. `/health` returns agents.  
 5. Auth path for SQL is documented for that host (Apps token vs SP/MI).
 
-| Host | Adapter files | Effort |
+| Host | Adapter files | Status |
 |------|---------------|--------|
-| Databricks Apps | `deploy/databricks-app/*` | Default |
-| ACA / Docker | `deploy/docker/Dockerfile` | Rebuild image + map env |
-| AKS | Same image + Deployment/Service YAML (add when needed) | Config only |
-| App Service | Same image or `az webapp` with startup command | Config only |
+| Databricks Apps | `deploy/databricks-app/*` | Compatibility |
+| ACA Native | `deploy/docker/Dockerfile` | **Standard** |
+| Standalone Agent Server | `langsmith_entrypoint.py` + `langgraph.json` | Optional; pilot adapter exists |
+| Full self-hosted LangSmith | Vendor platform bundle on AKS | Optional; platform-owned |
+| App Service / VMs | No approved adapter | Not supported as standard targets |
 
 ---
 
@@ -655,9 +674,10 @@ When adding a new host, only verify:
 
 ## Summary
 
-- **One FastAPI process** (`edim-dde-api`) on every host; ai + domain ship as **wheels**.  
-- **Default host:** Databricks Apps (Option A bundle) — proves **user token → SQL**.  
-- **Second host:** Docker / ACA with the same env **names** and different identity wiring.  
+- **One versioned YAML graph package** feeds every selected host; ai + domain ship as **wheels**.  
+- **Standard host:** ACA Native — FastAPI with managed identity and Azure-native operations.  
+- **Optional hosts:** Standalone Agent Server on ACA, or full self-hosted LangSmith Deployment on AKS.  
+- **Compatibility host:** Databricks Apps — retained for data-local and existing workloads.  
 - After deploy, **stop + start** so wheels and optional `/guide` load.  
 
 **Next →** [Environment variables (H1)](../reference/env-vars.md)

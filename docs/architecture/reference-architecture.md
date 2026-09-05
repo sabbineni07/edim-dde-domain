@@ -129,7 +129,8 @@ Route handler
   │  On failure: log redacted stack once → safe HTTP detail
   ▼
 edim-dde-ai MetadataAgent
-  │  Wrap flat state → LangGraph data bag
+  │  Flat AgentState invoke (no nested data bag)
+  │  Session agents: thread_id / conversation_id → checkpointer
   │  LangSmith run tags: agent_id, env, request_id
   ▼
 YAML graph nodes

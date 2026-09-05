@@ -92,6 +92,56 @@ def test_cluster_tuning_with_explanation(bootstrapped_agents):
     assert out["explanation"]
 
 
+def test_spark_rca_session_initialize_converse_regenerate(bootstrapped_agents):
+    from edim_dde_ai.session import clear_checkpointer, configure_checkpointer_from_env
+
+    clear_checkpointer()
+    configure_checkpointer_from_env()
+    agent = create_agent("spark_rca")
+    evidence = {
+        "job_run_id": "jr-session-1",
+        "evidence": [
+            {"ref": "e1", "excerpt": "Executor OutOfMemoryError: Java heap space"}
+        ],
+        "raw_anchors": {
+            "failure_reason": "Executor OutOfMemoryError: Java heap space"
+        },
+    }
+    first = agent.invoke(
+        {
+            "job_run_id": "jr-session-1",
+            "job_id": "j-session-1",
+            "evidence_pack": evidence,
+        }
+    )
+    thread_id = first["thread_id"]
+    assert first["session_mode"] == "initialize"
+    assert first["result"]["root_cause"]["category"] == "resource"
+
+    second = agent.invoke(
+        {
+            "thread_id": thread_id,
+            "user_message": "Why did you conclude this was a resource failure?",
+            "evidence_pack": evidence,
+        },
+        config={"configurable": {"thread_id": thread_id}},
+    )
+    assert second["session_mode"] == "converse"
+    assert second.get("explanation")
+    assert second["result"]["root_cause"]["category"] == "resource"
+
+    third = agent.invoke(
+        {
+            "thread_id": thread_id,
+            "user_message": "Please re-analyze with a different root cause emphasis",
+            "evidence_pack": evidence,
+        },
+        config={"configurable": {"thread_id": thread_id}},
+    )
+    assert third["session_mode"] == "regenerate"
+    assert third["result"]["root_cause"]
+
+
 def test_cluster_tuning_low_util_quality_gate(bootstrapped_agents):
     """Full graph + stub LLM must preserve D-family and pass the quality rubric."""
     metrics = {

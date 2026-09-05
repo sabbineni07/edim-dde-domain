@@ -120,6 +120,7 @@ nav:
       - "Part G overview": api/index.md
       - Configuration: api/configuration.md
       - HTTP endpoints: api/endpoints.md
+      - Deployment targets and release runbook: api/deployment-targets.md
       - Deploy and hosting: api/deploy-and-hosting.md
   - H — Reference:
       - "Part H overview": reference/index.md

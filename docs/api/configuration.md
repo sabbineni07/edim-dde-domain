@@ -69,11 +69,17 @@ export EDIM_CORS_ORIGINS=http://localhost:4200
 # External agent plugin roots
 export EDIM_AGENT_DIRS=/opt/edim-agents/acme
 
-# Control plane (StateStore) — agent catalog, sessions, audit
+# Control plane (StateStore) — agent catalog, HITL sessions, audit
 # Local: docker compose -f docker-compose.state-store.yml up -d
 export EDIM_STATE_STORE=postgres
 export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 # Deployed: EDIM_STATE_STORE=cosmos + EDIM_COSMOS_* (see state-store.md)
+
+# LangGraph multi-turn checkpointer (initialize / converse / regenerate)
+# Compose / host-run default postgres (same EDIM_DATABASE_URL).
+export EDIM_CHECKPOINTER=postgres
+# export EDIM_CHECKPOINTER=memory   # tests / single-process only
+# Agent Server hosts do NOT use this var — see deployment-targets.md §2.2
 
 # Product history (RecommendationStore) — tuning/RCA rows + lifecycle status
 # Default: inherits EDIM_STATE_STORE. Set explicitly only to diverge or disable.
@@ -82,7 +88,7 @@ export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 #
 # Example StateStore document:  { "agent_id": "cluster_tuning", "lifecycle": "approved" }
 # Example RecommendationStore: { "recommendation_id": "…", "job_id": "123", "status": "proposed", "response": {…} }
-# Full guides: platform/state-store.md · platform/recommendation-store.md
+# Full guides: platform/state-store.md · platform/recommendation-store.md · reference/env-vars.md
 ```
 
 ## Run
@@ -90,10 +96,10 @@ export EDIM_DATABASE_URL=postgresql://edim:edim@localhost:5432/edim
 ```bash
 cd edim-dde-api
 uvicorn edim_dde_api.main:app --reload --port 8080
-curl -s localhost:8080/health   # includes observability + state_store + recommendation_store
+curl -s localhost:8080/health   # includes observability + state_store + checkpointer + recommendation_store
 ```
 
-Full store guides: [Control-plane state store](../platform/state-store.md) · [Recommendation store](../platform/recommendation-store.md).
+Full store guides: [Control-plane state store](../platform/state-store.md) · [Recommendation store](../platform/recommendation-store.md) · [Env vars](../reference/env-vars.md).
 
 ## Observability (LangSmith)
 

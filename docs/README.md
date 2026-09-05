@@ -12,7 +12,8 @@ This document is the authoritative engineering guide for the EDIM DDE stack: a Y
 
 This guide explains **what EDIM DDE is**, **how it is architected**, and **how to operate, extend, and deploy it**. It targets engineers who must:
 
-- Run and validate the API on a laptop, in Docker, or on Databricks Apps.
+- Run and validate the API on a laptop, in Docker, ACA Native, Agent Server on
+  ACA, or Databricks Apps.
 - Author or modify YAML agents and domain node types.
 - Wire platform planes (SQL auth, Foundry, Key Vault, observability, persistence, retrieval).
 
@@ -87,6 +88,31 @@ Enterprise data platforms repeatedly implement the same pipeline: collect teleme
 | Secret sprawl | Key Vault bootstrap; Apps user token for SQL |
 
 **Source-of-truth rule:** Git holds graphs and prompt content. StateStore holds catalog and sessions. Vector indexes hold knowledge chunks. None of these replace graph routing logic in R1.
+
+---
+
+## Hosting decision
+
+The same YAML-driven graph package supports three approved deployment targets:
+
+1. **ACA Native (standard):** the EDIM FastAPI host with Azure managed identity,
+   workload-profile scaling, and Azure-native operations.
+2. **Standalone Agent Server on ACA (optional):** the LangGraph Agent Server
+   runtime when consumers need its threads, runs, or streaming APIs.
+3. **Full self-hosted LangSmith Deployment on AKS (optional):** the private
+   LangSmith control plane/UI and Agent Server platform.
+
+Databricks Apps remains a supported compatibility path for data-local pilots
+and existing workloads; it is not the standard EDIM runtime. Begin with
+[Deployment targets and release runbook](api/deployment-targets.md) for the
+selection rules, packaging contract, deployment steps, and validation gates.
+
+!!! warning "Implemented versus planned"
+    ACA Native has a working local Docker baseline. The `cluster_tuning`
+    LangGraph Agent Server adapter is implemented, but its deployment manifest
+    and runtime image are not yet operationalized. Full self-hosted LangSmith
+    on AKS requires a separate platform-owned installation and is documented as
+    an optional target.
 
 ---
 

@@ -17,7 +17,8 @@ Engineer runbook to prove the stack works **beyond unit tests**: API up, agents 
 
 | Mode | Databricks SQL | Azure Foundry LLM | What it proves | Typical time |
 |------|----------------|-------------------|----------------|--------------|
-| **Dry smoke** | Skipped via `metrics` / `evidence_pack` overrides | **Required** (real Foundry) | API → graph → sizing/RCA LLM → response DTO | ~15–30 min |
+| **Dry smoke** | Skipped via `metrics` / `evidence_pack` overrides | **Required** (real Foundry) | API → session graph → sizing/RCA LLM → response DTO + `conversation_id` | ~15–30 min |
+| **Durable session** | Same as dry | **Required** | Dry paths + API restart mid-thread (`make e2e-durable`) | ~20–40 min |
 | **Live smoke** | **Required** (warehouse + UC tables) | **Required** | Full path including SQL collect | ~30–60 min |
 | **Offline only** | N/A | Stub (`DomainStubLLM`) | CI / laptop without cloud | `pytest` only — see [Testing](testing.md) |
 
@@ -43,7 +44,19 @@ make e2e-local
 # equivalent: make compose-up && make e2e-dry
 ```
 
-This starts **Postgres** (StateStore) + **API**, then runs health + dry tuning + dry RCA (`deploy/scripts/e2e_smoke.sh`). See [Deploy §6.1](../api/deploy-and-hosting.md#61-docker-compose-api-postgres-recommended-locally).
+This starts **Postgres** (StateStore + LangGraph checkpointer) + **API**, then
+runs health + dry tuning/RCA **session** paths — initialize / converse /
+regenerate with mock `metrics` / `evidence_pack` (`deploy/scripts/e2e_smoke.sh`).
+Asserts `state_store=postgres` and `checkpointer=postgres` by default.
+
+```bash
+make e2e-dry       # session dry smoke
+make e2e-durable   # restart API between init and follow-ups (durable checkpointer)
+```
+
+Foundry auth for dry smoke: SP, or API key
+(`EDIM_FOUNDRY_API_KEY` / `AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT_KEY`
+in `.env`), or `az login`. See [Deploy §6.1](../api/deploy-and-hosting.md#61-docker-compose-api-postgres-recommended-locally).
 
 **Startup env validation** (runs on API lifespan) only checks that env **strings are present**. It does **not** open Databricks or Foundry connections. Default = log warnings. `EDIM_STRICT_STARTUP=1` fails process start if Foundry endpoint is missing (optional `EDIM_REQUIRE_SQL=1` also requires warehouse host/path).
 
@@ -60,7 +73,7 @@ Copy this table and fill values with your team / Azure / Databricks admins. **Do
 | 1 | Azure subscription / tenant access | — | Your org IAM; you must be able to `az login` **or** receive an SP | Auth for Foundry (and SQL when live local) |
 | 2 | Foundry / Azure OpenAI **endpoint** | `https://my-foundry.openai.azure.com` | Azure Portal → Azure OpenAI / AI Foundry resource → **Keys and Endpoint** → Endpoint | `AZURE_OPENAI_ENDPOINT` |
 | 3 | **Deployment name** (model) | `gpt-4o` | Same resource → **Deployments** → name column (not the model SKU alone) | `AZURE_OPENAI_DEPLOYMENT_NAME` |
-| 4 | Foundry auth | `az login` **or** SP triple | Local: Azure CLI. Prod: Key Vault → `EDIM_FOUNDRY_TENANT_ID` / `EDIM_FOUNDRY_CLIENT_ID` / `EDIM_FOUNDRY_CLIENT_SECRET` | env or Key Vault map |
+| 4 | Foundry auth | API key **or** `az login` **or** SP | Local: `AZURE_OPENAI_ENDPOINT_KEY` / `AZURE_OPENAI_API_KEY` / `EDIM_FOUNDRY_API_KEY` in `.env`, or Azure CLI. Prod: Key Vault → `EDIM_FOUNDRY_*` SP | env or Key Vault map |
 | 5 | Sibling repos checked out | `edim-dde-ai`, `edim-dde-domain`, `edim-dde-api` | Git remotes / workspace folder | local paths |
 
 ### 2.2 Live smoke only (SQL)
@@ -379,13 +392,15 @@ curl -sS http://127.0.0.1:8080/api/v1/rca/analyze \
 
 ## 6. Remote / shared environment smoke
 
-Prefer the full host guide: [Deploy & hosting (Databricks Apps / Docker / ACA)](../api/deploy-and-hosting.md).
+Prefer the full host guide: [Deployment targets and release runbook](../api/deployment-targets.md).
+The older [Deploy & hosting compatibility runbook](../api/deploy-and-hosting.md)
+contains the Databricks Apps commands.
 
 Use the same curls against a **deployed** base URL instead of `localhost`.
 
 | Step | Action |
 |------|--------|
-| 1 | Get base URL from team (e.g. Databricks App) — `https://…` |
+| 1 | Get the target base URL from the team (ACA Native, Agent Server, or Databricks App) — `https://…` |
 | 2 | Confirm network (VPN / private link) if required |
 | 3 | `curl -sS "$BASE/health"` |
 | 4 | Dry or live POSTs to `$BASE/api/v1/cluster_tuning/recommend` and `/rca/analyze` |

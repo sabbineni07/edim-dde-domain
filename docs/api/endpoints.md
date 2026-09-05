@@ -15,7 +15,7 @@ Base app: `edim_dde_api.main:app`
 
 | Method | Path | Request | Response |
 |--------|------|---------|----------|
-| GET | `/health` | — | `{status, agents, version, observability, state_store, conversation_store, recommendation_store, retrieval, web_search}` |
+| GET | `/health` | — | `{status, agents, version, observability, state_store, checkpointer, recommendation_store, retrieval, web_search}` |
 | POST | `/api/v1/cluster_tuning/recommend` | `TuningRequest` | `TuningResponse` |
 | GET | `/api/v1/cluster_tuning/recommendations` | query filters | `list[RecommendationHistoryItem]` |
 | GET | `/api/v1/cluster_tuning/recommendations/{id}` | — | `RecommendationHistoryItem` |

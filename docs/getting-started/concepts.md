@@ -71,7 +71,13 @@ invoke({job_run_id, …})
   → API maps result field → response DTO
 ```
 
-**Pattern:** Adapter between domain dicts and LangGraph's internal message bag.
+**Pattern:** one flat `AgentState` dict end-to-end — nodes return partial updates;
+hosts (FastAPI, Agent Server) see the same product keys. There is no nested
+LangGraph `data` bag.
+
+Multi-turn product agents add a YAML `memory` + `session` block. FastAPI compiles
+them via `build_session_graph` ≈ `build_graph` + initialize/converse/regenerate +
+`EDIM_CHECKPOINTER`. See [YAML schema — session](../framework/yaml-schema.md#session).
 
 ---
 

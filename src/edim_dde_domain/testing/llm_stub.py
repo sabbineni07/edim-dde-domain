@@ -195,6 +195,20 @@ def _rca_from_text(text: str) -> str:
 
 
 def _explanation_from_text(text: str) -> str:
+    lower = text.lower()
+    if "prior rca result" in lower or "root cause" in lower or "user question" in lower:
+        return (
+            "### 1. Answer\n"
+            "The prior diagnosis remains the best explanation for this failure.\n\n"
+            "### 2. Root cause rationale\n"
+            "Evidence points to the validated RCA category and mechanism.\n\n"
+            "### 3. Evidence\n"
+            f"{text[:400]}\n\n"
+            "### 4. Recommended next steps\n"
+            "Apply the recommended actions from the prior RCA result.\n\n"
+            "### 5. Risks and unknowns\n"
+            "Re-run live SQL collect if the evidence pack is incomplete."
+        )
     return (
         "### 1. Rationale\n"
         "Recommendation follows observed utilization in this job run.\n\n"

@@ -1,11 +1,15 @@
-# Observability providers (C4) — LangSmith · MLflow · none
+# Observability providers (C4) — Azure-native · LangSmith · MLflow · none
 
 **Learning path:** C4 · [Preface](../README.md)  
 **← Previous:** [PII guardrails](pii-guardrails.md) · **Next:** [LangSmith setup](langsmith-setup.md) →
 
 ## Chapter summary
 
-Pluggable observability backends in `edim-dde-ai` (LangSmith, MLflow, or none), selected once at process start. R1 default is LangSmith when tracing env is enabled.
+Pluggable observability backends in `edim-dde-ai` (LangSmith, MLflow, or
+none), selected once at process start. The hosting architecture defaults to
+OpenTelemetry/Application Insights for runtime telemetry and MLflow for
+evaluation; self-hosted LangSmith is selected when deep LangGraph tracing or
+the LangSmith platform is required.
 
 **Outcome:** you can choose and verify the active provider without confusing it with state or retrieval.
 
@@ -13,8 +17,11 @@ Pluggable observability backends in `edim-dde-ai` (LangSmith, MLflow, or none), 
 
 EDIM supports **pluggable observability backends** in `edim-dde-ai`, selected at process start (same Strategy pattern as `LLMProvider`, `StateStore`, `RetrievalProvider`).
 
-**Default for R1:** LangSmith (when tracing env is on).  
-**Also available:** MLflow (optional extra), or `none`.
+**Standard runtime telemetry:** OpenTelemetry → Application Insights (provided
+by the host/platform).  
+**Evaluation:** MLflow where the evaluation workflow requires it.  
+**Deep agent tracing:** self-hosted LangSmith where selected.  
+**Also available:** `none` for isolated local smoke tests.
 
 ---
 
@@ -88,9 +95,11 @@ Custom backends: implement `ObservabilityProvider` and call `set_observability_p
 
 ---
 
-## 5. LangSmith (recommended)
+## 5. LangSmith (optional, self-hosted where selected)
 
-Full setup, env naming (`LANGCHAIN_*` vs `LANGSMITH_*`), UI hierarchy (Application vs tracing project), Windows validation, and troubleshooting: **[LangSmith setup](langsmith-setup.md)**.
+Full setup, self-hosted deployment distinction, env naming
+(`LANGCHAIN_*` vs `LANGSMITH_*`), UI hierarchy, validation, and
+troubleshooting: **[LangSmith setup](langsmith-setup.md)**.
 
 Minimal `.env`:
 

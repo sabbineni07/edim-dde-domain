@@ -18,7 +18,7 @@ How to **deploy** many YAML agents (one app vs many), how consumers package DE S
 | Topic | Go to |
 |-------|--------|
 | In-process `invoke_agent` node config | [Orchestration topology](../framework/orchestration-topology.md) |
-| Packaging Apps / Docker / ACA | [Deploy & hosting](../api/deploy-and-hosting.md) |
+| Packaging and host selection | [Deployment targets and release runbook](../api/deployment-targets.md) |
 | Identities U / A / B | [Access & permissions](../platform/access-and-permissions.md) |
 | Session / catalog persistence | [State store](../platform/state-store.md) |
 
@@ -376,13 +376,30 @@ Same authoring path: [Agent package layout](../build-agents/agent-package-layout
 
 ---
 
-## 8. Related docs
+## 8. Host target versus agent topology
+
+The one-app/many-agent choices on this page are **composition topology**. They
+are independent of the runtime target:
+
+| Topology decision | Host decision |
+|---|---|
+| One app with many agents, or several domain apps | ACA Native, Agent Server on ACA, LangSmith on AKS, or Databricks Apps |
+| In-process `invoke_agent` or remote HTTP contract | FastAPI or Agent Server API |
+| Shared or isolated StateStore | PostgreSQL/Cosmos/Redis according to the selected runtime |
+
+Choose the host with the [deployment target runbook](../api/deployment-targets.md);
+do not create a new app merely because the host changed.
+
+---
+
+## 9. Related docs
 
 | Doc | Topic |
 |-----|--------|
 | [Orchestration topology](../framework/orchestration-topology.md) | In-process `invoke_agent` |
 | [HITL resume](../framework/hitl-resume.md) | Interrupt / approve / continue |
-| [Deploy & hosting](../api/deploy-and-hosting.md) | Host adapters (Apps / ACA) |
+| [Deployment targets](../api/deployment-targets.md) | Host selection, packaging, rollout |
+| [Deploy & hosting](../api/deploy-and-hosting.md) | Databricks Apps / Docker / ACA compatibility commands |
 | [State store](../platform/state-store.md) | Catalog / sessions |
 | [External plugins](../build-agents/external-plugins.md) | `EDIM_AGENT_DIRS` packs |
 | [End-to-end design](end-to-end-design.md) | Planes and patterns |

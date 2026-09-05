@@ -106,7 +106,14 @@ memory:
   k: 10                     # conversation turns
   max_tokens: 4000          # context guardrail; turn count alone is not enough
   max_chars: 16000
-  store: conversation       # logical store; host selects Postgres/Redis/Cosmos/Lakebase
+
+session:
+  initialize_entry: collect_metrics   # optional; defaults to graph START target
+  converse_entry: prepare_explanation_payload
+  regenerate_entry: prepare_sizing_payload
+  regenerate_phrases:                 # optional phrase list for regenerate routing
+    - cheaper
+    - regenerate
 
 security:
   pii_redaction: true
@@ -149,10 +156,49 @@ an enabled strategy is configured.
 | `corpus` / `top_k` | Vector-memory corpus and maximum semantic hits |
 | `similarity_threshold` | Minimum score for vector-memory hits |
 
-Conversation messages and summaries use `ConversationStore`; they are not
-RCA/tuning product history, HITL session state, or LangGraph checkpoints.
-Historical content is marked untrusted before it is sent to the model, and
-every strategy applies both a turn limit and a context-size limit.
+When ``memory.strategy`` is not ``none``, conversation state and in-graph
+messages persist via a LangGraph checkpointer keyed by ``thread_id`` (API may
+alias ``conversation_id``). HITL session state and product recommendation
+history remain separate stores.
+
+### `session`
+
+Required when `memory.strategy` is not `none` for checkpoint-backed multi-turn
+analysis on the same job/analysis context. The framework prepends a
+`session_prepare` node that routes each invoke to one of three paths:
+
+| Path | When | Typical work |
+|------|------|--------------|
+| `initialize` | First turn on a new `thread_id` | SQL → normalize → retrieve → recommend |
+| `converse` | Follow-up question | Explain using prepared context + messages |
+| `regenerate` | Follow-up matches `regenerate_phrases` | New recommendation using same context |
+
+| Field | Meaning |
+|-------|---------|
+| `initialize_entry` | Graph node for the first-turn pipeline (defaults to graph entry) |
+| `converse_entry` | Graph node for explanation / Q&A follow-ups |
+| `regenerate_entry` | Graph node to rerun recommendation / diagnosis generation |
+| `regenerate_phrases` | Lowercase substring phrases that select the regenerate path |
+
+Typical product wiring:
+
+| Agent | initialize | converse | regenerate |
+|-------|------------|----------|------------|
+| `cluster_tuning` | `collect_metrics` | `prepare_explanation_payload` | `prepare_sizing_payload` |
+| `spark_rca` | `collect_failure_anchors` | `prepare_explanation_payload` | `prepare_llm_payload` |
+
+Hosts pass `thread_id` (or `conversation_id`) on follow-up requests. Set
+`memory.strategy: none` for single end-to-end runs with no follow-ups.
+
+Checkpointer selection is host configuration (`EDIM_CHECKPOINTER=memory|postgres`;
+Compose defaults to ``postgres`` so follow-ups survive API restarts). Postgres
+uses a long-lived ``ConnectionPool`` + ``PostgresSaver`` — not
+``from_conn_string`` (that context manager closes on exit). Agent Server hosts
+do **not** read ``EDIM_CHECKPOINTER``; they use the Agent Server’s own store.
+See [Deployment targets §2.2](../api/deployment-targets.md#22-graph-state-surface).
+Local Docker Compose defaults to `EDIM_OBSERVABILITY=none` and forces
+`LANGCHAIN_TRACING_V2=false` so a shared `.env` with LangSmith keys does not
+spam unreachable endpoints.
 
 ### `metadata.hitl_required` vs `hitl.enabled`
 

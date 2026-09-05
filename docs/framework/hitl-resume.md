@@ -15,7 +15,7 @@ This chapter covers human-in-the-loop pause and resume: stop a graph at a `hitl.
 |-------------|-------|
 | [Orchestration (D6)](orchestration-topology.md) | In-process invoke and one-graph-per-agent |
 | [State store (C6)](../platform/state-store.md) | Session persistence backends |
-| [Nodes and routers (D3)](nodes-and-routers.md) | Factory → Decorator → Adapter wrap order |
+| [Nodes and routers (D3)](nodes-and-routers.md) | Factory → Decorator wrap order |
 
 !!! note "R1 scope"
     HITL is **in-process only** (same App). Not LangGraph checkpointers, not risk-based escalation (BL-039 later), not a UI. Product graphs (`cluster_tuning`, `spark_rca`) do **not** pause unless you add a `hitl.gate`.
@@ -81,7 +81,7 @@ sequenceDiagram
   API-->>Client: 200 status=closed
 ```
 
-`correlation_id` is the HTTP `X-Request-Id` (also stored on the session when the start payload includes `request_id`). Do **not** copy LangSmith `request_id` into every agent state’s data bag; observability merge stays on invoke kwargs.
+`correlation_id` is the HTTP `X-Request-Id` (also stored on the session when the start payload includes `request_id`). Do **not** copy LangSmith `request_id` into every agent’s flat state; observability merge stays on invoke kwargs.
 
 ---
 
@@ -226,22 +226,23 @@ HITL reuses the same small pattern set as the rest of the framework ([end-to-end
 | **Registry + Factory Method** | `hitl.gate` in `BUILTIN_NODE_FACTORIES` | YAML `type: hitl.gate` → factory |
 | **Builder** | `GraphBuilder.add_nodes` | Injects `node_id` / `hitl.enabled`; wraps every node |
 | **Decorator** | `skip_until_resume` | Returns `{}` for nodes before `hitl_resume_at` |
-| **Adapter** | `adapt_node` | Applied **after** the skip Decorator (flat state first) |
 | **Template Method** | `MetadataAgent.invoke` / `ainvoke` | Shared prepare / extract / kwargs merge / pause unwrap |
 | **Facade** | `resume_hitl_session` | Merge decision, re-invoke, close session |
 | **Strategy** | `StateStore` backends | Memory vs Postgres vs Cosmos vs Redis for the same session API |
 | **State** | `waiting_hitl` → `closed` | Session lifecycle; decisions keyed by gate id |
 
-Wrap order (must stay this order):
+Wrap order:
 
 ```text
-factory(config) → skip_until_resume(node_id, fn) → adapt_node(fn)
+factory(config) → skip_until_resume(node_id, fn)
 ```
 
-If you wrap after `adapt_node`, the Decorator would see `{"data": {...}}` and would not find `hitl_resume_at`.
+Nodes and routers see the same flat dict state as `MetadataAgent.invoke`
+(no nested `data` bag).
 
-!!! warning "Wrap order is load-bearing"
-    Always keep `factory → skip_until_resume → adapt_node`. Reversing Decorator and Adapter breaks resume skip because `hitl_resume_at` lives on the flat bag, not inside `{"data": ...}`.
+!!! note "Flat state"
+    Graph state is a flat mapping. `hitl_resume_at` lives on that flat bag,
+    so the skip Decorator can read it directly.
 
 ---
 
@@ -323,7 +324,7 @@ edim_dde_ai/hitl/
 
 ??? note "In depth (optional) — engineers — skip Decorator, decision merge, and wrap order"
 
-    **Skip without a checkpointer.** R1 does not persist LangGraph checkpoints. Resume re-invokes the same compiled graph with `hitl_resume_at=<gate_id>`. `skip_until_resume` is a Decorator around the *flat* node: if that key is set and is not this node id, return `{}` (empty update; Adapter still wraps it). When the key matches the gate id, the gate runs, sees `hitl_decisions[gate_id]`, clears `hitl_resume_at`, and later nodes run normally.
+    **Skip without a checkpointer.** R1 does not persist LangGraph checkpoints for HITL. Resume re-invokes the same compiled graph with `hitl_resume_at=<gate_id>`. `skip_until_resume` is a Decorator around the flat node: if that key is set and is not this node id, return `{}`. When the key matches the gate id, the gate runs, sees `hitl_decisions[gate_id]`, clears `hitl_resume_at`, and later nodes run normally.
 
     **Why every node is wrapped.** Only wrapping the gate would still re-run `draft` / SQL / LLM on resume. Wrapping all nodes is O(1) per node at build time and keeps product YAML free of skip flags.
 
@@ -344,7 +345,7 @@ edim_dde_ai/hitl/
 
     **Multiple gates.** A later `hitl.gate` can pause again. The same session id is reused if `state.session_id` is still set; status returns to `waiting_hitl`. Nodes before *that* gate are skipped on the next resume.
 
-    **Observability.** `MetadataAgent._merge_kwargs` attaches trace tags on invoke kwargs only. Copying `request_id` from LangSmith into the data bag leaks into every agent’s state and breaks tests that assert exact keys.
+    **Observability.** `MetadataAgent._merge_kwargs` attaches trace tags on invoke kwargs only. Copying `request_id` from LangSmith into flat agent state leaks into every invoke and breaks tests that assert exact keys.
 
     **API mapping.** `POST /sessions` and `/resume` project invoke state via `_session_response`. `GET` projects the `SessionRecord` via `_session_response_from_record` (prompt/gate_id prefer `extra`). HTTP `resumed` → `closed`.
 
@@ -357,7 +358,7 @@ edim_dde_ai/hitl/
 | Doc | Topic |
 |-----|--------|
 | [Orchestration](orchestration-topology.md) | In-process `invoke_agent` |
-| [Nodes and routers](nodes-and-routers.md) | Factory → Decorator → Adapter wrap order |
+| [Nodes and routers](nodes-and-routers.md) | Factory → Decorator wrap order |
 | [End-to-end design §4](../architecture/end-to-end-design.md) | GoF map (Decorator, State, Facade) |
 | [State store](../platform/state-store.md) | Session backend |
 | [YAML schema](yaml-schema.md) | `hitl.enabled` vs `metadata.hitl_required` |
@@ -370,7 +371,7 @@ edim_dde_ai/hitl/
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | Gate never pauses | `hitl.enabled: false` and no `hitl_enabled` in state; or `skip_hitl` | Enable YAML `hitl.enabled` or set state `hitl_enabled: true` |
-| Nodes before gate re-run on resume | Skip Decorator missing / wrong wrap order | Confirm `skip_until_resume` wraps **before** `adapt_node` |
+| Nodes before gate re-run on resume | Skip Decorator missing / wrong wrap | Confirm every node is wrapped with `skip_until_resume` |
 | HTTP **409** on resume | Session already `closed` / not `waiting_hitl` | `GET` session; only resume once while waiting |
 | HTTP **400** invalid decision | Decision not in `approved` \| `rejected` \| `modified` | Send a allowed `decision` string |
 | Sessions lost after restart | `EDIM_STATE_STORE=memory` | Use Postgres (or other durable backend) for multi-process demos |
