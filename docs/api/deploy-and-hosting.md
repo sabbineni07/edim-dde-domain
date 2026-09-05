@@ -489,18 +489,25 @@ Native production procedure, including ACR, managed identity, workload
 profiles, scaling, workers, and rollback, use
 [Deployment targets](deployment-targets.md) §4.
 
-**Postgres in this stack:** used only as the optional **control-plane StateStore** (`EDIM_STATE_STORE=postgres`) for agent catalog / sessions — **not** for Databricks SQL / UC telemetry. See [State store](../platform/state-store.md).
+**Postgres in this stack:** control-plane **StateStore** (`EDIM_STATE_STORE=postgres`),
+optional **RecommendationStore**, and LangGraph **checkpointer**
+(`EDIM_CHECKPOINTER=postgres`) for multi-turn analysis — **not** for Databricks
+SQL / UC telemetry. See [State store](../platform/state-store.md) · [Env vars](../reference/env-vars.md).
 
 ### 6.1 Docker Compose (API + Postgres) — recommended locally
 
-Postgres is included as the **control-plane StateStore** (`EDIM_STATE_STORE=postgres`). Use this stack for **local end-to-end** dry smoke (API + Postgres + Foundry; SQL skipped via overrides).
+Postgres backs StateStore + checkpointer. Use this stack for **local end-to-end**
+dry smoke (API + Postgres + Foundry; SQL skipped via `metrics` / `evidence_pack`
+overrides). Session smoke covers initialize / converse / regenerate and returns
+`conversation_id`.
 
 From `edim-dde-api/`:
 
 ```bash
 # Put Foundry (+ optional Databricks) vars in ../edim-dde-domain/.env
 make compose-up          # vendor-wheels + API + Postgres
-make e2e-dry             # /health (assert state_store=postgres) + dry tuning + dry RCA
+make e2e-dry             # /health (state_store + checkpointer=postgres) + dry tuning/RCA sessions
+make e2e-durable         # restart API mid-session (durable checkpointer)
 # or one shot:
 make e2e-local
 
@@ -511,8 +518,9 @@ make compose-down
 | Target | What it does |
 |--------|----------------|
 | `make compose-up` | Build/start **api** + **postgres** |
-| `make e2e-health` | Wait for `/health`; require `state_store=postgres` |
-| `make e2e-dry` | Dry E2E script (`deploy/scripts/e2e_smoke.sh`) |
+| `make e2e-health` | Wait for `/health`; require `state_store=postgres` (checkpointer asserted in `e2e_smoke.sh`) |
+| `make e2e-dry` | Dry session smoke — init/converse/regen (`deploy/scripts/e2e_smoke.sh`) |
+| `make e2e-durable` | Dry smoke + API restart mid-thread |
 | `make e2e-local` | `compose-up` then `e2e-dry` |
 
 Compose file: `edim-dde-api/docker-compose.yml`
@@ -520,7 +528,7 @@ Compose file: `edim-dde-api/docker-compose.yml`
 | Service | Port | Role |
 |---------|------|------|
 | `api` | 8080 | FastAPI (`edim_dde_api.main:app`) |
-| `postgres` | 5432 | StateStore (`postgresql://edim:edim@postgres:5432/edim`) |
+| `postgres` | 5432 | StateStore + RecommendationStore + checkpointer (`postgresql://edim:edim@postgres:5432/edim`) |
 | `redis` | 6379 | Optional (`docker compose --profile redis up -d`) |
 
 **Dry E2E** needs Foundry in `.env` (warehouse optional). **Live SQL** against the same containers: set `DATABRICKS_*` in `.env`, recreate `api`, then run live curls from [Live smoke §5](../contribute/live-smoke-test.md) with `BASE=http://127.0.0.1:8080` (and `az login` on the **host** does not inject into the container — use `EDIM_FOUNDRY_*` and, for SQL from the container, a path that works inside Docker, or run live SQL smoke on Apps/host uvicorn).

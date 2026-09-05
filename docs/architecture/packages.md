@@ -19,9 +19,9 @@ Defines **ownership boundaries** across `edim-dde-ai`, `edim-dde-domain`, and `e
 
 | Package | Responsibility | Does *not* own |
 |---------|----------------|----------------|
-| **edim-dde-ai** | YAML parse, registries, graph build, builtins (`llm_chain`, `invoke_agent`, `rag.retrieve`), ObservabilityProvider, StateStore, RetrievalProvider | Product SQL, Databricks auth, HTTP |
+| **edim-dde-ai** | YAML parse, registries, flat `build_graph` / `build_session_graph`, builtins (`llm_chain`, `invoke_agent`, `rag.retrieve`), ObservabilityProvider, StateStore, checkpointer, RetrievalProvider | Product SQL, Databricks auth, HTTP |
 | **edim-dde-domain** | Sources, SQL execute, Apps/`az` auth, Foundry adapter, bundled agents, corpora/runbooks, plugin loader | HTTP routes, OpenAPI response projection |
-| **edim-dde-api** | FastAPI, middleware (`RequestId`, Apps token), v1 routes (incl. knowledge ingest), lifespan (KV + observability + state store + retrieval + catalog sync), response models, safe boundary logging | Agent business logic |
+| **edim-dde-api** | FastAPI, middleware (`RequestId`, Apps token), v1 routes (incl. knowledge ingest), lifespan (KV + observability + state store + checkpointer + retrieval + catalog sync), response models, safe boundary logging | Agent business logic |
 
 ```text
 edim-dde-api  →  edim-dde-domain  →  edim-dde-ai
@@ -36,8 +36,9 @@ External agent plugins depend on `edim-dde-ai` (and usually domain for `domain.s
 | Concern | Package | Pattern |
 |---------|---------|---------|
 | Node/router/agent catalogs | ai | Registry + Strategy |
-| Graph assembly | ai | Builder |
-| Flat state ↔ LangGraph | ai | Adapter |
+| Graph assembly | ai | Builder (`build_graph` / `build_session_graph`) |
+| Flat AgentState | ai | Reducer-backed dict (no nested data bag) |
+| Multi-turn session | ai | Builder + checkpointer (`EDIM_CHECKPOINTER`) |
 | Invoke surface | ai | Template Method + Facade |
 | Postgres/Cosmos/FAISS/… | ai protocols; domain/api wire env | Strategy |
 | SQL sources + Foundry | domain | Adapter (warehouse / LLM) |
@@ -51,7 +52,9 @@ External agent plugins depend on `edim-dde-ai` (and usually domain for `domain.s
 edim_dde_ai/
   core/            definition + YAML load
   registry/        agents, nodes, chains, routers
-  graph/           builder, adapters, MetadataAgent
+  graph/           builder, session_builder, MetadataAgent
+  session/         checkpointer registry + session_prepare / policy
+  hitl/            gate, skip Decorator, resume Facade
   nodes/           builtins including rag.retrieve
   content/         prompts, skills, LLMProvider
   observability/   ObservabilityProvider

@@ -22,7 +22,7 @@ How allowlisted **node types** and **routers** work — the Strategy + Registry 
 | **Registry** | `type` id → factory catalog (`register_node` / `register_router`) |
 | **Strategy** | Each factory returns a different algorithm selected by YAML `type` / `router` |
 | **Factory Method** | `(config) -> callable` builds the per-node Strategy |
-| **Adapter** | Flat `(state)->partial` adapted into LangGraph’s `data` bag by `GraphBuilder` |
+| **Builder** | `GraphBuilder` / `build_graph` assemble flat `AgentState` nodes and edges |
 | **Decorator** | `skip_until_resume` wraps every node so HITL resume does not re-run work before the gate |
 
 ```text
@@ -38,7 +38,7 @@ factory(config) → _node    # Factory Method
 skip_until_resume(...)     # Decorator (HITL resume skip)
         │
         ▼
-adapt_node(_node)          # Adapter → LangGraph
+LangGraph node (flat AgentState)
 ```
 
 ---

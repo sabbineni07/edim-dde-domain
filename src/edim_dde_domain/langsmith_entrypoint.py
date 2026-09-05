@@ -2,12 +2,14 @@
 
 This module is a host adapter, not a second graph implementation. It loads the
 same packaged YAML definitions and domain node registrations used by the ACA
-host, then exposes a compiled graph with flat request/response state for
-LangGraph Agent Server.
+Native FastAPI host, then exposes a compiled **flat** graph via ``build_graph``.
 
-The Agent Server process is responsible for configuring its runtime providers
-and backing services through environment variables. Graph construction itself
-must remain free of network calls and user-specific credentials.
+Note:
+  Agent Server persistence (threads/runs) is configured by the Agent Server
+  process — not ``EDIM_CHECKPOINTER``. This entrypoint does not attach the
+  FastAPI session router; use ACA Native for initialize/converse/regenerate.
+
+Graph construction must remain free of network calls and user-specific credentials.
 """
 
 from __future__ import annotations
@@ -15,16 +17,16 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from edim_dde_ai.graph import build_flat_graph
+from edim_dde_ai.graph import build_graph
 from edim_dde_ai.registry.agents import get_agent_definition
 from edim_dde_domain.bootstrap import bootstrap_agents
 
 
 @lru_cache(maxsize=16)
 def _build_agent_graph(agent_id: str):
-    """Load one packaged agent and compile its flat-state graph."""
+    """Load one packaged agent and compile its flat-state graph (cached)."""
     bootstrap_agents(load_external=False)
-    return build_flat_graph(get_agent_definition(agent_id))
+    return build_graph(get_agent_definition(agent_id))
 
 
 def cluster_tuning_graph(_config: dict[str, Any] | None = None):

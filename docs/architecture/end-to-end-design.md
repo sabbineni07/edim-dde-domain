@@ -218,9 +218,24 @@ hits = search_corpus("OOM", corpus="spark-runbooks")
 
 ### 4.3 Builder
 
-**Where:** `graph/builder.py` → `GraphBuilder` → `build_graph(definition)`.
+**Where:** `graph/builder.py` → `GraphBuilder` → `build_graph(definition)`;
+session multi-turn via `graph/session_builder.py` → `build_session_graph`.
 
-**Why:** Stepwise assembly: add nodes → entry → edges → conditional edges → compile.
+**Why:** Stepwise assembly of a flat graph. Session graphs reuse the same
+builder, then add modes + checkpointer:
+
+```text
+build_session_graph ≈ build_graph + initialize/converse/regenerate + checkpointer
+
+YAML nodes
+  → add session_prepare
+  → set_entry(session_prepare)   # not YAML graph.entry
+  → YAML edges
+  → branch session_mode → path entries
+  → compile(checkpointer)
+```
+
+Plain (non-session) assembly:
 
 ```text
 AgentDefinition
@@ -230,6 +245,10 @@ AgentDefinition
   → add_conditional_edges()
   → compile() → LangGraph
 ```
+
+FastAPI / `AgentFactory` call `build_graph_for_definition` (chooses session vs
+plain). Agent Server entrypoints call plain `build_graph` — persistence is the
+Agent Server’s checkpointer, not `EDIM_CHECKPOINTER`.
 
 ### 4.4 Factory Method
 
@@ -243,11 +262,24 @@ agent = create_agent("spark_rca")
 final = agent.invoke({"job_run_id": "jr-1", "evidence_pack": {...}})
 ```
 
-### 4.5 Adapter
+### 4.5 Flat graph state
 
-**Where:** `graph/adapters.py` — flat `dict` node callables ↔ LangGraph `AgentState.data` bag.
+**Where:** `graph/builder.py` — `AgentState` is a reducer-backed flat `dict`.
 
-**Why:** Authors write simple `(state) -> partial`; LangGraph sees a typed channel.
+**Why:** Authors write simple `(state) -> partial`; hosts (FastAPI, Agent Server)
+see the same product-facing mapping. Nested `data` bag adapters were removed.
+
+Distinguish three stores:
+
+| Store | Env | Role |
+|-------|-----|------|
+| StateStore | `EDIM_STATE_STORE` | Catalog, HITL sessions, audit |
+| Checkpointer | `EDIM_CHECKPOINTER` | LangGraph multi-turn graph state (`thread_id` / `conversation_id`) |
+| RecommendationStore | `EDIM_RECOMMENDATION_STORE` | Product history (tuning / RCA rows) |
+
+HITL pause/resume uses StateStore + the skip Decorator — it does **not** require
+a LangGraph checkpointer. Multi-turn analysis (initialize / converse / regenerate)
+uses the checkpointer.
 
 ### 4.6 Template Method
 
@@ -280,7 +312,7 @@ from edim_dde_ai import (
 
 ### 4.9 Decorator
 
-**Where:** `hitl/decorator.py` — `skip_until_resume(node_id, fn)` applied by `GraphBuilder` **before** `adapt_node`.
+**Where:** `hitl/decorator.py` — `skip_until_resume(node_id, fn)` applied by `GraphBuilder` around each flat-state node.
 
 **Why:** On HITL resume, skip SQL/LLM nodes before the gate without a LangGraph checkpointer. The wrapper returns `{}` until `state[hitl_resume_at]` matches this node id.
 
@@ -302,20 +334,23 @@ Matches **Part C** of the guide — configure planes before serving traffic:
 1. Key Vault bootstrap          (optional secrets → env)
 2. configure_observability_from_env()   # EDIM_OBSERVABILITY
 3. configure_state_store_from_env()     # EDIM_STATE_STORE
-4. configure_recommendation_store_from_env()  # EDIM_RECOMMENDATION_STORE (inherits StateStore)
-5. configure_retrieval_from_env()       # EDIM_RETRIEVAL
-6. bootstrap_agents()
+4. configure_checkpointer_from_env()    # EDIM_CHECKPOINTER (memory|postgres)
+5. configure_recommendation_store_from_env()  # EDIM_RECOMMENDATION_STORE (inherits StateStore)
+6. configure_retrieval_from_env()       # EDIM_RETRIEVAL
+7. bootstrap_agents()
       · load sources.yaml
       · load corpora.yaml
       · import agents/*/nodes.py
       · register *.agent.yaml
       · external plugins (EDIM_AGENT_DIRS)
-7. sync_registered_agents_to_store()    # catalog metadata upsert + audit
-8. set_llm_provider(lazy Foundry)
-9. ready — GET /health reports observability, state_store, recommendation_store, retrieval
+8. sync_registered_agents_to_store()    # catalog metadata upsert + audit
+9. set_llm_provider(lazy Foundry)
+10. ready — GET /health reports observability, state_store, checkpointer,
+    recommendation_store, retrieval
 ```
 
-Failures configuring store/retrieval/observability **log and continue** with safe defaults (`memory` / `none`) so `/health` remains available.
+Failures configuring store/retrieval/observability/checkpointer **log and continue**
+with safe defaults (`memory` / `none`) so `/health` remains available.
 
 ---
 
@@ -339,9 +374,11 @@ Route
   │  On mapped failure: log redacted stack once → safe HTTP detail
   ▼
 MetadataAgent (Template Method)
-  │  Wrap flat state → LangGraph data bag
+  │  Flat dict invoke / extract
+  │  Session: conversation_id → thread_id → checkpointer
   ▼
 YAML graph
+  │  session_prepare (when memory enabled) → initialize | converse | regenerate
   │  domain.sql.query × N     → UC telemetry (skip if evidence_pack override)
   │  assemble_evidence
   │  classify_failure
@@ -351,13 +388,14 @@ YAML graph
   │  llm_chain (rca)          → Foundry
   │  parse / validate
   ▼
-RcaResponse projection        (never dump full state bag)
+RcaResponse projection        (never dump full flat state)
   + LangSmith/MLflow trace    (side channel)
 ```
 
 Tuning (`/api/v1/cluster_tuning/recommend`) is the same host pattern without the retrieval pilot.
+Follow-ups reuse `conversation_id` from the first response.
 
-HITL (`POST /api/v1/sessions`) uses the same `MetadataAgent` path. A `hitl.gate` persists a StateStore session and returns `waiting_hitl` instead of a product projection. Resume is `POST /api/v1/sessions/{id}/resume`. See [HITL resume](../framework/hitl-resume.md).
+HITL (`POST /api/v1/sessions`) uses the same `MetadataAgent` path. A `hitl.gate` persists a StateStore session and returns `waiting_hitl` instead of a product projection. Resume is `POST /api/v1/sessions/{id}/resume`. HITL sessions are **not** the LangGraph checkpointer — see [HITL resume](../framework/hitl-resume.md).
 
 Sequence SVG: [r1-request-sequence.svg](diagrams/r1-request-sequence.svg) · Narrative: [request-flow.md](request-flow.md).
 

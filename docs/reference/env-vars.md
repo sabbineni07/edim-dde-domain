@@ -19,7 +19,7 @@ Lookup catalog of **`EDIM_*`**, Databricks, Azure, and plane configuration varia
 | `EDIM_MLFLOW_EXPERIMENT` | MLflow provider | Experiment name (default `edim-dde`) |
 | `MLFLOW_TRACKING_URI` | MLflow | Tracking server / Databricks URI when using MLflow |
 | `EDIM_STATE_STORE` | API lifespan / AI | **Control plane** backend: `memory` \| `postgres` \| `cosmos` \| `redis` (default `memory`). Holds agent catalog, sessions, audit — see [§ State vs recommendation stores](#state-store-vs-recommendation-store) |
-| `EDIM_CHECKPOINTER` | API lifespan / AI | LangGraph session checkpoints for multi-turn analysis: `memory` \| `postgres` (Compose / recommended local default `postgres`; process default `memory` if unset) |
+| `EDIM_CHECKPOINTER` | API lifespan / AI | LangGraph session checkpoints for multi-turn analysis: `memory` \| `postgres` (Compose / recommended local default `postgres`; process default `memory` if unset). Postgres uses `ConnectionPool` + `PostgresSaver` (not `from_conn_string`). **Not used by Agent Server** — that host has its own checkpoint config. |
 | `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | **Product history** backend: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`). Holds tuning/RCA recommendation rows + status |
 | `EDIM_DATABASE_URL` | Postgres stores | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore + checkpointer when selected) |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |

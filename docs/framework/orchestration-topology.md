@@ -84,7 +84,8 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 |-----|--------|
 | [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | Option A/B/C topologies; DE SDLC; cross-app |
 | [Agent control plane](../architecture/agent-control-plane.md) | **Design review** — governance, location registry, routing (Option B/C parked) |
-| [HITL resume](hitl-resume.md) | `hitl.gate` + StateStore sessions |
+| [HITL resume](hitl-resume.md) | `hitl.gate` + StateStore sessions (not LangGraph checkpointer) |
+| [YAML schema — session](yaml-schema.md#session) | Multi-turn initialize/converse/regenerate + `EDIM_CHECKPOINTER` |
 | [External plugins](../build-agents/external-plugins.md) | Loading packs into one runtime |
 
 ## Summary

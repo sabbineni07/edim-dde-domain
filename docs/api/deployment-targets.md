@@ -86,18 +86,28 @@ Graph construction must be deterministic and must not make network calls. SQL,
 LLM, search, Key Vault, and telemetry calls happen when the graph is invoked,
 using the selected runtime identity.
 
-### 2.2 Two graph surfaces
+### 2.2 Graph state surface
 
-The framework now provides two graph-building surfaces:
+All hosts share one flat graph-state contract: ``AgentState`` is a reducer-backed
+``dict`` (nodes return partial updates). Nested LangGraph ``data`` bag adapters
+were removed. ``build_graph(definition)`` is the canonical compiler;
+``build_flat_graph()`` remains a deprecated alias.
 
-| Surface | State shape | Host |
-|---|---|---|
-| `build_graph(definition)` | Internal `AgentState` with a `data` channel | Existing FastAPI/ACA Native facade |
-| `build_flat_graph(definition)` | Reducer-backed flat `dict[str, Any]` | Agent Server adapter and product-facing flat contracts |
+**Mental model for multi-turn (ACA Native / FastAPI):**
 
-`build_flat_graph()` uses a shallow merge reducer so nodes can return partial
-updates without losing earlier request fields. Do not change the public state
-shape in a host adapter without an API review.
+```text
+build_session_graph ≈ build_graph + initialize/converse/regenerate + checkpointer
+```
+
+Assembly order matches ``build_graph``, then prepends ``session_prepare`` as
+entry, branches on ``session_mode``, and ``compile(checkpointer)``. FastAPI /
+``AgentFactory`` should call ``build_graph_for_definition`` so session-enabled
+YAML agents get routing + ``EDIM_CHECKPOINTER`` automatically.
+
+| Host | Compile path | Persistence |
+|------|--------------|-------------|
+| **ACA Native / FastAPI** | ``build_graph_for_definition`` → ``build_session_graph`` when YAML ``memory.strategy`` ≠ ``none`` | ``EDIM_CHECKPOINTER=memory\|postgres`` (Compose / ``host-run`` default ``postgres``) |
+| **Agent Server** (`langsmith_entrypoint`) | Plain ``build_graph`` only | Agent Server’s own Postgres/thread store — **not** ``EDIM_CHECKPOINTER``; no FastAPI initialize/converse/regenerate router |
 
 The current Agent Server adapter is:
 
@@ -109,8 +119,9 @@ result = graph.invoke({"job_id": "...", "cluster_id": "...", "metrics": {...}})
 ```
 
 It loads the same packaged YAML and node registrations used by the ACA Native
-host. Adding an agent requires an explicit exported factory and a test; do not
-let a request choose an arbitrary YAML file or Python import.
+host, but does **not** attach the FastAPI session router. Adding an agent
+requires an explicit exported factory and a test; do not let a request choose an
+arbitrary YAML file or Python import.
 
 ### 2.3 Agent Server manifest template
 
@@ -413,7 +424,7 @@ rather than the EDIM-specific FastAPI routes.
 | Start command | `uvicorn edim_dde_api.main:app` | Approved LangGraph Agent Server command |
 | API contract | EDIM REST routes | Agent Server graph/run/thread APIs |
 | Graph import | API lifespan bootstraps agents | `langgraph.json` graph factory |
-| State | EDIM StateStore configuration | Agent Server PostgreSQL/checkpoint configuration |
+| State | EDIM StateStore + ``EDIM_CHECKPOINTER`` (session multi-turn) | Agent Server PostgreSQL/checkpoint configuration (**not** ``EDIM_CHECKPOINTER``) |
 | Streaming/runs | Implemented by EDIM API as needed | Provided by Agent Server |
 | Control plane/UI | None | None; use self-hosted LangSmith separately if needed |
 

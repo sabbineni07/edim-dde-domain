@@ -46,11 +46,14 @@ The agent package must be host-neutral:
 - Graph construction must not call SQL, Foundry, Key Vault, or LangSmith.
 - Runtime providers and identities arrive through environment configuration.
 
-ACA Native uses the FastAPI host and `build_graph()`. The optional Agent Server
-adapter uses `build_flat_graph()` and an explicit graph factory such as
-`cluster_tuning_graph`. Full self-hosted LangSmith consumes the same packaged
-factory through its Agent Server deployment process. See [Deployment targets
-and release runbook](../api/deployment-targets.md).
+ACA Native / FastAPI uses `build_graph_for_definition` → `build_session_graph`
+when YAML enables `memory` + `session` (checkpointer via `EDIM_CHECKPOINTER`).
+The optional Agent Server adapter calls plain `build_graph()` through an
+explicit factory such as `cluster_tuning_graph` — Agent Server persistence is
+**not** `EDIM_CHECKPOINTER` and does not attach the FastAPI
+initialize/converse/regenerate router. Full self-hosted LangSmith consumes the
+same packaged factory through its Agent Server deployment process. See
+[Deployment targets §2.2](../api/deployment-targets.md#22-graph-state-surface).
 
 ## Naming
 

@@ -191,7 +191,11 @@ Hosts pass `thread_id` (or `conversation_id`) on follow-up requests. Set
 `memory.strategy: none` for single end-to-end runs with no follow-ups.
 
 Checkpointer selection is host configuration (`EDIM_CHECKPOINTER=memory|postgres`;
-Compose defaults to ``postgres`` so follow-ups survive API restarts).
+Compose defaults to ``postgres`` so follow-ups survive API restarts). Postgres
+uses a long-lived ``ConnectionPool`` + ``PostgresSaver`` — not
+``from_conn_string`` (that context manager closes on exit). Agent Server hosts
+do **not** read ``EDIM_CHECKPOINTER``; they use the Agent Server’s own store.
+See [Deployment targets §2.2](../api/deployment-targets.md#22-graph-state-surface).
 Local Docker Compose defaults to `EDIM_OBSERVABILITY=none` and forces
 `LANGCHAIN_TRACING_V2=false` so a shared `.env` with LangSmith keys does not
 spam unreachable endpoints.

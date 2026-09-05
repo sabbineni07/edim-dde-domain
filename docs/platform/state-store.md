@@ -102,10 +102,20 @@ YAML policy. It is not a replacement for StateStore HITL sessions or
 RecommendationStore product history. Local Compose / `host-run` default to
 ``postgres`` (same ``EDIM_DATABASE_URL``) so follow-ups survive API restarts.
 
+**Postgres checkpointer construction (engineers):** FastAPI installs a long-lived
+``psycopg_pool.ConnectionPool`` + ``PostgresSaver``. Do **not** use
+``PostgresSaver.from_conn_string`` as the process checkpointer — that helper is a
+context manager and closes the connection on exit (unsuitable for a server).
+See ``edim_dde_ai.session.checkpointer``.
+
 ```bash
 # Choose the control-plane backend
 export EDIM_STATE_STORE=postgres   # local Compose
 # export EDIM_STATE_STORE=cosmos   # deployed Apps / PROD
+
+# Multi-turn analysis checkpointer (same DSN when postgres)
+export EDIM_CHECKPOINTER=postgres
+# export EDIM_CHECKPOINTER=memory  # tests / single-process only
 ```
 
 ---
