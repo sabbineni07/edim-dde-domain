@@ -18,6 +18,24 @@ from edim_dde_domain.agents.cluster_tuning.helpers.historical_context import (
 from edim_dde_domain.agents.cluster_tuning.logic import prepare_sizing_payload
 
 
+def _tuning_response(*, max_workers: int = 4, node: str = "Standard_E4s_v3") -> dict:
+    return {
+        "recommendation": {
+            "recommended_max_workers": max_workers,
+            "recommended_node_type": node,
+        },
+        "job_cluster_metrics": {
+            "azure_worker_vm_size": "Standard_E8s_v3",
+            "max_worker_nodes_provisioned": 16,
+            "peak_worker_cpu_utilization_pct": 20,
+            "peak_worker_memory_utilization_pct": 30,
+            "avg_worker_nodes_consumed": 4,
+        },
+        "reason_codes": ["CAPACITY_HEADROOM_HIGH"],
+        "risk_assessment": {"level": "low"},
+    }
+
+
 def test_build_retrieval_query_includes_sku():
     out = build_retrieval_query(
         {
@@ -39,21 +57,10 @@ def test_compose_includes_store_and_guidance():
         store.save(
             RecommendationRecord(
                 recommendation_id="rec-1",
-                job_id="j-1",
+                agent_id="cluster_tuning",
+                subjects={"job_id": "j-1"},
                 status="accepted",
-                response={
-                    "recommendation": {
-                        "recommended_max_workers": 4,
-                        "recommended_node_type": "Standard_E4s_v3",
-                    },
-                    "job_cluster_metrics": {
-                        "azure_worker_vm_size": "Standard_E8s_v3",
-                        "max_worker_nodes_provisioned": 16,
-                        "peak_worker_cpu_utilization_pct": 20,
-                    },
-                    "reason_codes": ["CAPACITY_HEADROOM_HIGH"],
-                    "risk_assessment": {"level": "low"},
-                },
+                response=_tuning_response(),
             )
         )
         text = compose_historical_context(
@@ -97,38 +104,28 @@ def test_select_prefers_job_then_similar():
     }
     same = RecommendationRecord(
         recommendation_id="same-1",
-        job_id="j-target",
+        agent_id="cluster_tuning",
+        subjects={"job_id": "j-target"},
         status="accepted",
-        response={
-            "recommendation": {"recommended_max_workers": 4},
-            "job_cluster_metrics": state["metrics"],
-        },
+        response=_tuning_response(),
     )
     similar = RecommendationRecord(
         recommendation_id="sim-1",
-        job_id="j-other",
-        status="applied",
-        response={
-            "recommendation": {"recommended_max_workers": 6},
-            "job_cluster_metrics": {
-                "azure_worker_vm_size": "Standard_E8s_v3",
-                "max_worker_nodes_provisioned": 14,
-                "peak_worker_cpu_utilization_pct": 25,
-                "peak_worker_memory_utilization_pct": 28,
-                "avg_worker_nodes_consumed": 5,
-            },
-        },
+        agent_id="cluster_tuning",
+        subjects={"job_id": "j-other"},
+        status="accepted",
+        response=_tuning_response(max_workers=6),
     )
     unrelated = RecommendationRecord(
         recommendation_id="noise-1",
-        job_id="j-noise",
-        status="proposed",
+        agent_id="cluster_tuning",
+        subjects={"job_id": "j-noise"},
+        status="accepted",
         response={
-            "recommendation": {"recommended_max_workers": 64},
+            "recommendation": {"recommended_max_workers": 99},
             "job_cluster_metrics": {
-                "azure_worker_vm_size": "Standard_D32s_v3",
-                "max_worker_nodes_provisioned": 100,
-                "peak_worker_cpu_utilization_pct": 95,
+                "azure_worker_vm_size": "Standard_D2s_v5",
+                "max_worker_nodes_provisioned": 2,
             },
         },
     )
@@ -154,16 +151,10 @@ def test_select_similar_when_no_job_match():
     }
     peer = RecommendationRecord(
         recommendation_id="peer-1",
-        job_id="j-peer",
+        agent_id="cluster_tuning",
+        subjects={"job_id": "j-peer"},
         status="accepted",
-        response={
-            "recommendation": {"recommended_max_workers": 4},
-            "job_cluster_metrics": {
-                "azure_worker_vm_size": "Standard_E8s_v3",
-                "max_worker_nodes_provisioned": 16,
-                "peak_worker_cpu_utilization_pct": 18,
-            },
-        },
+        response=_tuning_response(),
     )
     selected = select_history_records(
         state, [peer], config={"history_job_top_n": 5, "history_similar_top_n": 3}
@@ -180,7 +171,8 @@ def test_prepare_sizing_uses_historical_context():
         store.save(
             RecommendationRecord(
                 recommendation_id="rec-2",
-                job_id="job-x",
+                agent_id="cluster_tuning",
+                subjects={"job_id": "job-x"},
                 status="proposed",
                 response={
                     "recommendation": {"recommended_max_workers": 8},

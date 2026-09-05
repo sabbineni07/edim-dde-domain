@@ -120,14 +120,20 @@ def build_retrieval_query(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def _rec_attr(rec: Any, key: str, default: Any = None) -> Any:
-    """Read an attribute or dict key from a RecommendationRecord-like object."""
-    if hasattr(rec, key) and not key.startswith("_"):
-        # Annotated dicts use keys; dataclass attrs for real records.
-        val = getattr(rec, key, default)
-        if val is not None or key in getattr(rec, "__dataclass_fields__", {}):
-            return val
+    """Read an attribute, dict key, or ``subjects`` entry from a record-like object."""
     if isinstance(rec, dict):
-        return rec.get(key, default)
+        if key in rec and key != "subjects":
+            return rec.get(key, default)
+        subjects = rec.get("subjects") or {}
+        if isinstance(subjects, dict) and key in subjects:
+            return subjects.get(key, default)
+        return default
+    fields = getattr(rec, "__dataclass_fields__", {}) or {}
+    if key in fields and key != "subjects":
+        return getattr(rec, key, default)
+    subjects = getattr(rec, "subjects", None) or {}
+    if isinstance(subjects, dict) and key in subjects:
+        return subjects.get(key, default)
     return getattr(rec, key, default)
 
 
@@ -433,10 +439,10 @@ def _load_experience_block(
         )
         occurrences = int(meta.get("occurrences") or 1)
         if occurrences > 1:
-            also = meta.get("also_job_ids") or []
+            also = meta.get("also_entity_ids") or []
             header += f" occurrences={occurrences}"
             if also:
-                header += f" also_jobs={list(also)[:5]}"
+                header += f" also_entities={list(also)[:5]}"
         lines.append(header)
         lines.append(hit.text.strip())
     return "\n".join(lines)

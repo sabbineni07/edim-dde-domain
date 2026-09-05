@@ -293,8 +293,8 @@ class ClusterTuningExperienceTransform:
             action_signature=action_sig,
             metadata={
                 "agent_id": AGENT_ID,
-                "job_id": record.job_id,
-                "cluster_id": record.cluster_id,
+                "job_id": record.subject("job_id"),
+                "cluster_id": record.subject("cluster_id"),
                 "recommendation_id": record.recommendation_id,
                 "status": record.status,
                 "feature_labels": labels,

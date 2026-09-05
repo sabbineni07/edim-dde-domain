@@ -8,8 +8,9 @@ Join deterministic evaluator scores/confidence (persisted on recommendation
 loop toward “production confidence” — not an LLM judge.
 
 Optional scaffolding in ``RecommendationRecord.extra["outcome"]``:
-* ``human_label``, ``labeled_by``, ``labeled_at``
-* ``rerun_success``, ``rerun_job_run_id``, ``measured_at``
+* Framework-neutral: ``human_label``, ``labeled_by``, ``labeled_at``
+* Product convention (Spark agents today): ``rerun_success``,
+  ``rerun_job_run_id``, ``measured_at`` — passed via ``merge_outcome_extra(..., updates=)``
 
 Public API
 ----------
@@ -26,6 +27,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from edim_dde_ai.recommendations.models import RecommendationRecord
+from edim_dde_ai.recommendations.outcome import merge_outcome_extra
 
 
 OUTCOME_STATUSES = frozenset({"accepted", "applied", "rejected", "superseded", "proposed"})
@@ -214,36 +216,6 @@ def correlate_recommendation_outcomes(
         human_labeled=human_labeled,
         rerun_measured=rerun_measured,
     )
-
-
-def merge_outcome_extra(
-    extra: dict[str, Any] | None,
-    *,
-    human_label: str | None = None,
-    labeled_by: str | None = None,
-    rerun_success: bool | None = None,
-    rerun_job_run_id: str | None = None,
-) -> dict[str, Any]:
-    """Merge outcome scaffolding into ``RecommendationRecord.extra``.
-
-    Does not mutate the input dict; returns a new mapping.
-    """
-    out = dict(extra or {})
-    outcome = dict(out.get("outcome") or {})
-    now = datetime.now(timezone.utc).isoformat()
-    if human_label is not None:
-        outcome["human_label"] = str(human_label).strip()
-        outcome["labeled_at"] = now
-        if labeled_by:
-            outcome["labeled_by"] = str(labeled_by).strip()
-    if rerun_success is not None:
-        outcome["rerun_success"] = bool(rerun_success)
-        outcome["measured_at"] = now
-        if rerun_job_run_id:
-            outcome["rerun_job_run_id"] = str(rerun_job_run_id).strip()
-    if outcome:
-        out["outcome"] = outcome
-    return out
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -44,28 +44,16 @@ def _record(rec_id: str, job_id: str, run_id: str) -> RecommendationRecord:
     return RecommendationRecord(
         recommendation_id=rec_id,
         agent_id="spark_rca",
-        status="applied",
-        job_id=job_id,
-        job_run_id=run_id,
+        subjects={"job_id": job_id, "job_run_id": run_id},
+        status="accepted",
         response={
             "root_cause": {
-                "category": "skew_shuffle",
-                "summary": "Shuffle fetch failed after an executor was lost.",
+                "category": "shuffle",
                 "failure_signature": "FetchFailedException",
-            },
-            "recommended_actions": [
-                "Inspect executor loss and retry the failed shuffle stage."
-            ],
-            "classification_hint": {
-                "category": "skew_shuffle",
-                "confidence": 0.7,
-            },
-            "evidence_analysis": {
-                "log_signals": "FetchFailedException",
-                "metric_anomalies": "Failed shuffle stage",
-                "physical_plan_bottlenecks": "",
+                "summary": "FetchFailedException during shuffle read",
             },
             "evidence_pack": _pack(run_id),
+            "recommended_actions": ["Increase shuffle partitions"],
         },
     )
 

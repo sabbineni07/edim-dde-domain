@@ -278,7 +278,7 @@ def _action_signature(result: dict[str, Any]) -> str:
 
     Combines root category + normalized action text. Platform
     ``dedupe_retrieval_hits`` collapses duplicate signatures across jobs and
-    surfaces ``occurrences`` / ``also_job_ids``.
+    surfaces ``occurrences`` / ``also_entity_ids``.
 
     Args:
         result: Validated RCA payload.
@@ -388,8 +388,8 @@ class SparkRcaExperienceTransform:
             action_signature=signature,
             metadata={
                 "agent_id": AGENT_ID,
-                "job_id": record.job_id,
-                "job_run_id": record.job_run_id,
+                "job_id": record.subject("job_id"),
+                "job_run_id": record.subject("job_run_id"),
                 "recommendation_id": record.recommendation_id,
                 "status": record.status,
                 "feature_labels": features,

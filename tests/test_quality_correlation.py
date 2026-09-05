@@ -34,7 +34,7 @@ def _rec(
         agent_id="spark_rca",
         status=status,
         response={"quality": quality} if quality else {},
-        extra=extra or {},
+        extra=dict(extra or {}),
     )
 
 
@@ -63,8 +63,11 @@ def test_merge_outcome_extra_scaffolds_labels():
         {},
         human_label="correct_root_cause",
         labeled_by="alice",
-        rerun_success=True,
-        rerun_job_run_id="jr-9",
+        updates={
+            "rerun_success": True,
+            "rerun_job_run_id": "jr-9",
+            "measured_at": "2026-01-01T00:00:00+00:00",
+        },
     )
     outcome = extra["outcome"]
     assert outcome["human_label"] == "correct_root_cause"
@@ -72,4 +75,4 @@ def test_merge_outcome_extra_scaffolds_labels():
     assert outcome["rerun_success"] is True
     assert outcome["rerun_job_run_id"] == "jr-9"
     assert "labeled_at" in outcome
-    assert "measured_at" in outcome
+    assert outcome["measured_at"] == "2026-01-01T00:00:00+00:00"

@@ -151,10 +151,11 @@ def _same_job_block(state: dict[str, Any], *, limit: int) -> str:
         store = get_recommendation_store()
         if getattr(store, "name", "") == "none":
             return ""
-        # Over-fetch then filter: store list may only key on job_id today.
+        # Prefer job_id subject filter; over-fetch then match job_run_id in Python.
+        subjects = {"job_id": job_id} if job_id else None
         rows = store.list(
-            job_id=job_id or None,
             agent_id="spark_rca",
+            subjects=subjects,
             limit=max(limit * 3, limit),
         )
     except Exception:
@@ -165,8 +166,8 @@ def _same_job_block(state: dict[str, Any], *, limit: int) -> str:
         for row in rows
         if (not current_request_id or row.request_id != current_request_id)
         and (
-            (job_run_id and row.job_run_id == job_run_id)
-            or (job_id and row.job_id == job_id)
+            (job_run_id and row.subject("job_run_id") == job_run_id)
+            or (job_id and row.subject("job_id") == job_id)
         )
     ][:limit]
     if not rows:
@@ -176,7 +177,7 @@ def _same_job_block(state: dict[str, Any], *, limit: int) -> str:
         root = (row.response or {}).get("root_cause") or {}
         lines.append(
             f"- id={row.recommendation_id} status={row.status} "
-            f"job_run_id={row.job_run_id} category={root.get('category')} "
+            f"job_run_id={row.subject('job_run_id')} category={root.get('category')} "
             f"signature={root.get('failure_signature')} "
             f"summary={str(root.get('summary') or '')[:300]}"
         )
