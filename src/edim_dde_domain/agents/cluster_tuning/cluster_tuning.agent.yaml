@@ -40,6 +40,28 @@ memory:
   max_tokens: 4000
   max_chars: 16000
 
+# Product HITL: approve + modify (human may patch sizing fields before finalize).
+# Offline / dry tests may pass skip_hitl: true to bypass the gate.
+metadata:
+  owner: platform
+  risk_tier: medium
+  lifecycle: approved
+  hitl_required: true
+hitl:
+  enabled: true
+  decisions: [approved, rejected, modified]
+  patch_target: recommendation
+  patch_allowlist:
+    - recommended_max_workers
+    - recommended_min_workers
+    - recommended_node_type
+    - azure_node_type
+    - max_workers
+    - min_workers
+    - auto_termination_minutes
+    - node_family
+    - vcpus
+
 # Session routing for checkpoint-backed multi-turn analysis on the same job_run_id.
 session:
   initialize_entry: collect_metrics
@@ -176,6 +198,11 @@ graph:
       type: domain.tuning.assess_risks
     - id: generate_recommendation
       type: domain.tuning.generate_recommendation
+    - id: hitl_review
+      type: hitl.gate
+      prompt: Approve, reject, or modify this cluster sizing recommendation?
+    - id: apply_hitl_outcome
+      type: domain.tuning.apply_hitl_outcome
     - id: prepare_explanation_payload
       type: domain.tuning.prepare_explanation_payload
     - id: generate_explanation
@@ -193,6 +220,8 @@ graph:
     - [run_sizing, parse_sizing]
     - [validate_performance, assess_risks]
     - [assess_risks, generate_recommendation]
+    - [generate_recommendation, hitl_review]
+    - [hitl_review, apply_hitl_outcome]
     - [prepare_explanation_payload, generate_explanation]
     - [generate_explanation, END]
   routes:
@@ -204,9 +233,9 @@ graph:
         op: truthy
       then: prepare_sizing_payload
       else: validate_performance
-    - after: generate_recommendation
-      when:
-        field: include_explanation
-        op: truthy
-      then: prepare_explanation_payload
+    - after: apply_hitl_outcome
+      switch: hitl_next
+      cases:
+        explain: prepare_explanation_payload
+        end: END
       else: END

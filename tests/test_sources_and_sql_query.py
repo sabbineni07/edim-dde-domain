@@ -165,6 +165,7 @@ def test_cluster_tuning_metrics_override(bootstrapped_agents):
     agent = create_agent("cluster_tuning")
     out = agent.invoke(
         {
+            "skip_hitl": True,
             "job_id": "j-1",
             "cluster_id": "c-1",
             "include_explanation": True,
@@ -205,6 +206,7 @@ def test_sql_query_first_row_empty_errors(
     with pytest.raises(NoJobMetricsError):
         agent.invoke(
             {
+                "skip_hitl": True,
                 "job_id": "missing",
                 "cluster_id": "c-1",
                 # force SQL path: no metrics override; stub bypassed because source resolves

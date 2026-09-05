@@ -124,6 +124,9 @@ evaluation:
 
 hitl:
   enabled: false          # runtime HITL workflow on/off (pause for human) — see below
+  decisions: []           # optional allowlist: approved | rejected | modified (default: all)
+  patch_target: null      # optional state key for modified merges (e.g. recommendation)
+  patch_allowlist: []     # required when modified is allowed — flat field names
 
 graph:
   nodes: [...]
@@ -208,6 +211,9 @@ Two related fields on purpose (easy to confuse):
 |-------|--------|----------------|
 | `metadata.hitl_required` | **Catalog / governance** | Declares that this agent *should* involve a human (inventory, risk, future gates). Synced into StateStore catalog. |
 | `hitl.enabled` | **Runtime workflow** | When **true**, `hitl.gate` nodes pause for approval. When **false**, gates are no-ops. See [HITL resume](hitl-resume.md). |
+| `hitl.decisions` | **Resume policy** | Allowlisted decisions for `/sessions/{id}/resume`. Omitted → all framework decisions. |
+| `hitl.patch_allowlist` / `patch_target` | **Modify policy** | When `modified` is allowed, require an allowlist; optional `patch_target` merges into a nested state dict. Enforced by `edim_dde_ai.hitl.prepare_resume_patch`. |
+| `hitl.apply_outcome` | **Builtin node** | Generic post-gate approve/reject/modify marker. Product DTO reshape (e.g. tuning comparison) stays in domain nodes. |
 
 Practical R1: set `metadata.hitl_required` for catalog; set `hitl.enabled: true` and add a `hitl.gate` node to actually pause. Prefer not to set conflicting values (`hitl_required: true` + `enabled: false` means “policy says HITL needed, runtime off”). Patterns, skip Decorator, and session state machine: [HITL resume](hitl-resume.md).
 

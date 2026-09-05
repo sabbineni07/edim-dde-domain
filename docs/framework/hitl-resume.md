@@ -18,7 +18,17 @@ This chapter covers human-in-the-loop pause and resume: stop a graph at a `hitl.
 | [Nodes and routers (D3)](nodes-and-routers.md) | Factory → Decorator wrap order |
 
 !!! note "R1 scope"
-    HITL is **in-process only** (same App). Not LangGraph checkpointers, not risk-based escalation (BL-039 later), not a UI. Product graphs (`cluster_tuning`, `spark_rca`) do **not** pause unless you add a `hitl.gate`.
+    HITL is **in-process only** (same App). Not LangGraph checkpointers, not risk-based escalation (BL-039 later), not a UI.
+
+    **Product policy (2026-09-05):**
+    - `cluster_tuning` — **approve + modify** (`hitl.decisions` + `hitl.patch_allowlist` / `patch_target`)
+    - `spark_rca` — **approve-only** (`hitl.decisions: approved|rejected`)
+
+    Policy is enforced in `edim_dde_ai.hitl` (`allowed_decisions`, `prepare_resume_patch`),
+    not hard-coded by agent id in the API. Builtin `hitl.apply_outcome` marks
+    approve/reject; product-specific DTO reshape (e.g. tuning comparison) stays in domain.
+
+    Product routes (`/cluster_tuning/recommend`, `/rca/analyze`) return `status=waiting_hitl` + `session_id` with the draft; resume via `POST /sessions/{id}/resume`. RecStore persist runs after approve/modify (not on pause or reject). Offline/dry automation may pass `skip_hitl: true`.
 
 ---
 
@@ -175,7 +185,9 @@ Resume body:
 !!! warning "Resume is idempotent only while waiting"
     A second `POST /resume` on a closed session returns **409**. Persist `session_id` from the pause response and poll `GET` until you confirm `waiting_hitl` before resuming.
 
-Product routes (`/rca/analyze`, `/cluster_tuning/recommend`) are **unchanged** — they do not pause unless you add a `hitl.gate` to those graphs.
+Product routes (`/rca/analyze`, `/cluster_tuning/recommend`) pause when YAML
+`hitl.enabled` is true and the request does not set `skip_hitl: true`. Resume
+with `POST /api/v1/sessions/{session_id}/resume`.
 
 ---
 
@@ -318,7 +330,7 @@ edim_dde_ai/hitl/
 - Risk-based reviewers, timeouts, escalation (BL-039)
 - UI approval inbox
 - Cross-app HITL (needs control plane — parked)
-- Wiring `hitl.gate` into `cluster_tuning` / `spark_rca` product graphs
+- Wiring `hitl.gate` into `cluster_tuning` / `spark_rca` product graphs — **done** (approve+modify / approve-only)
 
 ---
 

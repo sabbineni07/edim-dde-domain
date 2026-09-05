@@ -22,6 +22,7 @@ def test_cluster_tuning_entrypoint_accepts_flat_input(bootstrapped_agents):
             "job_id": "langsmith-pilot-job",
             "cluster_id": "langsmith-pilot-cluster",
             "include_explanation": False,
+            "skip_hitl": True,
             "metrics": {
                 "azure_worker_vm_size": "Standard_D8s_v5",
                 "max_worker_nodes_provisioned": 16,

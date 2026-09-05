@@ -498,3 +498,59 @@ def prepare_explanation_payload(state: dict[str, Any]) -> dict[str, Any]:
         "risk_assessment_text": dumps(state.get("risk_assessment") or {}),
         "historical_context": history,
     }
+
+
+def apply_hitl_outcome(state: dict[str, Any]) -> dict[str, Any]:
+    """Apply post-gate HITL outcome for cluster_tuning (product DTO reshape).
+
+    Framework resume already merges allowlisted patch keys into
+    ``recommendation`` (via ``hitl.patch_target``). This node normalizes aliases
+    and refreshes ``comparison.recommended`` for the API projection.
+    """
+    decision = str(state.get("hitl_decision") or "").strip().lower()
+    recommendation = dict(state.get("recommendation") or {})
+    comparison = dict(state.get("comparison") or {})
+
+    if decision == "rejected":
+        return {
+            "hitl_outcome": "rejected",
+            "status": "rejected",
+            "recommendation": recommendation,
+            "comparison": comparison,
+            "hitl_next": "end",
+        }
+
+    if decision == "modified":
+        # Alias normalization for operators who patch short names.
+        if "azure_node_type" in recommendation and "recommended_node_type" not in recommendation:
+            recommendation["recommended_node_type"] = recommendation["azure_node_type"]
+        if "max_workers" in recommendation and "recommended_max_workers" not in recommendation:
+            recommendation["recommended_max_workers"] = recommendation["max_workers"]
+        if "min_workers" in recommendation and "recommended_min_workers" not in recommendation:
+            recommendation["recommended_min_workers"] = recommendation["min_workers"]
+        recommended_view = dict(comparison.get("recommended") or {})
+        if "recommended_node_type" in recommendation:
+            recommended_view["azure_node_type"] = recommendation["recommended_node_type"]
+        if "recommended_max_workers" in recommendation:
+            recommended_view["max_workers"] = recommendation["recommended_max_workers"]
+        if "recommended_min_workers" in recommendation:
+            recommended_view["min_workers"] = recommendation["recommended_min_workers"]
+        for key in ("node_family", "vcpus", "auto_termination_minutes"):
+            if key in recommendation:
+                recommended_view[key] = recommendation[key]
+        comparison["recommended"] = recommended_view
+
+    return {
+        "hitl_outcome": decision or "approved",
+        "status": "completed",
+        "recommendation": recommendation,
+        "comparison": comparison,
+        "reason_codes": list(
+            recommendation.get("reason_codes") or state.get("reason_codes") or []
+        ),
+        "hitl_next": (
+            "explain"
+            if bool(state.get("include_explanation"))
+            else "end"
+        ),
+    }

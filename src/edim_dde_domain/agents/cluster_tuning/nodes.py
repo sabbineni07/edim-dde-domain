@@ -20,6 +20,7 @@ Registered type ids
 * ``domain.tuning.validate_performance``
 * ``domain.tuning.assess_risks``
 * ``domain.tuning.generate_recommendation``
+* ``domain.tuning.apply_hitl_outcome`` — post-gate approve / reject / modify
 * ``domain.tuning.prepare_explanation_payload``
 
 Importing this module (via domain bootstrap) is enough to register the nodes.
@@ -170,6 +171,23 @@ def generate_recommendation_factory(_config: dict[str, Any]):
 
     def _node(state: dict[str, Any]) -> dict[str, Any]:
         return logic.generate_recommendation(state)
+
+    return _node
+
+
+@register_node("domain.tuning.apply_hitl_outcome")
+def apply_hitl_outcome_factory(_config: dict[str, Any]):
+    """Apply HITL approve / reject / modify after ``hitl.gate``.
+
+    Args:
+        _config: Unused.
+
+    Returns:
+        Node callable updating ``recommendation`` / ``status`` / ``hitl_outcome``.
+    """
+
+    def _node(state: dict[str, Any]) -> dict[str, Any]:
+        return logic.apply_hitl_outcome(state)
 
     return _node
 

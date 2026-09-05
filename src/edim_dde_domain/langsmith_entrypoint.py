@@ -9,6 +9,10 @@ Note:
   process — not ``EDIM_CHECKPOINTER``. This entrypoint does not attach the
   FastAPI session router; use ACA Native for initialize/converse/regenerate.
 
+  Product HITL (``hitl.gate`` on tuning/RCA) raises ``HitlPaused`` on a raw
+  compiled graph. FastAPI unwraps that via ``MetadataAgent``. For Agent Server
+  smoke / flat invokes, pass ``skip_hitl: true`` until native interrupt wiring.
+
 Graph construction must remain free of network calls and user-specific credentials.
 """
 

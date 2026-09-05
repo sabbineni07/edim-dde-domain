@@ -44,6 +44,17 @@ memory:
   max_tokens: 4000
   max_chars: 16000
 
+# Product HITL: approve-only (no modified / patch).
+# Offline / dry tests may pass skip_hitl: true to bypass the gate.
+metadata:
+  owner: platform
+  risk_tier: medium
+  lifecycle: approved
+  hitl_required: true
+hitl:
+  enabled: true
+  decisions: [approved, rejected]
+
 session:
   initialize_entry: collect_failure_anchors
   # Converse: explain / Q&A on checkpointed evidence + result (no SQL recollect).
@@ -330,6 +341,11 @@ graph:
       type: domain.rca.validate_output
     - id: evaluate_output
       type: domain.rca.evaluate_output
+    - id: hitl_review
+      type: hitl.gate
+      prompt: Approve or reject this Spark RCA diagnosis?
+    - id: apply_hitl_outcome
+      type: hitl.apply_outcome
     - id: prepare_explanation_payload
       type: domain.rca.prepare_explanation_payload
     - id: generate_explanation
@@ -356,6 +372,8 @@ graph:
     - [synthesize, parse_llm_json]
     - [parse_llm_json, validate_output]
     - [validate_output, evaluate_output]
-    - [evaluate_output, END]
+    - [evaluate_output, hitl_review]
+    - [hitl_review, apply_hitl_outcome]
+    - [apply_hitl_outcome, END]
     - [prepare_explanation_payload, generate_explanation]
     - [generate_explanation, END]

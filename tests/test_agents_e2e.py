@@ -30,6 +30,7 @@ def test_spark_rca_with_evidence_override(bootstrapped_agents):
     agent = create_agent("spark_rca")
     out = agent.invoke(
         {
+            "skip_hitl": True,
             "job_run_id": "jr-1",
             "job_id": "j-1",
             "evidence_pack": {
@@ -55,6 +56,7 @@ def test_spark_rca_sql_error_override(bootstrapped_agents):
     agent = create_agent("spark_rca")
     out = agent.invoke(
         {
+            "skip_hitl": True,
             "job_run_id": "jr-1",
             "job_id": "j-1",
             "evidence_pack": {
@@ -72,6 +74,7 @@ def test_cluster_tuning_with_explanation(bootstrapped_agents):
     agent = create_agent("cluster_tuning")
     out = agent.invoke(
         {
+            "skip_hitl": True,
             "job_id": "j-1",
             "cluster_id": "c-1",
             "include_explanation": True,
@@ -109,6 +112,7 @@ def test_spark_rca_session_initialize_converse_regenerate(bootstrapped_agents):
     }
     first = agent.invoke(
         {
+            "skip_hitl": True,
             "job_run_id": "jr-session-1",
             "job_id": "j-session-1",
             "evidence_pack": evidence,
@@ -159,6 +163,7 @@ def test_cluster_tuning_low_util_quality_gate(bootstrapped_agents):
     }
     out = create_agent("cluster_tuning").invoke(
         {
+            "skip_hitl": True,
             "job_id": "j-quality-1",
             "cluster_id": "c-quality-1",
             "include_explanation": False,
@@ -180,6 +185,7 @@ def test_cluster_tuning_skips_explanation(bootstrapped_agents):
     agent = create_agent("cluster_tuning")
     out = agent.invoke(
         {
+            "skip_hitl": True,
             "job_id": "j-1",
             "cluster_id": "c-1",
             "include_explanation": False,
@@ -240,6 +246,7 @@ def test_cluster_tuning_guardrail_retry_loop(bootstrapped_agents):
         agent = create_agent("cluster_tuning")
         out = agent.invoke(
             {
+                "skip_hitl": True,
                 "job_id": "j-1",
                 "cluster_id": "c-1",
                 "include_explanation": False,
