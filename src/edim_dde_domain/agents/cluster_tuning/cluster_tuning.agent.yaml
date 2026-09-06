@@ -1,3 +1,13 @@
+# =============================================================================
+# cluster_tuning — product agent (DBX job/cluster sizing)
+# =============================================================================
+# Not a minimal template — copy patterns from edim-dde-ai/examples/agents/ first.
+# Field contract: docs/framework/yaml-schema.md
+# HITL policy: docs/framework/hitl-resume.md
+# Session modes: memory + session below → initialize / converse / regenerate
+# SQL skipped in dry smoke via request "metrics" override (API).
+# =============================================================================
+
 agent_id: cluster_tuning
 display_name: DBX Cluster Tuning
 version: 1

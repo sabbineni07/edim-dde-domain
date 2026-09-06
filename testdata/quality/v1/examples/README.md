@@ -1,11 +1,13 @@
 # Quality corpus examples (not scored by default)
 
-Files here are **reference shapes** for engineers. They are **not** listed in
-`../manifest.yaml`, so offline CI / default harness runs ignore them.
+Files here are **reference shapes** for engineers (`.example.json` suffix).
+They are **not** listed in `../manifest.yaml`, so offline CI / default harness
+runs ignore them. Do not confuse with agent YAML templates under
+`edim-dde-ai/examples/agents/`.
 
 | File | Purpose |
 |------|---------|
-| `rca_executor_oom_invoke.example.json` | Same OOM axis as v1, plus `invoke_input` for `--live` |
+| `rca_executor_oom_invoke.example.json` | Same OOM axis as v1, plus `invoke_input` for `--live` (Foundry yes, SQL skipped via pack) |
 
 To try live:
 

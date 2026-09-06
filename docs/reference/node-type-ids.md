@@ -19,7 +19,7 @@ Allowlisted node **`type`** strings registered by the framework and domain packa
 | `set_value` | Set a field (literal or `{template}`) |
 | `echo_result` | Build `result` from listed fields |
 | `llm_chain` | Prompt + skills + LLMProvider / invoker |
-| `invoke_agent` | Call another registered agent (subgraph spike; depth-limited) |
+| `invoke_agent` | Embed another registered agent as a LangGraph subgraph (mapped I/O or shared-state). In-process only; not remote A2A |
 | `rag.retrieve` | Similarity / hybrid search via RetrievalProvider |
 | `web.search` | Opt-in public-web enrichment via WebSearchProvider (bounded, allowlisted, fail-open) |
 | `hitl.gate` | Pause for human approval; persist StateStore session; resume via `/api/v1/sessions/{id}/resume` |

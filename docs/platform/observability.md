@@ -44,7 +44,9 @@ ObservabilityProvider.merge_invoke_kwargs(base_config)
 | **`edim-dde-api`** | `configure_observability_from_env()` on lifespan; passes `request_id` on invoke |
 | **`edim-dde-domain`** | No vendor SDK — product agents stay free of tracing imports |
 
-All agents (HTTP, CLI, plugins, `invoke_agent` children) go through `MetadataAgent.invoke`, which calls the active provider — **Facade** over LangGraph config enrichment.
+All **top-level** agent invokes (HTTP, CLI, plugins) go through `MetadataAgent.invoke`, which calls the active provider — **Facade** over LangGraph config enrichment.
+
+**Note:** in-process `invoke_agent` children are embedded as LangGraph **subgraphs** at parent compile time. They do **not** each go through a separate `MetadataAgent.invoke` phone-call. Nested streaming/tracing follows LangGraph subgraph semantics; parent-level tags still come from the outer `MetadataAgent` invoke.
 
 ---
 

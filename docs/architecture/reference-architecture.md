@@ -137,7 +137,7 @@ YAML graph nodes
   │  domain.sql.query → sources.resolve → auth token → warehouse → UC Delta
   │  domain.tuning.*  → sizing / guardrails / risk
   │  llm_chain        → ContentHub prompts + Foundry
-  │  (optional) invoke_agent → nested agent with depth limit
+  │  (optional) invoke_agent → nested agent as LangGraph subgraph (in-process)
   ▼
 Response projection
   │  Map agent state → TuningResponse / RcaResponse (never dump full state)

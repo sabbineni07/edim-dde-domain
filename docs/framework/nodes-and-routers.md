@@ -66,7 +66,7 @@ def step_factory(config: dict):
 | `set_value` | Set a field (literal or `{template}`) |
 | `echo_result` | Build `result` from listed fields |
 | `llm_chain` | Prompts + skills + LLMProvider / chain invoker |
-| `invoke_agent` | Nested agent call (depth-limited) |
+| `invoke_agent` | Embed another registered agent as a LangGraph **subgraph** at compile time (`input_keys` / `output_map` / `max_depth`). In-process only — [Orchestration](orchestration-topology.md) |
 | `rag.retrieve` | Similarity / hybrid search via RetrievalProvider |
 | `hitl.gate` | Pause for human approval (StateStore session). [HITL resume](hitl-resume.md) |
 

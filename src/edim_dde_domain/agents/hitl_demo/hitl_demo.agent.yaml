@@ -1,29 +1,45 @@
+# =============================================================================
+# hitl_demo (domain pack) — same graph as edim-dde-ai/examples/agents/hitl_demo
+# =============================================================================
+# Bundled so the API bootstrap registers HITL for HTTP session smoke.
+# Prefer editing the framework example when documenting the pattern; keep this
+# file in sync for runtime.
+# =============================================================================
+
 agent_id: hitl_demo
 display_name: HITL resume demo
 version: 1
+
 metadata:
   owner: platform
-  risk_tier: low
-  lifecycle: draft
-  hitl_required: true
+  risk_tier: low            # low | medium | high
+  lifecycle: draft          # draft | review | approved | deprecated
+  hitl_required: true       # catalog / governance flag
+
 hitl:
-  enabled: true
+  enabled: true             # false → hitl.gate nodes pass through
+
 graph:
   nodes:
     - id: draft
       type: set_value
       field: proposal
       template: "resize-{name}"
+
     - id: approve
       type: hitl.gate
       prompt: Approve the proposed action?
+
     - id: finish
       type: set_value
       field: status
       template: "done:{hitl_decision}"
+
     - id: pack
       type: echo_result
-      from_fields: [name, proposal, hitl_decision, hitl_comment, status, session_id]
+      from_fields:
+        [name, proposal, hitl_decision, hitl_comment, status, session_id]
+
   edges:
     - [START, draft]
     - [draft, approve]

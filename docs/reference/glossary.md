@@ -38,6 +38,9 @@ Definitions of organizational names (**EDIM**, **DDE**) and platform terms used 
 | **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Checkpointer** | LangGraph session backend for multi-turn analysis: `memory` \| `postgres` via `EDIM_CHECKPOINTER` |
 | **Conversation memory** | Bounded user/assistant context in graph checkpoints, selected by an agent's YAML `memory` + `session` policy; separate from HITL sessions and product recommendation history |
+| **`invoke_agent`** | YAML node that embeds another **in-process** registered agent as a LangGraph subgraph (mapped I/O or shared state). Not remote / cross-app A2A |
+| **Subgraph (LangGraph)** | Child compiled graph attached under a parent node; EDIM uses this as the runtime for `invoke_agent` |
+| **Remote A2A / `remote_invoke_agent`** | Cross-app agent call — **not implemented** (parked); see [Agent deployment](../architecture/agent-deployment-and-composition.md) §1b |
 | **RecommendationStore** | Pluggable product-history backend for tuning (and future) recommendations: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Experience index** | Derived resource-feature/action cards from RecommendationStore writes, upserted into a RetrievalProvider corpus for **feature** similarity (not job_id); see Retrieval & RAG §6c |
 | **Agent catalog** | Metadata rows (`AgentRecord`) synced from registered YAML agents at bootstrap |

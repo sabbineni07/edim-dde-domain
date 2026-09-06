@@ -5,25 +5,30 @@
 
 ## Chapter summary
 
-Multi-agent composition under the rule **one LangGraph per agent**, using allowlisted `invoke_agent` for subgraph / agent-to-agent calls. Deployment topology choices live in Part B.
+Multi-agent composition under the rule **one YAML agent → one compile unit**,
+using allowlisted `invoke_agent` which **embeds the child as a LangGraph
+subgraph** at parent compile time. Deployment topology choices live in Part B.
 
 **Outcome:** you compose agents in-process without ad-hoc Python orchestration in YAML.
 
 ---
 
-How multi-agent composition works without breaking the “one LangGraph per agent” rule.
+How multi-agent composition works without breaking the “one compile unit per agent id” packaging rule.
 
 ---
 
 ## 1. Rule
 
-**One LangGraph per agent.** Compose multi-agent behavior with an allowlisted **`invoke_agent`** node (subgraph / agent-to-agent call), not ad-hoc Python in YAML.
+**One YAML agent definition per agent id.** At compile time, parent graphs
+**embed** children as LangGraph subgraphs (not a runtime phone-call to
+`create_agent`). Authors still declare composition with allowlisted
+**`invoke_agent`**.
 
 ```text
 parent.agent.yaml
   nodes:
     - prepare
-    - call_rca:   type: invoke_agent   → spark_rca
+    - call_rca:   type: invoke_agent   → spark_rca  (compiled subgraph)
     - summarize
 ```
 
@@ -34,16 +39,16 @@ parent.agent.yaml
 | Pattern | Role |
 |---------|------|
 | **Composite** (structural) | Parent graph treats child agent as a node |
-| **Facade** | `create_agent(child_id).invoke` hides child graph internals |
-| **Template Method** | Child still runs through `MetadataAgent.invoke` |
-| **Guard** | `max_depth` + refuse direct self-call |
+| **LangGraph subgraph** | Shared state → `add_node(compiled_child)`; mapped I/O → wrapper + `child.invoke` |
+| **Facade** | Product still invokes `create_agent(parent_id)` |
+| **Guard** | Compile-time `max_depth`, refuse self-call / cycles; session children refused |
 
 ```text
-Parent MetadataAgent
+Parent MetadataAgent (compile)
   → invoke_agent node
-       → create_agent(target)     # Factory Method
-       → child.invoke(subset)     # depth contextvar++
-       → map outputs into parent state
+       → build_graph(child)           # plain flat child, recursive embeds
+       → add_node(id, compiled)       # native when no input_keys/output_map
+         or mapped wrapper            # when I/O map set
 ```
 
 ---
@@ -53,11 +58,15 @@ Parent MetadataAgent
 | Config key | Required | Meaning |
 |------------|----------|---------|
 | `agent_id` | yes | Target registered agent |
-| `input_keys` | no | List of state keys to pass (default: all) |
-| `output_map` | no | Map `child_key` → `parent_key` for results merged into parent state |
-| `max_depth` | no | Max nested invoke depth (default `3`) |
+| `input_keys` | no | List of state keys to pass (default: **shared state** / native subgraph) |
+| `output_map` | no | Map `child_key` → `parent_key` (implies mapped wrapper) |
+| `max_depth` | no | Max nested embed depth (default `3`) |
 
-Cycle / depth protection uses a contextvar stack. Exceeding `max_depth` raises an error. Direct `A → A` self-call is refused.
+- **No `input_keys` / `output_map`:** child is attached with LangGraph
+  `add_node(compiled_subgraph)` (shared flat `AgentState`).
+- **With map:** LangGraph “call subgraph inside a node” with key transforms.
+- Cycle / self-call / depth are checked **at compile time**.
+- Session-enabled agents cannot be embed targets (use a plain child agent).
 
 Child YAML stays a separate file — the parent only **references** `agent_id`.
 
@@ -65,7 +74,9 @@ Child YAML stays a separate file — the parent only **references** `agent_id`.
 
 ## 4. Example
 
-See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_agent_child.agent.yaml`.
+See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` (mapped),
+`invoke_agent_native_parent.agent.yaml` (shared-state), and
+`invoke_agent_child.agent.yaml`.
 
 ---
 
@@ -75,6 +86,7 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 - Cross-agent long-term memory  
 - Capability-based router across a marketplace of agents (later)  
 - HITL interrupt nodes — **shipped:** [HITL resume](hitl-resume.md)  
+- HITL `skip_until_resume` around *native* shared-state subgraph nodes (mapped embeds still wrap skip)
 
 ---
 
@@ -90,7 +102,7 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` and `invoke_age
 
 ## Summary
 
-- Use `invoke_agent` for composition; keep one compiled graph per agent id.
+- Use `invoke_agent` for composition; runtime is LangGraph subgraphs, not a separate phone-call orchestrator.
 - Cross-app routing and control plane are design/parked elsewhere.
 
 **Next →** [HITL resume](hitl-resume.md)

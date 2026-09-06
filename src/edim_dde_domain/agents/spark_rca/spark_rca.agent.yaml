@@ -1,3 +1,12 @@
+# =============================================================================
+# spark_rca — product agent (Spark job root-cause analysis)
+# =============================================================================
+# Not a minimal template — start from edim-dde-ai/examples/agents/ for patterns.
+# Field contract: docs/framework/yaml-schema.md
+# Dry smoke: pass "evidence_pack" override to skip Databricks SQL collect.
+# HITL: approve-only (see hitl.decisions / patch policy below).
+# =============================================================================
+
 agent_id: spark_rca
 display_name: Spark Job RCA
 version: 1

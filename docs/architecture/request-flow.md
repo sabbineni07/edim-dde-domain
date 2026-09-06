@@ -36,7 +36,7 @@ Lifecycle of a typical `POST /api/v1/cluster_tuning/recommend` call:
         • domain.sql.query (or skip if metrics override present)
         • domain.tuning.* logic nodes
         • llm_chain (sizing / explanation) when configured
-        • optional invoke_agent nested calls
+        • optional invoke_agent nested calls (compile-time subgraphs; same process)
 
 5. Side channels
    └─ Observability: LangSmith / MLflow when configured

@@ -51,11 +51,27 @@ def classify_failure_factory(_config: dict):
 
 | Category | Example type ids |
 |----------|------------------|
-| Framework builtins | `passthrough`, `llm_chain`, `invoke_agent`, `rag.retrieve`, `hitl.gate` |
+| Framework builtins | `passthrough`, `llm_chain`, `invoke_agent` (in-process subgraph), `rag.retrieve`, `hitl.gate` |
 | Shared domain | `domain.sql.query` |
 | Product / plugin | `domain.tuning.*`, `domain.rca.*` |
 
 **Pattern:** Strategy — YAML selects behavior by allowlisted `type`; YAML **must not** embed Python import paths.
+
+### Composition (`invoke_agent`)
+
+```text
+Same app, many agents
+  parent YAML: type: invoke_agent, agent_id: child
+       │
+       ▼ compile time
+  child graph embedded as LangGraph subgraph
+       │
+       ├─ with input_keys / output_map → mapped I/O wrapper
+       └─ without map → native shared-state add_node(compiled)
+```
+
+In-process only. Cross-app / externally hosted agents are **not** this node
+(parked as `remote_invoke_agent`). Details: [Orchestration topology](../framework/orchestration-topology.md).
 
 ---
 

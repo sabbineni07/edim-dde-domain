@@ -56,7 +56,7 @@ Track what the **runtime supports today** vs what is **design-only**. Expand row
 | Capability | Status | Notes |
 |------------|--------|--------|
 | **Option A — single app, many agents** | **Supported** | One `edim-dde-api` + `bootstrap_agents` loads bundled + `EDIM_AGENT_DIRS` / entry-point packs into one registry |
-| **In-process agent→agent** | **Supported** | Builtin `invoke_agent` (`agent_id`, I/O map, `max_depth`) — [Orchestration topology](../framework/orchestration-topology.md) |
+| **In-process agent→agent** | **Supported** | Builtin `invoke_agent` embeds children as LangGraph subgraphs (`agent_id`, optional I/O map, `max_depth`) — [Orchestration topology](../framework/orchestration-topology.md) |
 | **Single-agent BU pack** | **Supported** | One pack on a shared runtime, or a small app that only loads that pack |
 | **Option B — multiple apps by domain** | **Partial (ops only) · parked** | Multiple Apps/ACA deploys with different packs are possible; **no** first-class cross-app YAML wiring. **Do not implement** until [agent control plane](agent-control-plane.md) review (2026-08-18). |
 | **Option C — hub + location catalog** | **Not supported · parked** | No `local` / `remote` location map; StateStore catalog is metadata sync, not routing. **Superseded for design** by [agent control plane](agent-control-plane.md). |
