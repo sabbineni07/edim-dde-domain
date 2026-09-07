@@ -1,0 +1,27 @@
+# =============================================================================
+# compose_leaf — plain child for in-process compose_parent (ADR-001 Phase 1)
+# =============================================================================
+# Non-session agent so it can be embedded as a LangGraph subgraph.
+# Product RCA/tuning remain session-enabled and are NOT valid invoke_agent
+# targets until a non-session pack variant exists.
+# =============================================================================
+
+agent_id: compose_leaf
+display_name: Compose demo leaf
+version: 1
+
+metadata:
+  owner: platform
+  risk_tier: low
+  lifecycle: draft
+
+graph:
+  nodes:
+    - id: greet
+      type: set_value
+      field: greeting
+      template: "composed-{name}"
+
+  edges:
+    - [START, greet]
+    - [greet, END]

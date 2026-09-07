@@ -1,0 +1,40 @@
+# =============================================================================
+# compose_parent — product/demo parent using invoke_agent (ADR-001 Phase 1)
+# =============================================================================
+# Demonstrates mapped I/O composition with correlation (request_id / span_id)
+# flowing into the child subgraph. Register via bootstrap with compose_leaf.
+#
+# HITL note: do not embed session-enabled or HITL-gated children as subgraphs;
+# resume the parent session and keep gates on the parent (see orchestration
+# topology + hitl-resume guides).
+# =============================================================================
+
+agent_id: compose_parent
+display_name: Compose demo parent
+version: 1
+
+metadata:
+  owner: platform
+  risk_tier: low
+  lifecycle: draft
+
+graph:
+  nodes:
+    - id: seed
+      type: set_value
+      field: name
+      value: demo
+
+    - id: call_leaf
+      type: invoke_agent
+      agent_id: compose_leaf
+      input_keys: [name, request_id]
+      output_map:
+        greeting: leaf_greeting
+      max_depth: 3
+      resolve: local
+
+  edges:
+    - [START, seed]
+    - [seed, call_leaf]
+    - [call_leaf, END]

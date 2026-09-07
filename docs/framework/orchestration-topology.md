@@ -6,10 +6,11 @@
 ## Chapter summary
 
 Multi-agent composition under the rule **one YAML agent → one compile unit**,
-using allowlisted `invoke_agent` which **embeds the child as a LangGraph
-subgraph** at parent compile time. Deployment topology choices live in Part B.
+using allowlisted `invoke_agent`. The framework resolves **local LangGraph
+subgraph** vs **remote dial** ([ADR-001](../architecture/adr-001-agent-directory-and-unified-invoke.md)).
+Deployment topology choices live in Part B.
 
-**Outcome:** you compose agents in-process without ad-hoc Python orchestration in YAML.
+**Outcome:** you compose agents with one YAML surface; no URLs in graphs.
 
 ---
 
@@ -19,16 +20,19 @@ How multi-agent composition works without breaking the “one compile unit per a
 
 ## 1. Rule
 
-**One YAML agent definition per agent id.** At compile time, parent graphs
-**embed** children as LangGraph subgraphs (not a runtime phone-call to
-`create_agent`). Authors still declare composition with allowlisted
-**`invoke_agent`**.
+**One YAML agent definition per agent id.** Authors declare composition with
+**`invoke_agent`** + logical `agent_id`. At resolve time:
+
+| Outcome | When |
+|---------|------|
+| **Local subgraph** | Pack loaded and policy allows (`resolve=auto\|local`) |
+| **Remote dial** | Directory/overlay says remote → HTTP dialer (`resolve=auto\|remote`) |
 
 ```text
 parent.agent.yaml
   nodes:
     - prepare
-    - call_rca:   type: invoke_agent   → spark_rca  (compiled subgraph)
+    - call_child: type: invoke_agent → compose_leaf  (subgraph or HTTP)
     - summarize
 ```
 
@@ -40,15 +44,15 @@ parent.agent.yaml
 |---------|------|
 | **Composite** (structural) | Parent graph treats child agent as a node |
 | **LangGraph subgraph** | Shared state → `add_node(compiled_child)`; mapped I/O → wrapper + `child.invoke` |
+| **Remote dial** | Same YAML; `edim_dde_ai.a2a` dialer posts to peer `/agents/{id}/invoke` |
 | **Facade** | Product still invokes `create_agent(parent_id)` |
-| **Guard** | Compile-time `max_depth`, refuse self-call / cycles; session children refused |
+| **Guard** | Compile-time `max_depth`, refuse self-call / cycles; session children refused (local) |
 
 ```text
 Parent MetadataAgent (compile)
-  → invoke_agent node
-       → build_graph(child)           # plain flat child, recursive embeds
-       → add_node(id, compiled)       # native when no input_keys/output_map
-         or mapped wrapper            # when I/O map set
+  → resolve(agent_id)           # auto | local | remote
+  → local: build_graph(child) → native or mapped subgraph
+  → remote: dialer node (HTTP …)
 ```
 
 ---
@@ -57,36 +61,52 @@ Parent MetadataAgent (compile)
 
 | Config key | Required | Meaning |
 |------------|----------|---------|
-| `agent_id` | yes | Target registered agent |
+| `agent_id` | yes | Target logical agent (never a URL) |
 | `input_keys` | no | List of state keys to pass (default: **shared state** / native subgraph) |
 | `output_map` | no | Map `child_key` → `parent_key` (implies mapped wrapper) |
-| `max_depth` | no | Max nested embed depth (default `3`) |
+| `max_depth` | no | Max nested **local** embed depth (default `3`) |
+| `resolve` | no | `auto` (default via `EDIM_AGENT_RESOLVE`) \| `local` \| `remote` |
 
 - **No `input_keys` / `output_map`:** child is attached with LangGraph
   `add_node(compiled_subgraph)` (shared flat `AgentState`).
-- **With map:** LangGraph “call subgraph inside a node” with key transforms.
-- Cycle / self-call / depth are checked **at compile time**.
-- Session-enabled agents cannot be embed targets (use a plain child agent).
+- **With map:** LangGraph “call subgraph inside a node” with key transforms;
+  child invoke receives LangGraph `config` with shared `request_id` and per-hop
+  `span_id` / `parent_span_id`.
+- Cycle / self-call / depth are checked **at compile time** (local path).
+- Session-enabled agents cannot be **local** embed targets (use a plain child).
 
 Child YAML stays a separate file — the parent only **references** `agent_id`.
 
+### HITL interaction
+
+- Prefer HITL gates on the **parent** (or a dedicated session agent).
+- Do **not** embed session-enabled / checkpointer children as subgraphs.
+- Mapped embeds wrap `skip_until_resume`; native shared-state subgraphs re-enter
+  on resume (see [HITL resume](hitl-resume.md)).
+- Cross-app HITL remains out of scope (resume against the runtime that owns the session).
+
 ---
 
-## 4. Example
+## 4. Examples
 
-See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` (mapped),
-`invoke_agent_native_parent.agent.yaml` (shared-state), and
-`invoke_agent_child.agent.yaml`.
+| Location | Role |
+|----------|------|
+| `edim-dde-ai/examples/agents/invoke_agent_*.agent.yaml` | Framework mapped / native demos |
+| Domain `compose_parent` → `compose_leaf` | Bootstrapped product/demo parent (Phase 1) |
 
 ---
 
-## 5. Not in current scope
+## 5. Related ADR surfaces
 
-- Cross-app remote invoke and agent control plane — **parked / design review:** [Agent control plane](../architecture/agent-control-plane.md) · [Agent deployment & composition](../architecture/agent-deployment-and-composition.md)  
-- Cross-agent long-term memory  
-- Capability-based router across a marketplace of agents (later)  
-- HITL interrupt nodes — **shipped:** [HITL resume](hitl-resume.md)  
-- HITL `skip_until_resume` around *native* shared-state subgraph nodes (mapped embeds still wrap skip)
+| Surface | Role |
+|---------|------|
+| `GET/POST /api/v1/directory/*` | Bindings + register heartbeat |
+| `POST /api/v1/agents/{id}/invoke` | Generic flat-state receiver (remote dial target) |
+| `EDIM_AGENT_RESOLVE` | Process default `auto\|local\|remote` |
+| `EDIM_AGENT_DIRECTORY_JSON` / `EDIM_DIRECTORY_URL` | Binding overlay / remote directory |
+
+Still out of scope: cross-agent long-term memory; marketplace capability router;
+full separate control-plane product (Phase 5 extract).
 
 ---
 
@@ -94,16 +114,17 @@ See `edim-dde-ai/examples/agents/invoke_agent_parent.agent.yaml` (mapped),
 
 | Doc | Topic |
 |-----|--------|
-| [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | Option A/B/C topologies; DE SDLC; cross-app |
-| [Agent control plane](../architecture/agent-control-plane.md) | **Design review** — governance, location registry, routing (Option B/C parked) |
-| [HITL resume](hitl-resume.md) | `hitl.gate` + StateStore sessions (not LangGraph checkpointer) |
-| [YAML schema — session](yaml-schema.md#session) | Multi-turn initialize/converse/regenerate + `EDIM_CHECKPOINTER` |
+| [ADR-001](../architecture/adr-001-agent-directory-and-unified-invoke.md) | Unified invoke + directory phasing |
+| [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | Deploy shapes; §1b matrix |
+| [Agent control plane](../architecture/agent-control-plane.md) | Legacy deep design (reference) |
+| [HITL resume](hitl-resume.md) | `hitl.gate` + StateStore sessions |
+| [YAML schema — session](yaml-schema.md#session) | Multi-turn + `EDIM_CHECKPOINTER` |
 | [External plugins](../build-agents/external-plugins.md) | Loading packs into one runtime |
 
 ## Summary
 
-- Use `invoke_agent` for composition; runtime is LangGraph subgraphs, not a separate phone-call orchestrator.
-- Cross-app routing and control plane are design/parked elsewhere.
+- One YAML `invoke_agent`; framework resolves local subgraph vs network dial.
+- Correlation (`request_id` / `span_id`) flows on mapped local and HTTP hops.
 
 **Next →** [HITL resume](hitl-resume.md)
 

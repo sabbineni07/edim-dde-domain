@@ -31,16 +31,16 @@ Definitions of organizational names (**EDIM**, **DDE**) and platform terms used 
 | **LangSmith** | LangChain tracing / eval product used for EDIM observability |
 | **Observability provider** | Pluggable backend in `edim-dde-ai` (`langsmith` \| `mlflow` \| `none`) |
 | **Control plane** | Catalog, sessions, audit — managed via `StateStore`, not SQL/LLM work. **Not** the future routing/governance plane — see [Agent control plane](../architecture/agent-control-plane.md) |
-| **Agent control plane** | **Design only:** live location/policy/health repository + optional gateway. Does not execute graphs. Option B/C parked pending review |
-| **Location registry** | Future: `agent_id` + env → where to invoke (not `AgentRecord` routing). Design: [Agent control plane](../architecture/agent-control-plane.md) |
-| **`span_id` / `parent_span_id`** | Proposed per-invoke ids under a shared `request_id` for nested/remote agents. **Not implemented** — see control-plane §12 |
+| **Agent control plane** | **Legacy design:** live location/policy/health + optional gateway — see [agent-control-plane.md](../architecture/agent-control-plane.md). **Build spine:** [ADR-001](../architecture/adr-001-agent-directory-and-unified-invoke.md) |
+| **Location registry / Agent Directory** | Logical `agent_id` → binding (local/remote). Phase 2: `GET /api/v1/directory/*` on the API host |
+| **`span_id` / `parent_span_id`** | Per-hop ids under a shared `request_id` for nested/remote `invoke_agent` (mapped local + HTTP dial headers). |
 | **Data plane** | LangGraph execution, Databricks SQL, Foundry LLM |
 | **StateStore** | Pluggable control-plane backend: `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Checkpointer** | LangGraph session backend for multi-turn analysis: `memory` \| `postgres` via `EDIM_CHECKPOINTER` |
 | **Conversation memory** | Bounded user/assistant context in graph checkpoints, selected by an agent's YAML `memory` + `session` policy; separate from HITL sessions and product recommendation history |
 | **`invoke_agent`** | YAML node that embeds another **in-process** registered agent as a LangGraph subgraph (mapped I/O or shared state). Not remote / cross-app A2A |
 | **Subgraph (LangGraph)** | Child compiled graph attached under a parent node; EDIM uses this as the runtime for `invoke_agent` |
-| **Remote A2A / `remote_invoke_agent`** | Cross-app agent call — **not implemented** (parked); see [Agent deployment](../architecture/agent-deployment-and-composition.md) §1b |
+| **Remote A2A** | Cross-process agent call via directory resolve + dialer (ADR-001 Phases 3–4). Not a separate default YAML node type |
 | **RecommendationStore** | Pluggable product-history backend for tuning (and future) recommendations: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` |
 | **Experience index** | Derived resource-feature/action cards from RecommendationStore writes, upserted into a RetrievalProvider corpus for **feature** similarity (not job_id); see Retrieval & RAG §6c |
 | **Agent catalog** | Metadata rows (`AgentRecord`) synced from registered YAML agents at bootstrap |

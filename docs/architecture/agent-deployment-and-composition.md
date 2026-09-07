@@ -1,7 +1,7 @@
 # Agent deployment & composition
 
 **Learning path:** B9 · [Preface](../README.md)  
-**← Previous:** [Config → observability](config-to-observability.md) · **Next:** [Agent control plane (design)](agent-control-plane.md) →
+**← Previous:** [Config → observability](config-to-observability.md) · **Next:** [ADR-001 Directory](adr-001-agent-directory-and-unified-invoke.md) →
 
 ## Chapter summary
 
@@ -58,15 +58,19 @@ Track what the **runtime supports today** vs what is **design-only**. Expand row
 | **Option A — single app, many agents** | **Supported** | One `edim-dde-api` + `bootstrap_agents` loads bundled + `EDIM_AGENT_DIRS` / entry-point packs into one registry |
 | **In-process agent→agent** | **Supported** | Builtin `invoke_agent` embeds children as LangGraph subgraphs (`agent_id`, optional I/O map, `max_depth`) — [Orchestration topology](../framework/orchestration-topology.md) |
 | **Single-agent BU pack** | **Supported** | One pack on a shared runtime, or a small app that only loads that pack |
-| **Option B — multiple apps by domain** | **Partial (ops only) · parked** | Multiple Apps/ACA deploys with different packs are possible; **no** first-class cross-app YAML wiring. **Do not implement** until [agent control plane](agent-control-plane.md) review (2026-08-18). |
-| **Option C — hub + location catalog** | **Not supported · parked** | No `local` / `remote` location map; StateStore catalog is metadata sync, not routing. **Superseded for design** by [agent control plane](agent-control-plane.md). |
-| **Agent control plane / routing** | **Design review only** | Live location/policy/health repository; optional gateway. **Not R1.** [Full design](agent-control-plane.md). |
-| **Cross-app `remote_invoke_agent`** | **Not supported · parked** | Manual HTTP to another app’s API only |
+| **Unified YAML compose + Directory** | **Accepted · phased** | One `invoke_agent` surface; directory read APIs on API host (Phase 2 stubs). [ADR-001](adr-001-agent-directory-and-unified-invoke.md) |
+| **Agent Directory (read)** | **Stubbed (Phase 2)** | `GET /api/v1/directory/health\|agents\|agents/{id}`; register → 501 |
+| **Generic `/agents/{id}/invoke`** | **Not yet** | ADR-001 Phase 3 |
+| **Auto remote dial behind `invoke_agent`** | **Not yet** | ADR-001 Phase 4 |
+| **Option B — multiple apps by domain** | **Partial (ops only)** | Multiple ACA/Apps deploys possible; composition stays one YAML — prefer ADR-001 over YAML URL catalogs |
+| **Option C — hub + location catalog** | **Superseded** | Replaced by Agent Directory / ADR-001 (not hub YAML) |
+| **Separate directory / governance CP** | **Later (Phase 5)** | Extract directory service; policy/teams/cost — [legacy design](agent-control-plane.md) as reference |
+| **Cross-app `remote_invoke_agent` YAML type** | **Won't ship as default** | Prefer same `invoke_agent` + resolver; no URLs in graphs |
 | **Full DE SDLC orchestrator suite** | **Not shipped** | Documented target (§4); R1 ships operate-style agents (`cluster_tuning`, `spark_rca`) |
-| **Shared SDLC run state / HITL resume** | **Supported (MVP)** | `hitl.gate` + StateStore sessions + `POST /api/v1/sessions/{id}/resume`. Not product-wired on RCA/tuning. [HITL resume](../framework/hitl-resume.md) |
+| **Shared SDLC run state / HITL resume** | **Supported (MVP)** | `hitl.gate` + StateStore sessions + `POST /api/v1/sessions/{id}/resume`. [HITL resume](../framework/hitl-resume.md) |
 | **Parallel fan-out across agents** | **Same-app only** | Via graph design / multiple `invoke_agent` nodes in one process — not a distributed orchestrator |
 
-**Expand later without losing intent:** when implementing the [agent control plane](agent-control-plane.md) (or a signed-off Option B stopgap), update this table’s Status/Notes first, then tick the matching backlog items (§8 Related + product/platform backlogs).
+**Expand later without losing intent:** when completing ADR-001 phases, update this table’s Status/Notes first, then tick [`BACKLOG.md`](../../../BACKLOG.md) / BL-027.
 
 ---
 

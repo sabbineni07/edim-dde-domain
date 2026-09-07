@@ -29,6 +29,11 @@ Base app: `edim_dde_api.main:app`
 | POST | `/api/v1/sessions` | `{agent_id, state}` | `SessionResponse` (`waiting_hitl` or `completed`) |
 | GET | `/api/v1/sessions/{session_id}` | — | `SessionResponse` |
 | POST | `/api/v1/sessions/{session_id}/resume` | `{decision, comment?, patch?}` | `SessionResponse` (`closed` or paused again) |
+| GET | `/api/v1/directory/health` | — | `{status, env, agent_count, source}` (ADR-001) |
+| GET | `/api/v1/directory/agents` | — | `{env, agents: [AgentBinding…]}` |
+| GET | `/api/v1/directory/agents/{agent_id}` | — | `AgentBinding` or `404` |
+| POST | `/api/v1/directory/register` | `DirectoryRegisterRequest` | Upsert binding (heartbeat MVP) |
+| POST | `/api/v1/agents/{agent_id}/invoke` | `{input: {…}}` | Generic flat-state invoke envelope |
 
 HITL details: [HITL resume](../framework/hitl-resume.md) (YAML, HTTP, GoF map, why `HitlPaused` is not an error). Demo agent: `hitl_demo`. Product routes do not pause unless those graphs add a `hitl.gate`.
 

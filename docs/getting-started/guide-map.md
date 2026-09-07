@@ -46,7 +46,8 @@ This page is the **table of contents** for the EDIM DDE Engineer Guide. Sidebar 
 | **B7** | [Auth and SQL](../architecture/auth-and-sql.md) | Token resolution |
 | **B8** | [Config → observability](../architecture/config-to-observability.md) | YAML to traces |
 | **B9** | [Agent deployment](../architecture/agent-deployment-and-composition.md) | Hosting shapes |
-| **B9b** | [Control plane (design)](../architecture/agent-control-plane.md) | Parked — not R1 |
+| **B9b** | [Control plane (legacy design)](../architecture/agent-control-plane.md) | Background only |
+| **B9c** | [ADR-001 Directory + unified invoke](../architecture/adr-001-agent-directory-and-unified-invoke.md) | Accepted plan + Phase 2 stubs |
 
 ---
 
