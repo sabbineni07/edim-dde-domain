@@ -1,0 +1,27 @@
+# =============================================================================
+# a2a_partner — multi-turn Agent2 demo (ADR-002 call contract)
+# =============================================================================
+# Plain (non-session) agent. Conversation history is process-local via
+# ``a2a.conversation_turn`` so two HTTP turns on the same conversation_id
+# increment turn_count without a durable checkpointer.
+# =============================================================================
+
+agent_id: a2a_partner
+display_name: A2A multi-turn partner (demo)
+version: 1
+
+metadata:
+  owner: platform
+  risk_tier: low
+  lifecycle: draft
+
+graph:
+  nodes:
+    - id: turn
+      type: a2a.conversation_turn
+      message_key: message
+      reply_template: "ack-{message}"
+
+  edges:
+    - [START, turn]
+    - [turn, END]

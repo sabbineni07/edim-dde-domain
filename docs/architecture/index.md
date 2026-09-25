@@ -38,7 +38,8 @@ Part B establishes the **system design** of EDIM DDE: planes of responsibility, 
 | **B8** | [Config → observability](config-to-observability.md) | YAML to traces and stores |
 | **B9** | [Agent deployment & composition](agent-deployment-and-composition.md) | Multi-agent hosting, SDLC |
 | **B9b** | [Agent control plane](agent-control-plane.md) | Legacy deep design — reference only |
-| **B9c** | [ADR-001 Unified invoke + Directory](adr-001-agent-directory-and-unified-invoke.md) | **Accepted** — one YAML surface; Phase 2 directory stubs |
+| **B9c** | [ADR-001 Unified invoke + Directory](adr-001-agent-directory-and-unified-invoke.md) | **Accepted** — one YAML surface; directory + dial |
+| **B9d** | [ADR-002 A2A call contract](adr-002-a2a-call-contract.md) | **Accepted** — request/response + multi-turn (not subgraph) |
 
 !!! note "Reading order"
     **B1** is the canonical deep dive. **B2–B3** are executive summaries. **B6–B8** are implementation companions. **B9c (ADR-001)** is the accepted composition/directory plan. **B9b** is optional legacy design material.

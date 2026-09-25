@@ -32,8 +32,9 @@ Base app: `edim_dde_api.main:app`
 | GET | `/api/v1/directory/health` | — | `{status, env, agent_count, source}` (ADR-001) |
 | GET | `/api/v1/directory/agents` | — | `{env, agents: [AgentBinding…]}` |
 | GET | `/api/v1/directory/agents/{agent_id}` | — | `AgentBinding` or `404` |
-| POST | `/api/v1/directory/register` | `DirectoryRegisterRequest` | Upsert binding (heartbeat MVP) |
-| POST | `/api/v1/agents/{agent_id}/invoke` | `{input: {…}}` | Generic flat-state invoke envelope |
+| GET | `/api/v1/agents/tasks/{task_id}` | — | Async accept poll stub (ADR-002 `running`) |
+| POST | `/api/v1/directory/register` | `DirectoryRegisterRequest` | Upsert binding (heartbeat MVP); AuthZ when `EDIM_A2A_TOKEN` set |
+| POST | `/api/v1/agents/{agent_id}/invoke` | `{input, conversation_id?, async_accept?}` | ADR-002 envelope (`completed` \| `input_needed` \| `running`) |
 
 HITL details: [HITL resume](../framework/hitl-resume.md) (YAML, HTTP, GoF map, why `HitlPaused` is not an error). Demo agent: `hitl_demo`. Product routes do not pause unless those graphs add a `hitl.gate`.
 

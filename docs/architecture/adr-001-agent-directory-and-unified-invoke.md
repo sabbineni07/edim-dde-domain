@@ -13,6 +13,10 @@ as read APIs on `edim-dde-api` (Phase 2) and may later move to a separate
 governance service. This ADR **supersedes Option A/B/C as the primary taxonomy**
 and reframes the parked control-plane doc as background, not the build spine.
 
+**Update (2026-09-25):** Prefer the [ADR-002 call contract](adr-002-a2a-call-contract.md)
+(`call_agent` + multi-turn envelope) for Agent1↔Agent2. In-process YAML
+`invoke_agent` subgraphs remain for optional pack reuse, not the A2A path.
+
 ---
 
 ## 1. Context
@@ -172,7 +176,7 @@ dialer unused until Phase 4).
 
 - Until Phase 4, directory is observational only (no auto remote).
 - Co-located directory shares blast radius with the runtime (accepted for MVP).
-- Generic invoke (Phase 3) expands attack surface — needs authz follow-on (BL-056).
+- Generic invoke (Phase 3) expands attack surface — interim `EDIM_A2A_TOKEN` AuthZ shipped; full SSO remains BL-056.
 
 ---
 

@@ -5,12 +5,13 @@
 
 ## Chapter summary
 
-Multi-agent composition under the rule **one YAML agent → one compile unit**,
-using allowlisted `invoke_agent`. The framework resolves **local LangGraph
-subgraph** vs **remote dial** ([ADR-001](../architecture/adr-001-agent-directory-and-unified-invoke.md)).
-Deployment topology choices live in Part B.
+Multi-agent **structure** inside one product agent uses LangGraph subgraphs.
+**Agent1↔Agent2** behavior uses a **call contract** (directory → dial →
+envelope) — see [ADR-002](../architecture/adr-002-a2a-call-contract.md).
+YAML `invoke_agent` subgraph embed is optional pack reuse, not the A2A path.
 
-**Outcome:** you compose agents with one YAML surface; no URLs in graphs.
+**Outcome:** one agent per product capability; call peers with `call_agent` /
+generic invoke when you need request/response or multi-turn.
 
 ---
 

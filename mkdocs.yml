@@ -78,6 +78,7 @@ nav:
       - Config to observability: architecture/config-to-observability.md
       - Agent deployment: architecture/agent-deployment-and-composition.md
       - ADR-001 Directory + unified invoke: architecture/adr-001-agent-directory-and-unified-invoke.md
+      - ADR-002 A2A call contract: architecture/adr-002-a2a-call-contract.md
       - Agent control plane (legacy design): architecture/agent-control-plane.md
   - C — Platform:
       - "Part C overview": platform/index.md

@@ -23,6 +23,9 @@ Lookup catalog of **`EDIM_*`**, Databricks, Azure, and plane configuration varia
 | `EDIM_AGENT_DIRECTORY_JSON` | API / a2a | Optional JSON object of binding overlays. Keys = `agent_id`. Used by directory APIs and `invoke_agent` resolve. |
 | `EDIM_DIRECTORY_URL` | a2a | Optional base URL; best-effort `GET …/api/v1/directory/agents` merge (Phase 5 client). |
 | `EDIM_AGENT_RESOLVE` | a2a / GraphBuilder | Default resolve policy for `invoke_agent`: `auto` (default) \| `local` \| `remote`. YAML `resolve:` overrides. |
+| `EDIM_A2A_TOKEN` | API + HTTP dialer | Shared A2A secret. When set: require Bearer / `X-Edim-A2A-Token` on `POST /agents/{id}/invoke` and `POST /directory/register`; dialer sends it outbound. Unset = open (local/dev). Precursor to BL-056. |
+| `EDIM_A2A_HTTP_TIMEOUT_S` | HTTP dialer | Per-attempt timeout seconds (default `60`). |
+| `EDIM_A2A_HTTP_RETRIES` | HTTP dialer | Extra attempts after failure on 502/503/504 or transport errors (default `2`). |
 | `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | **Product history** backend: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`). Holds tuning/RCA recommendation rows + status |
 | `EDIM_DATABASE_URL` | Postgres stores | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore + checkpointer when selected) |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |

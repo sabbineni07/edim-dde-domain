@@ -32,7 +32,7 @@ graph:
       output_map:
         greeting: leaf_greeting
       max_depth: 3
-      resolve: local
+      resolve: auto
 
   edges:
     - [START, seed]
