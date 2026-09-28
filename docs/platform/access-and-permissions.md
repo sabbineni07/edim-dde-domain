@@ -123,7 +123,8 @@ Creating an Entra SP and storing its client id/secret in KV for Foundry = **Iden
                └─ LLM → B
 ```
 
-How to grant the MI warehouse + UC: [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc).
+How to grant the MI warehouse + UC: [Deploy & hosting §6.4](../api/deploy-and-hosting.md#64-aca-sql-grant-managed-identity-warehouse-uc).  
+Network, NAT, and the deploy sequence: [ACA hosting](../api/aca-hosting.md).
 
 ### 3.4 Notebook `dbutils` (not Apps)
 

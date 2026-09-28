@@ -26,6 +26,9 @@ Lookup catalog of **`EDIM_*`**, Databricks, Azure, and plane configuration varia
 | `EDIM_A2A_TOKEN` | API + HTTP dialer | Shared A2A secret. When set: require Bearer / `X-Edim-A2A-Token` on `POST /agents/{id}/invoke` and `POST /directory/register`; dialer sends it outbound. Unset = open (local/dev). Precursor to BL-056. |
 | `EDIM_A2A_HTTP_TIMEOUT_S` | HTTP dialer | Per-attempt timeout seconds (default `60`). |
 | `EDIM_A2A_HTTP_RETRIES` | HTTP dialer | Extra attempts after failure on 502/503/504 or transport errors (default `2`). |
+| `EDIM_A2A_TASK_STORE` | A2A async | Task persistence: `memory` (default) \| `file`. |
+| `EDIM_A2A_TASK_DIR` | A2A async | Directory for `file` task store (default `.edim/a2a-tasks`). |
+| `EDIM_A2A_WORKER_THREADS` | A2A async | In-process worker pool size (default `4`). |
 | `EDIM_RECOMMENDATION_STORE` | API lifespan / AI | **Product history** backend: `none` \| `memory` \| `postgres` \| `cosmos` \| `redis` \| `auto` (default **inherits** `EDIM_STATE_STORE`). Holds tuning/RCA recommendation rows + status |
 | `EDIM_DATABASE_URL` | Postgres stores | e.g. `postgresql://edim:edim@localhost:5432/edim` (StateStore + RecommendationStore + checkpointer when selected) |
 | `EDIM_COSMOS_ENDPOINT` | Cosmos store | Cosmos account URI |
@@ -147,9 +150,9 @@ Canonical how-to (defaults, `EDIM_KV_SECRET_MAP` examples, force overwrite):
 
 This page stays a **catalog** of names; do not duplicate secret-map tutorials here.
 
-See also: [access & permissions](../platform/access-and-permissions.md), [deploy & hosting](../api/deploy-and-hosting.md), [environments](../platform/environments.md), [security baseline](../platform/security-baseline.md).
+See also: [access & permissions](../platform/access-and-permissions.md), [deploy & hosting](../api/deploy-and-hosting.md), [ACA hosting](../api/aca-hosting.md), [environments](../platform/environments.md), [security baseline](../platform/security-baseline.md).
 
 <!-- edim-learning-nav -->
 ---
 
-← [Deploy & hosting](../api/deploy-and-hosting.md) · [Preface](../README.md) · [Node type ids](node-type-ids.md) →
+← [ACA hosting](../api/aca-hosting.md) · [Preface](../README.md) · [Node type ids](node-type-ids.md) →

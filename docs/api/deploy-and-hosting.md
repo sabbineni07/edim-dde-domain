@@ -484,9 +484,9 @@ Variables: `APP_NAME`, `WS_SOURCE`, `EDIM_AI_PATH`, `EDIM_DOMAIN_PATH`, `PYTHON`
 
 ## 6. Deploy — Docker / ACA Native (standard container target)
 
-Same core wheels and env **names**, different host glue. For the complete ACA
-Native production procedure, including ACR, managed identity, workload
-profiles, scaling, workers, and rollback, use
+Same core wheels and env **names**, different host glue. End-to-end ACA
+steps (VNet, NAT, Conditional Access, image, secrets, `/guide/`) are in
+[ACA hosting](aca-hosting.md). Release rules and the target matrix are in
 [Deployment targets](deployment-targets.md) §4.
 
 **Postgres in this stack:** control-plane **StateStore** (`EDIM_STATE_STORE=postgres`),
@@ -654,6 +654,7 @@ When adding a new host, only verify:
 | `/guide` 404 on App | Guide not copied / not opted in / old wheel | `make guide-site-win` → `copy-guide-site` → rebuild wheels → sync → deploy; set `EDIM_MOUNT_GUIDE=1` |
 | Compose + `host-run` conflict | Both use port 5432 / `edim-postgres` | Use one path only |
 | ACA SQL fails | MI not granted warehouse / UC | [§6.4](#64-aca-sql-grant-managed-identity-warehouse-uc) |
+| Foundry `AADSTS53003` on Apps | Apps serverless IP is not a trusted location | Host on ACA with VNet + NAT — [ACA hosting](aca-hosting.md) |
 
 ---
 
@@ -667,6 +668,7 @@ When adding a new host, only verify:
 | [**Access & permissions**](../platform/access-and-permissions.md) | Identities U / A / B by host |
 | [Key Vault bootstrap](../platform/key-vault-bootstrap.md) | Vault load + `EDIM_KV_SECRET_MAP` |
 | [Agent deployment & composition](../architecture/agent-deployment-and-composition.md) | One vs many apps; cross-app SDLC |
+| [**ACA hosting**](aca-hosting.md) | VNet, NAT, image, secrets, API + `/guide/` |
 | [Live smoke](../contribute/live-smoke-test.md) | Validation curls |
 | [Windows smoke](../contribute/windows-smoke-checklist.md) | Windows local path |
 

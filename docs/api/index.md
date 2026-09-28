@@ -35,6 +35,7 @@ targets. Databricks Apps remains a compatibility path.
 | **G2** | [HTTP endpoints](endpoints.md) | OpenAPI surface |
 | **G3a** | [Deployment targets and release runbook](deployment-targets.md) | Target selection, packaging, rollout |
 | **G3** | [Deploy & hosting](deploy-and-hosting.md) | Apps, Docker, ACA compatibility commands |
+| **G3b** | [ACA hosting (API and guide)](aca-hosting.md) | VNet, NAT, identity, image, and validation |
 
 ---
 

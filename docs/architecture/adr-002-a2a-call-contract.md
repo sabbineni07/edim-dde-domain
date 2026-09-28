@@ -103,14 +103,20 @@ Agent1                         Directory                    Agent2
   |<----------------------------------------------------------|
 ```
 
-### 3.2 Async accept (stub)
+### 3.2 Async accept (worker)
 
 ```text
 POST /invoke {…, async_accept:true}
   → {status:running, task_id:T, conversation_id:C}
+  → in-process worker runs create_agent(…).invoke
 GET  /agents/tasks/T
-  → {status:running, payload…}   # worker execution is a later phase
+  → {status:running, …}           # while executing
+  → {status:completed, state:…}   # or input_needed / error
 ```
+
+Task persistence: ``EDIM_A2A_TASK_STORE=memory|file`` (file dir =
+``EDIM_A2A_TASK_DIR``). Queue-scaled ACA / Service Bus workers remain a later
+enterprise step; the poll contract stays the same.
 
 ---
 
@@ -124,7 +130,8 @@ GET  /agents/tasks/T
 
 **Negative / follow-ons**
 
-- Durable async workers for `running` are not in this ADR (in-memory accept only).
+- Queue-scaled ACA / Service Bus workers are not in this ADR (in-process thread
+  pool + memory/file task store is the local durable path).
 - Official Google A2A protocol remains optional interoperability later.
 - Existing `compose_parent`/`invoke_agent` demos stay as pack-reuse examples.
 

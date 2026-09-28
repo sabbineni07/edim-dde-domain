@@ -222,9 +222,13 @@ sequenceDiagram
 
 ---
 
-## 4. Azure Container Apps (prod alternative) — MI + KV
+## 4. Azure Container Apps (standard host) — MI + KV
 
 No Apps user token. SQL runs as the **container managed identity** (Identity **A**). Callers authenticate however you put in front (APIM / Easy Auth / private network) — not shown as Identity U unless you add it later (BL-056).
+
+Foundry still uses Identity **B** (`EDIM_FOUNDRY_*`). Put the Container Apps
+environment in your VNet and egress through a NAT IP that Conditional Access
+trusts. Databricks Apps cannot do that. Steps: [ACA hosting](../api/aca-hosting.md).
 
 ```mermaid
 flowchart TB

@@ -124,6 +124,7 @@ nav:
       - HTTP endpoints: api/endpoints.md
       - Deployment targets and release runbook: api/deployment-targets.md
       - Deploy and hosting: api/deploy-and-hosting.md
+      - ACA hosting (API and guide): api/aca-hosting.md
   - H — Reference:
       - "Part H overview": reference/index.md
       - Environment variables: reference/env-vars.md

@@ -110,6 +110,7 @@ This page is the **table of contents** for the EDIM DDE Engineer Guide. Sidebar 
 | **G1–G2** | Config, endpoints | HTTP host |
 | **G3a** | [Deployment targets](../api/deployment-targets.md) | Package and select a host |
 | **G3** | [Deploy & hosting](../api/deploy-and-hosting.md) | Compatibility commands |
+| **G3b** | [ACA hosting](../api/aca-hosting.md) | VNet, NAT, deploy the API and `/guide/` |
 
 ---
 

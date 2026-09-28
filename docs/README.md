@@ -103,9 +103,11 @@ The same YAML-driven graph package supports three approved deployment targets:
    LangSmith control plane/UI and Agent Server platform.
 
 Databricks Apps remains a supported compatibility path for data-local pilots
-and existing workloads; it is not the standard EDIM runtime. Begin with
-[Deployment targets and release runbook](api/deployment-targets.md) for the
-selection rules, packaging contract, deployment steps, and validation gates.
+and existing workloads; it is not the standard EDIM runtime. Apps cannot
+egress through your VNet, so a Conditional Access location policy blocks
+Foundry sign-in (`AADSTS53003`). Host the API and `/guide/` on ACA instead:
+[ACA hosting](api/aca-hosting.md). Selection rules and the release checklist
+stay in [Deployment targets](api/deployment-targets.md).
 
 !!! warning "Implemented versus planned"
     ACA Native has a working local Docker baseline. The `cluster_tuning`

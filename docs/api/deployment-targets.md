@@ -230,7 +230,9 @@ production image or enterprise package index.
 
 Platform engineering must provision, per environment:
 
-1. An ACA workload-profile environment in the correct VNet/subnets.
+1. An ACA environment injected into a dedicated VNet subnet, with a NAT
+   gateway whose public IP is an Entra trusted named location. Procedure:
+   [ACA hosting](aca-hosting.md).
 2. An ACR repository and a CI identity allowed to push images.
 3. PostgreSQL Flexible Server for StateStore and recommendation persistence.
 4. Key Vault for application secrets and private endpoint/DNS as required.

@@ -32,7 +32,7 @@ Base app: `edim_dde_api.main:app`
 | GET | `/api/v1/directory/health` | — | `{status, env, agent_count, source}` (ADR-001) |
 | GET | `/api/v1/directory/agents` | — | `{env, agents: [AgentBinding…]}` |
 | GET | `/api/v1/directory/agents/{agent_id}` | — | `AgentBinding` or `404` |
-| GET | `/api/v1/agents/tasks/{task_id}` | — | Async accept poll stub (ADR-002 `running`) |
+| GET | `/api/v1/agents/tasks/{task_id}` | — | Poll async task (`running` → `completed` / `input_needed` / `error`) |
 | POST | `/api/v1/directory/register` | `DirectoryRegisterRequest` | Upsert binding (heartbeat MVP); AuthZ when `EDIM_A2A_TOKEN` set |
 | POST | `/api/v1/agents/{agent_id}/invoke` | `{input, conversation_id?, async_accept?}` | ADR-002 envelope (`completed` \| `input_needed` \| `running`) |
 
